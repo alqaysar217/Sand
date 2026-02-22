@@ -56,7 +56,7 @@ export default function Home() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast({ title: "تم النسخ", description: "تم نسخ النص بنجاح." });
+    toast({ title: "تم النسخ", description: "تم نسخ الكود بنجاح." });
   };
 
   const setDemoLogin = (email: string, pass: string) => {
@@ -75,7 +75,6 @@ export default function Home() {
     );
   }
 
-  // Determine suggested fields based on email
   const getSuggestedFields = () => {
     if (!firebaseUser?.email) return null;
     const email = firebaseUser.email;
@@ -131,7 +130,7 @@ export default function Home() {
                 <div className="bg-red-600 p-4 -mx-4 -mt-4 mb-4 text-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-6 w-6" />
-                    <AlertTitle className="text-right font-bold text-lg m-0">دليل ربط قاعدة البيانات (أنت في المسار الصحيح!)</AlertTitle>
+                    <AlertTitle className="text-right font-bold text-lg m-0">دليل ربط قاعدة البيانات</AlertTitle>
                   </div>
                 </div>
                 <AlertDescription className="text-right space-y-6">
@@ -193,7 +192,7 @@ export default function Home() {
                           <Shield className="h-4 w-4 text-amber-700" />
                           <p className="font-bold text-amber-800 text-sm">الخطوة رقم 3: تفعيل مفتاح المدير (ضروري جداً)</p>
                         </div>
-                        <p className="text-amber-700 mb-2 leading-relaxed">بجانب كلمة <code className="bg-white px-1 font-bold">users</code> في العمود الأول، اضغط على <b>+ Start collection</b> وقم بالآتي:</p>
+                        <p className="text-amber-700 mb-2 leading-relaxed">بجانب كلمة <code className="bg-white px-1 font-bold">users</code> في العمود الثاني، اضغط على <b>+ Start collection</b> وقم بالآتي:</p>
                         <ul className="space-y-1 text-amber-800 list-disc list-inside">
                           <li>اكتب اسم المجموعة: <code className="bg-white px-1 font-bold">admins</code></li>
                           <li>في خانة <b>Document ID</b> الصق نفس الكود الطويل أعلاه.</li>
