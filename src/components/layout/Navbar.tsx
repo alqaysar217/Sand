@@ -3,8 +3,9 @@
 
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, Shield } from 'lucide-react';
+import { LogOut, Shield, Menu } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -26,11 +27,14 @@ export function Navbar() {
 
   return (
     <header className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-50">
-      <div className="flex items-center gap-2">
-        <div className="bg-primary p-1.5 rounded-lg">
-          <Shield className="w-6 h-6 text-white" />
+      <div className="flex items-center gap-4">
+        <SidebarTrigger className="md:hidden" />
+        <div className="flex items-center gap-2">
+          <div className="bg-primary p-1.5 rounded-lg">
+            <Shield className="w-6 h-6 text-white" />
+          </div>
+          <span className="font-headline font-bold text-xl text-primary tracking-tight">كونكت-ريزولف</span>
         </div>
-        <span className="font-headline font-bold text-xl text-primary tracking-tight">كونكت-ريزولف</span>
       </div>
 
       <div className="flex items-center gap-4">

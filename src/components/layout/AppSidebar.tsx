@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -9,7 +10,10 @@ import {
   BarChart3, 
   Users, 
   Settings,
-  AlertCircle
+  AlertCircle,
+  FileCheck,
+  Archive,
+  Clock
 } from 'lucide-react';
 import {
   Sidebar,
@@ -20,32 +24,36 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
+import { Shield } from 'lucide-react';
 
 export function AppSidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   if (!user) return null;
 
   const getNavItems = () => {
     switch (user.role) {
       case 'Agent':
         return [
-          { title: 'تذكرة جديدة', icon: PlusSquare, href: '#new' },
-          { title: 'تذاكري النشطة', icon: History, href: '#active' },
-          { title: 'الأرشيف', icon: History, href: '#archive' },
+          { title: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
+          { title: 'بلاغ جديد', icon: PlusSquare, href: '/dashboard' },
+          { title: 'سجل البلاغات', icon: History, href: '/dashboard' },
+          { title: 'الأرشيف', icon: Archive, href: '/dashboard' },
         ];
       case 'Specialist':
         return [
-          { title: 'المهام الواردة', icon: Inbox, href: '#tasks' },
-          { title: 'قيد المعالجة', icon: History, href: '#progress' },
-          { title: 'تم الحل', icon: History, href: '#resolved' },
+          { title: 'محطة العمل', icon: Inbox, href: '/dashboard' },
+          { title: 'المهام الواردة', icon: Clock, href: '/dashboard' },
+          { title: 'بلاغات محلولة', icon: FileCheck, href: '/dashboard' },
         ];
       case 'Admin':
         return [
-          { title: 'التحليلات', icon: BarChart3, href: '#stats' },
-          { title: 'تذاكر متأخرة', icon: AlertCircle, href: '#overdue' },
-          { title: 'إدارة المستخدمين', icon: Users, href: '#users' },
-          { title: 'سجلات النظام', icon: Settings, href: '#logs' },
+          { title: 'لوحة التحكم', icon: BarChart3, href: '/dashboard' },
+          { title: 'تذاكر متأخرة', icon: AlertCircle, href: '/dashboard' },
+          { title: 'إدارة الموظفين', icon: Users, href: '/dashboard' },
+          { title: 'الإعدادات', icon: Settings, href: '/dashboard' },
         ];
       default:
         return [];
@@ -54,27 +62,25 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-l border-r-0" side="right">
+      <SidebarHeader className="p-4 border-b bg-primary/5">
+        <div className="flex items-center gap-2 justify-end">
+          <span className="font-bold text-primary">كونكت-ريزولف</span>
+          <Shield className="w-5 h-5 text-primary" />
+        </div>
+      </SidebarHeader>
       <SidebarContent className="bg-white">
         <SidebarGroup>
           <SidebarGroupLabel className="text-primary font-bold px-4 py-2 mt-2 text-right">
-            القائمة الرئيسية
+            قائمة الوصول السريع
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="flex-row-reverse">
-                  <a href="/dashboard">
-                    <LayoutDashboard className="w-4 h-4 ml-2 mr-0" />
-                    <span>الرئيسية</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               {getNavItems().map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="flex-row-reverse">
+                  <SidebarMenuButton asChild className="flex-row-reverse hover:bg-slate-100 h-11">
                     <a href={item.href}>
-                      <item.icon className="w-4 h-4 ml-2 mr-0" />
-                      <span>{item.title}</span>
+                      <item.icon className="w-5 h-5 ml-3 mr-0 text-slate-500" />
+                      <span className="text-sm font-medium">{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -83,6 +89,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-4 border-t bg-slate-50 text-[10px] text-muted-foreground text-center">
+        نظام إدارة البلاغات v1.0
+      </SidebarFooter>
     </Sidebar>
   );
 }
