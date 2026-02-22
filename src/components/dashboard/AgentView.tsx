@@ -13,17 +13,29 @@ import {
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X, CheckCircle2, AlertCircle
+  Upload, User, X, CheckCircle2, AlertCircle, Trash2
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
-  DialogDescription, DialogTrigger 
+  DialogDescription, DialogTrigger, DialogFooter
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const SERVICE_ENTITIES = [
   { id: 'CallCenter', label: 'الكول سنتر' },
@@ -47,7 +59,6 @@ const ISSUE_TYPES = [
   'أخرى'
 ];
 
-// قائمة الموظفين المحددة
 const AGENT_NAMES = [
   "وليد بن قبوس",
   "ابراهيم العمودي",
@@ -64,6 +75,7 @@ export function AgentView() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -88,16 +100,21 @@ export function AgentView() {
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection(agentTicketsQuery);
 
+  const filteredTickets = tickets?.filter(t => 
+    t.ticketID.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.cif.includes(searchQuery)
+  );
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // تقليل الحد الأقصى لضمان عدم تجاوز سعة المستند في Firestore (500 كيلوبايت كحد أقصى)
     if (file.size > 500 * 1024) {
       toast({ 
         variant: "destructive", 
         title: "حجم الملف كبير جداً", 
-        description: "يرجى اختيار صورة بحجم أقل من 500 كيلوبايت (لقطة شاشة مثلاً) لضمان حفظ البلاغ بنجاح." 
+        description: "يرجى اختيار صورة بحجم أقل من 500 كيلوبايت لضمان حفظ البلاغ بنجاح." 
       });
       return;
     }
@@ -125,6 +142,15 @@ export function AgentView() {
       ...prev,
       attachments: prev.attachments.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleDeleteTicket = (ticketId: string) => {
+    if (!db) return;
+    deleteDocumentNonBlocking(doc(db, 'tickets', ticketId));
+    toast({
+      title: "تم إلغاء البلاغ",
+      description: "تم حذف البلاغ من النظام بنجاح.",
+    });
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -171,7 +197,7 @@ export function AgentView() {
         toast({ 
           variant: "destructive", 
           title: "فشل الحفظ", 
-          description: "تأكد من أن حجم الصور المرفقة صغير جداً، حيث أن قاعدة البيانات لها سعة محدودة لكل بلاغ." 
+          description: "تأكد من أن حجم الصور المرفقة صغير جداً." 
         });
       })
       .finally(() => setIsSubmitting(false));
@@ -207,8 +233,6 @@ export function AgentView() {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleCreateTicket} className="space-y-6">
-              
-              {/* قسم اختيار الموظف - طلب المستخدم */}
               <div className="bg-amber-50 p-6 rounded-lg border-2 border-dashed border-accent/40 space-y-4">
                 <div className="flex items-center gap-2 text-primary font-bold justify-end">
                    <span>اسم الموظف الرافع للبلاغ</span>
@@ -222,10 +246,6 @@ export function AgentView() {
                     {AGENT_NAMES.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <div className="flex items-center gap-1 justify-end text-[10px] text-amber-800">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>ملاحظة: سيتم تسجيل البلاغ رسمياً بالاسم المختار أعلاه</span>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
@@ -277,13 +297,13 @@ export function AgentView() {
 
               <div className="space-y-2 text-right">
                 <Label className="font-bold">تفاصيل المشكلة</Label>
-                <Textarea placeholder="اشرح المشكلة بالتفصيل لمساعدة الأخصائي على الحل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
+                <Textarea placeholder="اشرح المشكلة بالتفصيل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
               </div>
 
               <div className="space-y-4 border-t pt-4">
                 <div className="flex items-center justify-between flex-row-reverse">
                   <Label className="flex items-center gap-2 font-bold text-primary">إرفاق صور توضيحية (لقطة شاشة) <ImageIcon className="w-4 h-4" /></Label>
-                  <span className="text-[10px] text-red-600 font-bold">الحجم الأقصى للصورة: 500 كيلوبايت فقط</span>
+                  <span className="text-[10px] text-red-600 font-bold">الحجم الأقصى للصورة: 500 كيلوبايت</span>
                 </div>
                 
                 <div className="flex justify-end">
@@ -343,7 +363,12 @@ export function AgentView() {
             <CardTitle className="text-lg text-right w-full">سجل البلاغات الأخير</CardTitle>
             <div className="relative w-full md:w-64">
               <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="بحث برقم البلاغ..." className="pr-10 text-right h-9" />
+              <Input 
+                placeholder="بحث..." 
+                className="pr-10 text-right h-9" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </CardHeader>
           <CardContent className="pt-4">
@@ -362,14 +387,14 @@ export function AgentView() {
                       <TableHead className="text-right">الجهة المعنية</TableHead>
                       <TableHead className="text-right">اسم العميل</TableHead>
                       <TableHead className="text-right">CIF</TableHead>
-                      <TableHead className="text-right">الموظف الرافع</TableHead>
+                      <TableHead className="text-right">الموظف</TableHead>
                       <TableHead className="text-right">الحالة</TableHead>
                       <TableHead className="text-center">إجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tickets && tickets.length > 0 ? (
-                      tickets.map((ticket: any) => (
+                    {filteredTickets && filteredTickets.length > 0 ? (
+                      filteredTickets.map((ticket: any) => (
                         <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
                           <TableCell className="font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
                           <TableCell className="text-xs text-right whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
@@ -389,81 +414,117 @@ export function AgentView() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 hover:text-primary">
-                                  <FileText className="w-3 h-3 ml-1" /> التفاصيل
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-2xl text-right" dir="rtl">
-                                <DialogHeader>
-                                  <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
-                                    تفاصيل البلاغ {ticket.ticketID}
-                                  </DialogTitle>
-                                  <DialogDescription className="text-right font-bold text-secondary">الموظف الرافع للبلاغ: {ticket.createdByAgentName}</DialogDescription>
-                                </DialogHeader>
-                                <div className="grid grid-cols-2 gap-6 py-4 border-t border-b">
-                                  <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-xs uppercase">اسم العميل</Label>
-                                    <p className="font-bold">{ticket.customerName}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-xs uppercase">رقم الحساب (CIF)</Label>
-                                    <p className="font-mono font-bold">{ticket.cif}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-xs uppercase">رقم الهاتف</Label>
-                                    <p className="font-mono" dir="ltr">{ticket.phoneNumber}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-xs uppercase">وسيلة الاستلام</Label>
-                                    <p className="font-bold">{getIntakeLabel(ticket.intakeMethod)}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-xs uppercase">الجهة المعنية</Label>
-                                    <p className="font-bold text-blue-700">{getEntityLabel(ticket.serviceType)}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-xs uppercase">نوع المشكلة</Label>
-                                    <p className="font-bold">{ticket.subIssue}</p>
-                                  </div>
-                                </div>
-                                <div className="py-4">
-                                  <Label className="text-muted-foreground text-xs uppercase block mb-2">تفاصيل المشكلة</Label>
-                                  <div className="bg-slate-50 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">
-                                    {ticket.description}
-                                  </div>
-                                </div>
-                                {ticket.attachments && ticket.attachments.length > 0 && (
-                                  <div className="py-4 border-t">
-                                    <Label className="text-muted-foreground text-xs uppercase block mb-3">المرفقات التوضيحية</Label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {ticket.attachments.map((att: any, idx: number) => (
-                                        <div key={idx} className="space-y-2 border-2 border-slate-100 rounded-lg p-2 bg-slate-50 group">
-                                          <div className="relative aspect-video rounded-md overflow-hidden bg-black flex items-center justify-center">
-                                            <img src={att.url} alt="مرفق" className="max-w-full max-h-full object-contain" />
-                                            <a 
-                                              href={att.url} 
-                                              target="_blank" 
-                                              rel="noreferrer" 
-                                              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2"
-                                            >
-                                              <ExternalLink className="w-5 h-5" /> تكبير الصورة
-                                            </a>
+                            <div className="flex items-center justify-center gap-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 hover:text-primary">
+                                    <FileText className="w-3 h-3 ml-1" /> التفاصيل
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl text-right p-0" dir="rtl">
+                                  <ScrollArea className="max-h-[85vh]">
+                                    <div className="p-6">
+                                      <DialogHeader className="mb-6">
+                                        <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
+                                          تفاصيل البلاغ {ticket.ticketID}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-right font-bold text-secondary">بواسطة الموظف: {ticket.createdByAgentName}</DialogDescription>
+                                      </DialogHeader>
+                                      
+                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4 border-t border-b bg-slate-50/50 rounded-lg p-4">
+                                        <div className="space-y-1">
+                                          <Label className="text-muted-foreground text-[10px] uppercase">اسم العميل</Label>
+                                          <p className="font-bold">{ticket.customerName}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-muted-foreground text-[10px] uppercase">رقم الحساب (CIF)</Label>
+                                          <p className="font-mono font-bold text-blue-700">{ticket.cif}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-muted-foreground text-[10px] uppercase">رقم الهاتف</Label>
+                                          <p className="font-mono" dir="ltr">{ticket.phoneNumber}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-muted-foreground text-[10px] uppercase">وسيلة الاستلام</Label>
+                                          <p className="font-bold">{getIntakeLabel(ticket.intakeMethod)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-muted-foreground text-[10px] uppercase">الجهة المعنية</Label>
+                                          <p className="font-bold text-blue-700">{getEntityLabel(ticket.serviceType)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-muted-foreground text-[10px] uppercase">نوع الخدمة</Label>
+                                          <p className="font-bold">{ticket.subIssue}</p>
+                                        </div>
+                                      </div>
+
+                                      <div className="py-6">
+                                        <Label className="text-muted-foreground text-[10px] uppercase block mb-2 font-bold">تفاصيل المشكلة المشروحة</Label>
+                                        <div className="bg-white border-2 border-slate-100 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap shadow-inner">
+                                          {ticket.description}
+                                        </div>
+                                      </div>
+
+                                      {ticket.attachments && ticket.attachments.length > 0 && (
+                                        <div className="py-4 border-t">
+                                          <Label className="text-muted-foreground text-[10px] uppercase block mb-3 font-bold">المرفقات التوضيحية</Label>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {ticket.attachments.map((att: any, idx: number) => (
+                                              <div key={idx} className="space-y-2 border-2 border-slate-100 rounded-lg p-2 bg-white group shadow-sm">
+                                                <div className="relative aspect-video rounded-md overflow-hidden bg-black flex items-center justify-center">
+                                                  <img src={att.url} alt="مرفق" className="max-w-full max-h-full object-contain" />
+                                                  <a 
+                                                    href={att.url} 
+                                                    target="_blank" 
+                                                    rel="noreferrer" 
+                                                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2"
+                                                  >
+                                                    <ExternalLink className="w-5 h-5" /> تكبير الصورة
+                                                  </a>
+                                                </div>
+                                                <p className="text-[10px] text-center text-muted-foreground font-bold">{att.description}</p>
+                                              </div>
+                                            ))}
                                           </div>
                                         </div>
-                                      ))}
+                                      )}
+
+                                      <div className="mt-8 pt-4 border-t flex justify-between items-center flex-row-reverse">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="bg-slate-100">{new Date(ticket.createdAt).toLocaleString('ar-SA')}</Badge>
+                                          <Label className="text-[10px] text-muted-foreground">تاريخ الإنشاء:</Label>
+                                        </div>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                                              <Trash2 className="w-4 h-4 ml-2" /> إلغاء (حذف) البلاغ
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent dir="rtl" className="text-right">
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>هل أنت متأكد من إلغاء البلاغ؟</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                سيتم حذف هذا البلاغ بشكل نهائي من النظام ولا يمكن استرجاعه.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter className="flex-row-reverse gap-2">
+                                              <AlertDialogAction onClick={() => handleDeleteTicket(ticket.id)} className="bg-red-600 hover:bg-red-700">تأكيد الإلغاء</AlertDialogAction>
+                                              <AlertDialogCancel>تراجع</AlertDialogCancel>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </DialogContent>
-                            </Dialog>
+                                  </ScrollArea>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مرفوعة حالياً.</TableCell>
+                        <TableCell colSpan={8} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مطابقة لبحثك حالياً.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
