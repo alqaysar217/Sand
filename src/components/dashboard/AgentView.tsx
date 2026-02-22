@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X, Trash2
+  Upload, User, X, Trash2, Filter
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
@@ -75,6 +76,7 @@ export function AgentView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
   
   // State management for dialogs
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
@@ -111,12 +113,23 @@ export function AgentView() {
   const { data: tickets, isLoading: isTicketsLoading } = useCollection(agentTicketsQuery);
 
   const filteredTickets = useMemo(() => {
-    return tickets?.filter(t => 
-      t.ticketID.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.cif.includes(searchQuery)
-    ) || [];
-  }, [tickets, searchQuery]);
+    if (!tickets) return [];
+    
+    return tickets.filter(t => {
+      // 1. Search Logic (Name, Phone, CIF)
+      const searchStr = searchQuery.toLowerCase();
+      const matchesSearch = 
+        t.ticketID.toLowerCase().includes(searchStr) ||
+        t.customerName.toLowerCase().includes(searchStr) ||
+        t.cif.includes(searchStr) ||
+        (t.phoneNumber && t.phoneNumber.includes(searchStr));
+
+      // 2. Status Filter Logic
+      const matchesStatus = activeTab === 'all' || t.status === activeTab;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [tickets, searchQuery, activeTab]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -157,17 +170,13 @@ export function AgentView() {
     
     const ticketIdToDelete = selectedTicket.id;
     
-    // 1. Close all UI elements immediately
+    // Close dialogs immediately
     setIsDeleteDialogOpen(false);
     setSelectedTicket(null);
-    
-    // 2. Clear pointer events manually to prevent freezing
     document.body.style.pointerEvents = 'auto';
 
     try {
-      // 3. Perform deletion
       deleteDocumentNonBlocking(doc(db, 'tickets', ticketIdToDelete));
-      
       toast({
         title: "تم إلغاء البلاغ",
         description: "تم حذف البلاغ من النظام بنجاح وتحديث السجل.",
@@ -238,7 +247,7 @@ export function AgentView() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
           <h1 className="text-2xl font-bold text-primary">واجهة موظف خدمة العملاء</h1>
-          <p className="text-muted-foreground">سجل البلاغات المرفوعة - النظام المصرفي المتكامل</p>
+          <p className="text-muted-foreground">نظام إدارة ورفع البلاغات المصرفية</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
@@ -293,7 +302,7 @@ export function AgentView() {
 
                 <div className="space-y-2 text-right">
                   <Label className="font-bold">رقم الحساب / CIF</Label>
-                  <Input placeholder="0000000" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono h-11" />
+                  <Input placeholder="أدخل رقم الحساب" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono h-11" />
                 </div>
 
                 <div className="space-y-2 text-right">
@@ -385,79 +394,96 @@ export function AgentView() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-md">
-          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4 flex-row-reverse border-b">
-            <CardTitle className="text-lg text-right w-full">سجل البلاغات الأخير</CardTitle>
-            <div className="relative w-full md:w-64">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="بحث..." 
-                className="pr-10 text-right h-9" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            {isTicketsLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2">
-                <Loader2 className="animate-spin text-primary h-8 w-8" />
-                <p className="text-sm text-muted-foreground">جاري تحميل سجل البلاغات...</p>
+        <div className="space-y-4">
+          <Card className="shadow-md">
+            <CardHeader className="pb-4 border-b space-y-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 flex-row-reverse">
+                <CardTitle className="text-lg text-right w-full flex items-center gap-2 justify-end">
+                  سجل البلاغات <Filter className="w-4 h-4" />
+                </CardTitle>
+                <div className="relative w-full md:w-96">
+                  <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="بحث بالاسم، رقم الهاتف، أو الـ CIF..." 
+                    className="pr-10 text-right h-10 border-primary/20 focus:border-primary shadow-sm" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/50">
-                      <TableHead className="text-right">رقم البلاغ</TableHead>
-                      <TableHead className="text-right">التاريخ</TableHead>
-                      <TableHead className="text-right">الجهة المعنية</TableHead>
-                      <TableHead className="text-right">اسم العميل</TableHead>
-                      <TableHead className="text-right">CIF</TableHead>
-                      <TableHead className="text-right">الموظف</TableHead>
-                      <TableHead className="text-right">الحالة</TableHead>
-                      <TableHead className="text-center">إجراءات</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTickets.length > 0 ? (
-                      filteredTickets.map((ticket: any) => (
-                        <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                          <TableCell className="font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
-                          <TableCell className="text-xs text-right whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="outline" className="font-normal bg-blue-50/50">{getEntityLabel(ticket.serviceType)}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">{ticket.customerName}</TableCell>
-                          <TableCell className="text-right font-mono text-xs">{ticket.cif}</TableCell>
-                          <TableCell className="text-right text-xs font-bold text-slate-600">{ticket.createdByAgentName}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge className={
-                              ticket.status === 'Pending' ? 'status-pending' : 
-                              ticket.status === 'Resolved' ? 'status-resolved' : 
-                              ticket.status === 'New' ? 'status-new' : ''
-                            }>
-                              {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد المعالجة' : 'تم الحل'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                             <Button variant="ghost" size="sm" className="h-8 hover:text-primary" onClick={() => setSelectedTicket(ticket)}>
-                               <FileText className="w-3 h-3 ml-1" /> التفاصيل
-                             </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مطابقة لبحثك حالياً.</TableCell>
+              
+              <Tabs defaultValue="all" onValueChange={setActiveTab} dir="rtl" className="w-full">
+                <TabsList className="grid grid-cols-2 md:grid-cols-5 h-auto p-1 bg-slate-100">
+                  <TabsTrigger value="all" className="py-2">الكل</TabsTrigger>
+                  <TabsTrigger value="New" className="py-2">جديد</TabsTrigger>
+                  <TabsTrigger value="Pending" className="py-2 text-amber-700">قيد المعالجة</TabsTrigger>
+                  <TabsTrigger value="Resolved" className="py-2 text-green-700">تم الحل</TabsTrigger>
+                  <TabsTrigger value="Escalated" className="py-2 text-red-700">محال للمختص</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {isTicketsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2">
+                  <Loader2 className="animate-spin text-primary h-8 w-8" />
+                  <p className="text-sm text-muted-foreground">جاري تحميل سجل البلاغات...</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/50">
+                        <TableHead className="text-right">رقم البلاغ</TableHead>
+                        <TableHead className="text-right">التاريخ</TableHead>
+                        <TableHead className="text-right">الجهة المعنية</TableHead>
+                        <TableHead className="text-right">اسم العميل</TableHead>
+                        <TableHead className="text-right">CIF</TableHead>
+                        <TableHead className="text-right">الحالة</TableHead>
+                        <TableHead className="text-center">إجراءات</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTickets.length > 0 ? (
+                        filteredTickets.map((ticket: any) => (
+                          <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
+                            <TableCell className="font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
+                            <TableCell className="text-xs text-right whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline" className="font-normal bg-blue-50/50">{getEntityLabel(ticket.serviceType)}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">{ticket.customerName}</TableCell>
+                            <TableCell className="text-right font-mono text-xs">{ticket.cif}</TableCell>
+                            <TableCell className="text-right">
+                              <Badge className={
+                                ticket.status === 'Pending' ? 'status-pending' : 
+                                ticket.status === 'Resolved' ? 'status-resolved' : 
+                                ticket.status === 'New' ? 'status-new' : 
+                                ticket.status === 'Escalated' ? 'status-escalated' : ''
+                              }>
+                                {ticket.status === 'New' ? 'جديد' : 
+                                 ticket.status === 'Pending' ? 'قيد المعالجة' : 
+                                 ticket.status === 'Resolved' ? 'تم الحل' : 'محال للمختص'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                               <Button variant="ghost" size="sm" className="h-8 hover:text-primary" onClick={() => setSelectedTicket(ticket)}>
+                                 <FileText className="w-3 h-3 ml-1" /> التفاصيل
+                               </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مطابقة لبحثك أو فلترتك حالياً.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Details Dialog */}
