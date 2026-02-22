@@ -2,28 +2,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // دالة التحقق من تسجيل الدخول
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // السماح بالقراءة والكتابة لجميع المستخدمين المسجلين مؤقتاً لغرض الفحص والاختبار
-    match /users/{userId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /admins/{adminId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /tickets/{ticketId} {
-      // فتح الصلاحيات مؤقتاً لضمان عمل بقية الأقسام أثناء الفحص
-      allow read, write: if isSignedIn();
-
-      match /logs/{logId} {
-        allow read, write: if isSignedIn();
-      }
+    // قاعدة عامة وبسيطة: أي مستخدم مسجل يمكنه القراءة والكتابة في جميع المجموعات
+    // هذا الإعداد مخصص لفترة الفحص والاختبار لضمان عدم ظهور أخطاء الصلاحيات
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }

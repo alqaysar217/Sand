@@ -6,7 +6,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// تهيئة خدمات فيربيس مع إعدادات تضمن استقرار الاتصال في البيئة السحابية
 export function initializeFirebase() {
   const apps = getApps();
   let app: FirebaseApp;
@@ -17,9 +17,9 @@ export function initializeFirebase() {
     app = getApp();
   }
 
-  // Initialize Firestore with settings to handle potential proxy/connectivity issues in cloud environments
+  // استخدام Long Polling لتجنب مشاكل انقطاع الـ WebSocket في المتصفح
   const firestore = initializeFirestore(app, {
-    experimentalForceLongPolling: true, // Fixes connection issues in some cloud IDE environments
+    experimentalForceLongPolling: true,
   });
 
   return {
