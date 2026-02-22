@@ -10,25 +10,37 @@ export function Navbar() {
 
   if (!user) return null;
 
+  const roleMap: Record<string, string> = {
+    'Agent': 'موظف',
+    'Specialist': 'أخصائي',
+    'Admin': 'مدير النظام'
+  };
+
+  const deptMap: Record<string, string> = {
+    'Cards': 'البطاقات',
+    'App': 'التطبيق الرقمي',
+    'Operations': 'العمليات'
+  };
+
   return (
     <header className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-50">
       <div className="flex items-center gap-2">
         <div className="bg-primary p-1.5 rounded-lg">
           <Shield className="w-6 h-6 text-white" />
         </div>
-        <span className="font-headline font-bold text-xl text-primary tracking-tight">ConnectResolve</span>
+        <span className="font-headline font-bold text-xl text-primary tracking-tight">كونكت-ريزولف</span>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="text-right hidden sm:block">
+        <div className="text-left hidden sm:block text-right">
           <p className="text-sm font-semibold">{user.name}</p>
-          <p className="text-xs text-muted-foreground">{user.department} Department</p>
+          <p className="text-xs text-muted-foreground">قسم {deptMap[user.department] || user.department}</p>
         </div>
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-          {user.role}
+          {roleMap[user.role] || user.role}
         </Badge>
         <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-destructive">
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5 rotate-180" />
         </Button>
       </div>
     </header>

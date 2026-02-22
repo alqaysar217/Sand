@@ -13,7 +13,7 @@ import {
   Copy, 
   MessageSquare, 
   Sparkles, 
-  ArrowLeft,
+  ArrowRight,
   Loader2
 } from 'lucide-react';
 import { MOCK_TICKETS } from '@/lib/mock-data';
@@ -33,14 +33,14 @@ export function SpecialistView() {
 
   const handleClaim = (ticketId: string) => {
     toast({
-      title: "Ticket Claimed",
-      description: `Ownership has been assigned to ${user?.name}.`,
+      title: "تم الاستلام",
+      description: `تم تعيين التذكرة لـ ${user?.name}.`,
     });
   };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: "Copied", description: `${label} copied to clipboard.` });
+    toast({ title: "تم النسخ", description: `تم نسخ ${label} إلى الحافظة.` });
   };
 
   const handleAiSuggest = async () => {
@@ -48,12 +48,12 @@ export function SpecialistView() {
     setIsGenerating(true);
     try {
       const result = await smartResponseAssistant({
-        complaintDetails: `Customer: ${selectedTicket.customerName}, Issue: ${selectedTicket.subIssue}`,
-        resolutionHistory: ["Customer needs PIN reset for credit card", "System updated to reflect new limits"]
+        complaintDetails: `العميل: ${selectedTicket.customerName}, المشكلة: ${selectedTicket.subIssue}`,
+        resolutionHistory: ["يحتاج العميل لإعادة تعيين كلمة السر للبطاقة الائتمانية", "تم تحديث النظام ليعكس الحدود الائتمانية الجديدة"]
       });
       setResponse(result.suggestedResponse);
     } catch (e) {
-      toast({ variant: "destructive", title: "AI Error", description: "Failed to generate AI response." });
+      toast({ variant: "destructive", title: "خطأ AI", description: "فشل في إنشاء رد ذكي." });
     } finally {
       setIsGenerating(false);
     }
@@ -63,47 +63,47 @@ export function SpecialistView() {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="mb-4">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Worklist
+          <ArrowRight className="w-4 h-4 ml-2" /> العودة لقائمة المهام
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border-l-4 border-l-primary">
-              <CardHeader>
-                <div className="flex justify-between items-start">
+            <Card className="border-r-4 border-r-primary">
+              <CardHeader className="text-right">
+                <div className="flex justify-between items-start flex-row-reverse">
                   <div>
-                    <CardTitle className="text-xl">Ticket: {selectedTicket.ticketID}</CardTitle>
-                    <p className="text-muted-foreground text-sm">Issue: {selectedTicket.subIssue}</p>
+                    <CardTitle className="text-xl">تذكرة رقم: {selectedTicket.ticketID}</CardTitle>
+                    <p className="text-muted-foreground text-sm">المشكلة: {selectedTicket.subIssue}</p>
                   </div>
-                  <Badge variant="outline" className="bg-blue-50">Dept: {selectedTicket.department}</Badge>
+                  <Badge variant="outline" className="bg-blue-50">القسم: {selectedTicket.department === 'Cards' ? 'البطاقات' : 'التطبيق'}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg">
-                  <div className="space-y-1">
-                    <Label className="text-xs uppercase text-muted-foreground">Customer CIF</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold">{selectedTicket.CIF}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(selectedTicket.CIF, 'CIF')}>
+                  <div className="space-y-1 text-right">
+                    <Label className="text-xs uppercase text-muted-foreground">رقم العميل (CIF)</Label>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(selectedTicket.CIF, 'رقم العميل')}>
                         <Copy className="h-3 w-3" />
                       </Button>
+                      <span className="font-mono font-bold">{selectedTicket.CIF}</span>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs uppercase text-muted-foreground">Phone Number</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold">{selectedTicket.phoneNumber}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(selectedTicket.phoneNumber, 'Phone')}>
+                  <div className="space-y-1 text-right">
+                    <Label className="text-xs uppercase text-muted-foreground">رقم الهاتف</Label>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(selectedTicket.phoneNumber, 'رقم الهاتف')}>
                         <Copy className="h-3 w-3" />
                       </Button>
+                      <span className="font-mono font-bold" dir="ltr">{selectedTicket.phoneNumber}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-row-reverse">
                     <Label className="flex items-center gap-2 font-bold">
-                      <MessageSquare className="w-4 h-4" /> Specialist Response
+                      <MessageSquare className="w-4 h-4" /> رد الأخصائي
                     </Label>
                     <Button 
                       variant="outline" 
@@ -112,20 +112,20 @@ export function SpecialistView() {
                       onClick={handleAiSuggest}
                       disabled={isGenerating}
                     >
-                      {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-accent" />}
-                      Smart Response Assistant
+                      {isGenerating ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2 text-accent" />}
+                      مساعد الرد الذكي
                     </Button>
                   </div>
                   <Textarea 
                     value={response} 
                     onChange={(e) => setResponse(e.target.value)}
-                    placeholder="Provide professional technical feedback..." 
-                    className="min-h-[200px]"
+                    placeholder="أدخل الرد الفني المهني هنا..." 
+                    className="min-h-[200px] text-right"
                   />
-                  <div className="flex justify-end gap-3">
-                    <Button variant="outline" className="text-red-600 border-red-200">Escalate</Button>
+                  <div className="flex justify-end gap-3 flex-row-reverse">
+                    <Button variant="outline" className="text-red-600 border-red-200">تصعيد</Button>
                     <Button className="bg-secondary text-white">
-                      <CheckCircle2 className="w-4 h-4 mr-2" /> Resolve Ticket
+                      <CheckCircle2 className="w-4 h-4 ml-2" /> حل التذكرة
                     </Button>
                   </div>
                 </div>
@@ -135,17 +135,17 @@ export function SpecialistView() {
 
           <div className="space-y-6">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Ticket History</CardTitle></CardHeader>
+              <CardHeader className="text-right"><CardTitle className="text-sm">سجل التذكرة</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative border-l-2 border-slate-200 pl-4 space-y-6">
+                <div className="relative border-r-2 border-slate-200 pr-4 space-y-6 text-right">
                   <div className="relative">
-                    <div className="absolute -left-5 top-1 w-2 h-2 rounded-full bg-blue-500"></div>
-                    <p className="text-xs font-bold">Created by {selectedTicket.createdByName}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(selectedTicket.createdAt).toLocaleString()}</p>
+                    <div className="absolute -right-5 top-1 w-2 h-2 rounded-full bg-blue-500"></div>
+                    <p className="text-xs font-bold">تم الإنشاء بواسطة {selectedTicket.createdByName}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p>
                   </div>
                   <div className="relative">
-                    <div className="absolute -left-5 top-1 w-2 h-2 rounded-full bg-slate-300"></div>
-                    <p className="text-xs font-medium">Status changed to {selectedTicket.status}</p>
+                    <div className="absolute -right-5 top-1 w-2 h-2 rounded-full bg-slate-300"></div>
+                    <p className="text-xs font-medium">تغيرت الحالة إلى {selectedTicket.status === 'New' ? 'جديد' : selectedTicket.status}</p>
                   </div>
                 </div>
               </CardContent>
@@ -159,25 +159,25 @@ export function SpecialistView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Specialist Workstation</h1>
-        <p className="text-muted-foreground">Manage tickets for the <span className="font-bold text-secondary">{user?.department}</span> department</p>
+        <h1 className="text-2xl font-bold text-primary">محطة عمل الأخصائي</h1>
+        <p className="text-muted-foreground">إدارة تذاكر قسم <span className="font-bold text-secondary">{user?.department === 'Cards' ? 'البطاقات' : 'التطبيق'}</span></p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Incoming Worklist</CardTitle>
+        <CardHeader className="text-right">
+          <CardTitle className="text-lg">قائمة المهام الواردة</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead>Ticket ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>CIF</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">رقم التذكرة</TableHead>
+                <TableHead className="text-right">العميل</TableHead>
+                <TableHead className="text-right">CIF</TableHead>
+                <TableHead className="text-right">الخدمة</TableHead>
+                <TableHead className="text-right">الحالة</TableHead>
+                <TableHead className="text-right">بواسطة</TableHead>
+                <TableHead className="text-left">إجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -186,27 +186,27 @@ export function SpecialistView() {
                   <TableCell className="font-mono text-xs font-bold">{ticket.ticketID}</TableCell>
                   <TableCell className="font-medium">{ticket.customerName}</TableCell>
                   <TableCell className="text-xs">{ticket.CIF}</TableCell>
-                  <TableCell><Badge variant="outline">{ticket.serviceType}</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{ticket.serviceType === 'Cards' ? 'بطاقات' : 'رقمي'}</Badge></TableCell>
                   <TableCell>
                     <Badge className={
                       ticket.status === 'Pending' ? 'status-pending' : 
                       ticket.status === 'Resolved' ? 'status-resolved' : 
                       ticket.status === 'New' ? 'status-new' : ''
                     }>
-                      {ticket.status}
+                      {ticket.status === 'New' ? 'جديد' : ticket.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {ticket.assignedName || 'Unassigned'}
+                    {ticket.assignedName || 'غير معين'}
                   </TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="text-left" onClick={(e) => e.stopPropagation()}>
                     {!ticket.assignedTo ? (
                       <Button size="sm" onClick={() => handleClaim(ticket.id)} className="bg-primary text-white">
-                        <UserPlus className="w-4 h-4 mr-2" /> Claim
+                        <UserPlus className="w-4 h-4 ml-2" /> استلام
                       </Button>
                     ) : (
                       <Button variant="outline" size="sm" onClick={() => setSelectedTicket(ticket)}>
-                        Details
+                        التفاصيل
                       </Button>
                     )}
                   </TableCell>

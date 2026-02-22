@@ -19,8 +19,8 @@ export function AgentView() {
   const handleCreateTicket = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
-      title: "Success",
-      description: "Ticket TIC-1004 has been created successfully.",
+      title: "نجاح",
+      description: "تم إنشاء التذكرة TIC-1004 بنجاح.",
     });
     setShowNewForm(false);
   };
@@ -29,62 +29,62 @@ export function AgentView() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Agent Portal</h1>
-          <p className="text-muted-foreground">Manage and track your customer complaints</p>
+          <h1 className="text-2xl font-bold text-primary">بوابة الموظف</h1>
+          <p className="text-muted-foreground">إدارة وتتبع شكاوى العملاء الخاصة بك</p>
         </div>
         <Button onClick={() => setShowNewForm(!showNewForm)} className="bg-accent hover:bg-accent/90 text-primary font-bold">
-          {showNewForm ? 'Back to Table' : <><Plus className="w-4 h-4 mr-2" /> New Complaint</>}
+          {showNewForm ? 'العودة للجدول' : <><Plus className="w-4 h-4 ml-2" /> تسجيل شكوى جديدة</>}
         </Button>
       </div>
 
       {showNewForm ? (
         <Card className="max-w-3xl border-2 border-primary/10">
-          <CardHeader className="bg-blue-50/50">
-            <CardTitle>Register New Complaint</CardTitle>
-            <CardDescription>Enter customer details accurately. These cannot be changed after submission.</CardDescription>
+          <CardHeader className="bg-blue-50/50 text-right">
+            <CardTitle>تسجيل شكوى جديدة</CardTitle>
+            <CardDescription>أدخل تفاصيل العميل بدقة. لا يمكن تغيير هذه البيانات بعد الإرسال.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleCreateTicket} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customerName">Customer Name</Label>
-                  <Input id="customerName" placeholder="Full legal name" required />
+                <div className="space-y-2 text-right">
+                  <Label htmlFor="customerName">اسم العميل</Label>
+                  <Input id="customerName" placeholder="الاسم القانوني الكامل" required className="text-right" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cif">CIF Number</Label>
-                  <Input id="cif" placeholder="8-digit CIF" required />
+                <div className="space-y-2 text-right">
+                  <Label htmlFor="cif">رقم العميل (CIF)</Label>
+                  <Input id="cif" placeholder="رقم CIF المكون من 8 أرقام" required className="text-right" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" placeholder="+966..." required />
+                <div className="space-y-2 text-right">
+                  <Label htmlFor="phone">رقم الهاتف</Label>
+                  <Input id="phone" placeholder="+966..." required dir="ltr" className="text-right" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="service">Service Type</Label>
-                  <Select required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Service" />
+                <div className="space-y-2 text-right">
+                  <Label htmlFor="service">نوع الخدمة</Label>
+                  <Select required dir="rtl">
+                    <SelectTrigger className="text-right">
+                      <SelectValue placeholder="اختر الخدمة" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Cards">Cards Department</SelectItem>
-                      <SelectItem value="Digital">Digital Banking</SelectItem>
-                      <SelectItem value="Support">General Support</SelectItem>
+                      <SelectItem value="Cards">قسم البطاقات</SelectItem>
+                      <SelectItem value="Digital">الخدمات الرقمية</SelectItem>
+                      <SelectItem value="Support">الدعم العام</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="issue">Issue Description</Label>
-                <Input id="issue" placeholder="Brief summary of the problem" required />
+              <div className="space-y-2 text-right">
+                <Label htmlFor="issue">وصف المشكلة</Label>
+                <Input id="issue" placeholder="ملخص بسيط للمشكلة" required className="text-right" />
               </div>
               <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-muted-foreground hover:bg-slate-50 transition-colors cursor-pointer">
                 <Upload className="w-8 h-8 mb-2" />
-                <p className="text-sm font-medium">Click or drag files to upload attachments</p>
-                <p className="text-xs">Supports: JPG, PNG, PDF (Max 5MB)</p>
+                <p className="text-sm font-medium">انقر أو اسحب الملفات لرفع المرفقات</p>
+                <p className="text-xs">يدعم: JPG, PNG, PDF (بحد أقصى 5MB)</p>
               </div>
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => setShowNewForm(false)}>Cancel</Button>
+              <div className="flex justify-end gap-3 pt-4 border-t flex-row-reverse">
+                <Button type="button" variant="outline" onClick={() => setShowNewForm(false)}>إلغاء</Button>
                 <Button type="submit" className="bg-primary text-white">
-                  <Send className="w-4 h-4 mr-2" /> Submit Ticket
+                  <Send className="w-4 h-4 ml-2 rotate-180" /> إرسال التذكرة
                 </Button>
               </div>
             </form>
@@ -92,35 +92,35 @@ export function AgentView() {
         </Card>
       ) : (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">My Submissions</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 flex-row-reverse">
+            <CardTitle className="text-lg">تذاكري المرسلة</CardTitle>
             <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search CIF or ID..." className="pl-8" />
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="بحث برقم CIF أو التذكرة..." className="pr-8 text-right" />
             </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead>Ticket ID</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>CIF</TableHead>
-                  <TableHead>Dept</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">رقم التذكرة</TableHead>
+                  <TableHead className="text-right">تاريخ الإنشاء</TableHead>
+                  <TableHead className="text-right">العميل</TableHead>
+                  <TableHead className="text-right">CIF</TableHead>
+                  <TableHead className="text-right">القسم</TableHead>
+                  <TableHead className="text-right">الحالة</TableHead>
+                  <TableHead className="text-left">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {MOCK_TICKETS.filter(t => t.createdBy === 'agent-1').map((ticket) => (
                   <TableRow key={ticket.id}>
                     <TableCell className="font-mono text-xs font-bold">{ticket.ticketID}</TableCell>
-                    <TableCell className="text-xs">{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
                     <TableCell className="font-medium">{ticket.customerName}</TableCell>
                     <TableCell className="text-xs">{ticket.CIF}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{ticket.department}</Badge>
+                      <Badge variant="outline">{ticket.department === 'Cards' ? 'البطاقات' : ticket.department === 'App' ? 'التطبيق' : 'العمليات'}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className={
@@ -128,12 +128,12 @@ export function AgentView() {
                         ticket.status === 'Resolved' ? 'status-resolved' : 
                         ticket.status === 'New' ? 'status-new' : ''
                       }>
-                        {ticket.status}
+                        {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد الانتظار' : 'تم الحل'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-left">
                       <Button variant="ghost" size="sm">
-                        <FileText className="w-4 h-4 mr-1" /> Details
+                        <FileText className="w-4 h-4 ml-1" /> التفاصيل
                       </Button>
                     </TableCell>
                   </TableRow>

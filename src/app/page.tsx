@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export default function Home() {
   const [email, setEmail] = useState('');
@@ -15,7 +15,6 @@ export default function Home() {
   const { login, user } = useAuth();
   const router = useRouter();
 
-  // Fix: Move router.push to useEffect to avoid "Cannot update a component while rendering" error
   useEffect(() => {
     if (user) {
       router.push('/dashboard');
@@ -27,7 +26,6 @@ export default function Home() {
     login(email);
   };
 
-  // Prevent rendering login page if user is already authenticated
   if (user) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
@@ -46,7 +44,7 @@ export default function Home() {
           <div className="bg-primary p-1.5 rounded-lg">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <span className="font-headline font-bold text-2xl text-primary tracking-tight">ConnectResolve</span>
+          <span className="font-headline font-bold text-2xl text-primary tracking-tight">كونكت-ريزولف</span>
         </div>
       </nav>
 
@@ -54,17 +52,17 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl w-full items-center">
           <div className="hidden lg:block space-y-8">
             <h1 className="text-5xl font-bold text-primary leading-tight">
-              Banking <span className="text-secondary">Resolution</span> Intelligence.
+              ذكاء <span className="text-secondary">الحلول</span> المصرفية.
             </h1>
             <p className="text-xl text-muted-foreground">
-              Empower your support teams with automated routing, AI-assisted responses, and real-time analytics.
+              تمكين فرق الدعم الخاصة بك من خلال التوجيه الآلي، الردود المدعومة بالذكاء الاصطناعي، والتحليلات الفورية.
             </p>
             <div className="space-y-4">
               {[
-                "Role-based access & permissions",
-                "Automated department routing",
-                "AI-powered response assistant",
-                "Advanced operational analytics"
+                "وصول وصلاحيات مبنية على الأدوار",
+                "توجيه آلي للأقسام المعنية",
+                "مساعد استجابة مدعوم بالذكاء الاصطناعي",
+                "تحليلات تشغيلية متقدمة"
               ].map((text) => (
                 <div key={text} className="flex items-center gap-3">
                   <div className="bg-green-100 p-1 rounded-full">
@@ -78,20 +76,21 @@ export default function Home() {
 
           <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">Employee Login</CardTitle>
-              <CardDescription>Enter your corporate credentials to continue</CardDescription>
+              <CardTitle className="text-2xl font-bold text-right">دخول الموظفين</CardTitle>
+              <CardDescription className="text-right">أدخل بيانات الاعتماد الخاصة بك للمتابعة</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email" className="block text-right">البريد الإلكتروني</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Mail className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input 
                       id="email" 
                       type="email" 
                       placeholder="name@bank.com" 
-                      className="pl-10"
+                      className="pr-10 text-right"
+                      dir="ltr"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required 
@@ -99,17 +98,18 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="password">Password</Label>
-                    <a href="#" className="text-xs text-secondary hover:underline">Forgot password?</a>
+                  <div className="flex justify-between items-center flex-row-reverse">
+                    <Label htmlFor="password">كلمة المرور</Label>
+                    <a href="#" className="text-xs text-secondary hover:underline">نسيت كلمة المرور؟</a>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Lock className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input 
                       id="password" 
                       type="password" 
                       placeholder="••••••••" 
-                      className="pl-10"
+                      className="pr-10 text-right"
+                      dir="ltr"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required 
@@ -117,24 +117,24 @@ export default function Home() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full bg-primary text-white font-bold h-12">
-                  Sign In <ArrowRight className="w-4 h-4 ml-2" />
+                  تسجيل الدخول <ArrowLeft className="w-4 h-4 mr-2" />
                 </Button>
               </form>
 
               <div className="mt-8 pt-6 border-t">
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-3">Quick Switch (Demo Accounts):</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية:</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('ahmed@bank.com')}>
-                    <span className="truncate">Agent: ahmed@bank.com</span>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('ahmed@bank.com')}>
+                    <span className="truncate">موظف: ahmed@bank.com</span>
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('sarah@bank.com')}>
-                    <span className="truncate">Spec(Cards): sarah@bank.com</span>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('sarah@bank.com')}>
+                    <span className="truncate">أخصائي: sarah@bank.com</span>
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('omar@bank.com')}>
-                    <span className="truncate">Spec(Tech): omar@bank.com</span>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('omar@bank.com')}>
+                    <span className="truncate">تقني: omar@bank.com</span>
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('khalid@bank.com')}>
-                    <span className="truncate">Admin: khalid@bank.com</span>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('khalid@bank.com')}>
+                    <span className="truncate">مدير: khalid@bank.com</span>
                   </Button>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export default function Home() {
       </main>
 
       <footer className="p-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} ConnectResolve Banking Systems. All rights reserved.
+        © {new Date().getFullYear()} أنظمة كونكت-ريزولف المصرفية. جميع الحقوق محفوظة.
       </footer>
     </div>
   );
