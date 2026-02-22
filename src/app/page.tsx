@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check, Database } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check, Database, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -134,13 +134,13 @@ export default function Home() {
                   </div>
                 </div>
                 <AlertDescription className="text-right space-y-6">
-                  <div className="bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-800">
-                    رائع! صورتك تؤكد أنك في المكان الصحيح. أكمل تعبئة الجدول التالي في واجهة Firestore بنفس الترتيب:
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-800 font-bold">
+                    حسابك مفعل في الهوية، لكن ينقصه ملف الصلاحيات في Firestore. اتبع التالي:
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs text-slate-500 font-bold">1. تأكد من أن الـ Document ID مطابق لهذا الكود:</Label>
+                      <Label className="text-xs text-slate-500 font-bold">1. أنشئ مستنداً جديداً في مجموعة (users) بالمعرف التالي:</Label>
                       <div className="flex items-center justify-between gap-2 border-2 border-primary/20 p-2 rounded bg-slate-50 shadow-inner">
                         <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={() => copyText(firebaseUser.uid)}>
                           {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-primary" />}
@@ -150,39 +150,24 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-slate-500 font-bold">2. انقل هذه الحقول بدقة (اكتب القيمة في خانة String):</Label>
-                      <div className="border rounded-lg overflow-hidden text-xs shadow-sm">
-                        <table className="w-full text-right bg-white border-collapse">
-                          <thead className="bg-slate-100 border-b">
-                            <tr>
-                              <th className="p-2 border-l">النص المطلوب (String)</th>
-                              <th className="p-2 border-l w-20 text-center">النوع (Type)</th>
-                              <th className="p-2">الحقل (Field)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y">
-                            <tr>
-                              <td className="p-2 border-l font-bold text-blue-700">{suggestions.name}</td>
-                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
-                              <td className="p-2 font-mono font-bold">name</td>
-                            </tr>
-                            <tr>
-                              <td className="p-2 border-l font-bold text-blue-700">{firebaseUser.email}</td>
-                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
-                              <td className="p-2 font-mono font-bold">email</td>
-                            </tr>
-                            <tr>
-                              <td className="p-2 border-l font-bold text-red-600 bg-red-50/30">{suggestions.role}</td>
-                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
-                              <td className="p-2 font-mono font-bold">role</td>
-                            </tr>
-                            <tr>
-                              <td className="p-2 border-l font-bold text-blue-700">{suggestions.dept}</td>
-                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
-                              <td className="p-2 font-mono font-bold">department</td>
-                            </tr>
-                          </tbody>
-                        </table>
+                      <Label className="text-xs text-slate-500 font-bold">2. أضف الحقول التالية لهذا المستند بدقة:</Label>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center p-2 bg-slate-100 rounded border">
+                          <span className="font-bold text-blue-700">{suggestions.name}</span>
+                          <span className="text-xs font-mono text-slate-500">name (string)</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-slate-100 rounded border">
+                          <span className="font-bold text-blue-700">{firebaseUser.email}</span>
+                          <span className="text-xs font-mono text-slate-500">email (string)</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-amber-100 rounded border border-amber-300">
+                          <span className="font-bold text-red-600">{suggestions.role}</span>
+                          <span className="text-xs font-mono text-slate-500">role (string)</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-slate-100 rounded border">
+                          <span className="font-bold text-blue-700">{suggestions.dept}</span>
+                          <span className="text-xs font-mono text-slate-500">department (string)</span>
+                        </div>
                       </div>
                     </div>
 
@@ -190,13 +175,13 @@ export default function Home() {
                       <div className="bg-amber-50 p-4 rounded-md border-2 border-amber-300 text-xs shadow-md">
                         <div className="flex items-center gap-2 mb-2">
                           <Shield className="h-4 w-4 text-amber-700" />
-                          <p className="font-bold text-amber-800 text-sm">الخطوة رقم 3: تفعيل مفتاح المدير (ضروري جداً)</p>
+                          <p className="font-bold text-amber-800 text-sm">3. تفعيل مفتاح المدير العام (Admin Flag)</p>
                         </div>
-                        <p className="text-amber-700 mb-2 leading-relaxed">بجانب كلمة <code className="bg-white px-1 font-bold">users</code> في العمود الثاني، اضغط على <b>+ Start collection</b> وقم بالآتي:</p>
+                        <p className="text-amber-700 mb-2 leading-relaxed">اضغط <b>+ Start collection</b> فوق كلمة `users` تماماً:</p>
                         <ul className="space-y-1 text-amber-800 list-disc list-inside">
-                          <li>اكتب اسم المجموعة: <code className="bg-white px-1 font-bold">admins</code></li>
-                          <li>في خانة <b>Document ID</b> الصق نفس الكود الطويل أعلاه.</li>
-                          <li>اضغط <b>Save</b> مباشرة (اترك الحقول فارغة بالداخل).</li>
+                          <li>اسم المجموعة الجديدة: <code className="bg-white px-1 font-bold">admins</code></li>
+                          <li>في خانة <b>Document ID</b> ضع كود الـ UID الخاص بك أعلاه.</li>
+                          <li>اضغط <b>Save</b> مباشرة دون إضافة أي حقول.</li>
                         </ul>
                       </div>
                     )}
