@@ -3,14 +3,14 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useAuth as useFirebaseAuth } from '@/firebase';
 
 interface AuthContextType {
   user: UserProfile | null;
-  login: (email: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -27,14 +27,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function fetchProfile() {
       if (firebaseUser && db) {
-        const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
-        } else {
-          // If no profile exists, we can't assume role. 
-          // In a real app, this would be created during signup.
+        try {
+          const docRef = doc(db, 'users', firebaseUser.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            setProfile({ ...docSnap.data() as UserProfile, id: firebaseUser.uid });
+          } else {
+            setProfile(null);
+          }
+        } catch (error) {
+          console.error("Error fetching profile:", error);
           setProfile(null);
         }
       } else {
@@ -48,13 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [firebaseUser, isUserLoading, db]);
 
-  const login = async (email: string) => {
-    // For prototype purposes, we use a default password 'password123' 
-    // since the user didn't specify password logic.
+  const login = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, 'password123');
-    } catch (error) {
-      console.error("Login error:", error);
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
       throw error;
     }
   };

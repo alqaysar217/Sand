@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -7,26 +8,51 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, user } = useAuth();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { login, user, loading } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
+    if (user && !loading) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email);
+    setIsLoggingIn(true);
+    try {
+      await login(email, password);
+      toast({
+        title: "تم تسجيل الدخول",
+        description: "مرحباً بك في نظام كونكت-ريزولف.",
+      });
+    } catch (error: any) {
+      let message = "فشل تسجيل الدخول. يرجى التحقق من البيانات.";
+      if (error.code === 'auth/invalid-credential') {
+        message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+      } else if (error.code === 'auth/user-not-found') {
+        message = "هذا المستخدم غير موجود في النظام.";
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "خطأ في الدخول",
+        description: message,
+      });
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
-  if (user) {
+  if (loading || user) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -116,24 +142,25 @@ export default function Home() {
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-primary text-white font-bold h-12">
-                  تسجيل الدخول <ArrowLeft className="w-4 h-4 mr-2" />
+                <Button type="submit" className="w-full bg-primary text-white font-bold h-12" disabled={isLoggingIn}>
+                  {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : "تسجيل الدخول"}
+                  <ArrowLeft className="w-4 h-4 mr-2" />
                 </Button>
               </form>
 
               <div className="mt-8 pt-6 border-t">
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية:</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية (كلمة السر: password123):</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('ahmed@bank.com')}>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('ahmed@bank.com'); setPassword('password123'); }}>
                     <span className="truncate">موظف: ahmed@bank.com</span>
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('sarah@bank.com')}>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('sarah@bank.com'); setPassword('password123'); }}>
                     <span className="truncate">أخصائي: sarah@bank.com</span>
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('omar@bank.com')}>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('omar@bank.com'); setPassword('password123'); }}>
                     <span className="truncate">تقني: omar@bank.com</span>
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => setEmail('khalid@bank.com')}>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('khalid@bank.com'); setPassword('password123'); }}>
                     <span className="truncate">مدير: khalid@bank.com</span>
                   </Button>
                 </div>
