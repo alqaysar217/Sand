@@ -123,7 +123,7 @@ export default function Home() {
                   <p>تم التعرف عليك في نظام الهوية، ولكن نحتاج الآن لإنشاء "ملف موظف" في Firestore لتعرف صلاحياتك.</p>
                   
                   <div className="bg-white/90 p-4 rounded-md space-y-3 text-sm border-r-4 border-primary shadow-inner">
-                    <p className="font-bold text-primary italic">يرجى الذهاب لـ Firestore وإنشاء مستند جديد:</p>
+                    <p className="font-bold text-primary italic">يرجى الذهاب لتبويب Data في Firestore وإنشاء مستند جديد:</p>
                     
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between gap-2 border p-2 rounded bg-slate-50">
@@ -144,14 +144,14 @@ export default function Home() {
                         <span className="font-bold">حقل role:</span>
                       </div>
                       <div className="flex justify-between border-b pb-1 text-blue-700">
-                        <code className="bg-blue-100 px-1">{firebaseUser.email?.includes('cards') ? 'Cards' : 'Operations'}</code>
+                        <code className="bg-blue-100 px-1">{firebaseUser.email?.includes('cards') ? 'Cards' : firebaseUser.email?.includes('callcenter') ? 'Support' : 'Digital'}</code>
                         <span className="font-bold">حقل department:</span>
                       </div>
                     </div>
 
                     {firebaseUser.email?.includes('admin') && (
                       <p className="text-[10px] text-red-600 font-bold border-t pt-2 mt-2">
-                        * لا تنسَ الخطوة 6: أضف نفس المعرف UID في مجموعة admins أيضاً.
+                        * لا تنسَ الخطوة 6: أضف نفس المعرف UID في مجموعة admins أيضاً (كـ Document ID).
                       </p>
                     )}
                   </div>
@@ -210,7 +210,7 @@ export default function Home() {
                   </form>
 
                   <div className="mt-8 pt-6 border-t">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">بيانات الدخول (التي أنشأتها):</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">دخول سريع (أدخلته أنت):</p>
                     <div className="grid grid-cols-1 gap-2">
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
                         <span>المدير العام (بلخرم)</span>
