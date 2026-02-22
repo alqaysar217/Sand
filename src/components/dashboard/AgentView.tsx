@@ -80,6 +80,13 @@ export function AgentView() {
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // Fix for Radix UI Body Lock issue
+  useEffect(() => {
+    if (!selectedTicket && !isDeleteDialogOpen) {
+      document.body.style.pointerEvents = 'auto';
+    }
+  }, [selectedTicket, isDeleteDialogOpen]);
+
   const [formData, setFormData] = useState({
     customerName: '',
     cif: '',
@@ -145,24 +152,33 @@ export function AgentView() {
     }));
   };
 
-  const handleDeleteTicket = () => {
+  const handleDeleteTicket = async () => {
     if (!db || !selectedTicket) return;
-    const ticketId = selectedTicket.id;
     
-    // 1. Close the alert first
+    const ticketIdToDelete = selectedTicket.id;
+    
+    // 1. Close all UI elements immediately
     setIsDeleteDialogOpen(false);
+    setSelectedTicket(null);
     
-    // 2. Clear selected ticket after a tiny delay to prevent Radix body lock
-    setTimeout(() => {
-      setSelectedTicket(null);
-      // 3. Perform the actual deletion
-      deleteDocumentNonBlocking(doc(db, 'tickets', ticketId));
+    // 2. Clear pointer events manually to prevent freezing
+    document.body.style.pointerEvents = 'auto';
+
+    try {
+      // 3. Perform deletion
+      deleteDocumentNonBlocking(doc(db, 'tickets', ticketIdToDelete));
       
       toast({
         title: "تم إلغاء البلاغ",
-        description: "تم حذف البلاغ من النظام بنجاح.",
+        description: "تم حذف البلاغ من النظام بنجاح وتحديث السجل.",
       });
-    }, 100);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "حدث خطأ أثناء محاولة حذف البلاغ.",
+      });
+    }
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -444,7 +460,7 @@ export function AgentView() {
         </Card>
       )}
 
-      {/* Single Details Dialog - Much Faster UI */}
+      {/* Details Dialog */}
       <Dialog open={!!selectedTicket} onOpenChange={(open) => {
         if (!open) setSelectedTicket(null);
       }}>
@@ -534,7 +550,7 @@ export function AgentView() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Alert - Outside main dialog to prevent locks */}
+      {/* Delete Confirmation Alert */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
@@ -544,7 +560,15 @@ export function AgentView() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2 mt-4">
-            <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-600 hover:bg-red-700">تأكيد الإلغاء</AlertDialogAction>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteTicket();
+              }} 
+              className="bg-red-600 hover:bg-red-700"
+            >
+              تأكيد الإلغاء
+            </AlertDialogAction>
             <AlertDialogCancel>تراجع</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -552,4 +576,3 @@ export function AgentView() {
     </div>
   );
 }
-
