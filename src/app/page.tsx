@@ -188,9 +188,17 @@ export default function Home() {
                     </div>
 
                     {suggestions.isAdmin && (
-                      <div className="bg-amber-50 p-3 rounded-md border border-amber-200 text-xs">
-                        <p className="font-bold text-amber-700 mb-1">الخطوة الأخيرة للمدير (بعد حفظ ما سبق):</p>
-                        <p className="text-amber-600">أنشئ مجموعة جديدة باسم <code className="bg-white px-1">admins</code> وضع فيها مستنداً يحمل نفس الـ ID أعلاه، واضغط Save (اتركه فارغاً).</p>
+                      <div className="bg-amber-50 p-4 rounded-md border-2 border-amber-300 text-xs shadow-md">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="h-4 w-4 text-amber-700" />
+                          <p className="font-bold text-amber-800 text-sm">الخطوة رقم 3: تفعيل مفتاح المدير (ضروري جداً)</p>
+                        </div>
+                        <p className="text-amber-700 mb-2 leading-relaxed">بجانب كلمة <code className="bg-white px-1 font-bold">users</code> في العمود الأول، اضغط على <b>+ Start collection</b> وقم بالآتي:</p>
+                        <ul className="space-y-1 text-amber-800 list-disc list-inside">
+                          <li>اكتب اسم المجموعة: <code className="bg-white px-1 font-bold">admins</code></li>
+                          <li>في خانة <b>Document ID</b> الصق نفس الكود الطويل أعلاه.</li>
+                          <li>اضغط <b>Save</b> مباشرة (اترك الحقول فارغة بالداخل).</li>
+                        </ul>
                       </div>
                     )}
                   </div>
