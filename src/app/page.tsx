@@ -118,40 +118,46 @@ export default function Home() {
             {error === "MISSING_PROFILE" && firebaseUser && (
               <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2 shadow-lg">
                 <Info className="h-5 w-5" />
-                <AlertTitle className="text-right font-bold text-lg mb-2">خطوة أخيرة مطلوبة لإتمام الإعداد الحقيقي</AlertTitle>
+                <AlertTitle className="text-right font-bold text-lg mb-2">الخطوة رقم 5 و 6 مطلوبة الآن</AlertTitle>
                 <AlertDescription className="text-right space-y-4">
-                  <p>تم تسجيل دخولك بنجاح، ولكن نحتاج الآن لربط هذا الحساب بملف تعريفي في قاعدة بيانات Firestore لتحديد صلاحياتك.</p>
+                  <p>تم التعرف عليك في نظام الهوية، ولكن نحتاج الآن لإنشاء "ملف موظف" في Firestore لتعرف صلاحياتك.</p>
                   
                   <div className="bg-white/90 p-4 rounded-md space-y-3 text-sm border-r-4 border-primary shadow-inner">
-                    <p className="font-bold text-primary">يرجى إنشاء مستند في Firestore بالتفاصيل التالية:</p>
+                    <p className="font-bold text-primary italic">يرجى الذهاب لـ Firestore وإنشاء مستند جديد:</p>
                     
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between gap-2 border p-2 rounded bg-slate-50">
                         <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={copyUid}>
                           {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                         </Button>
-                        <code className="text-primary font-mono text-xs break-all selection:bg-blue-200">{firebaseUser.uid}</code>
+                        <code className="text-primary font-mono text-xs break-all">{firebaseUser.uid}</code>
                         <span className="font-bold shrink-0">معرف المستند (ID):</span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-2 text-xs">
                       <div className="flex justify-between border-b pb-1"><span>users</span><span className="font-bold">المجموعة:</span></div>
-                      <div className="flex justify-between border-b pb-1"><span>(اسمك الكامل)</span><span className="font-bold">حقل name:</span></div>
+                      <div className="flex justify-between border-b pb-1"><span>{firebaseUser.email?.split('@')[0]}</span><span className="font-bold">حقل name:</span></div>
                       <div className="flex justify-between border-b pb-1"><span>{firebaseUser.email}</span><span className="font-bold">حقل email:</span></div>
                       <div className="flex justify-between border-b pb-1 text-blue-700">
-                        <code className="bg-blue-100 px-1">Admin / Specialist / Agent</code>
+                        <code className="bg-blue-100 px-1">{firebaseUser.email?.includes('admin') ? 'Admin' : firebaseUser.email?.includes('ops') ? 'Specialist' : 'Agent'}</code>
                         <span className="font-bold">حقل role:</span>
                       </div>
                       <div className="flex justify-between border-b pb-1 text-blue-700">
-                        <code className="bg-blue-100 px-1">Operations / Cards / Support / Digital</code>
+                        <code className="bg-blue-100 px-1">{firebaseUser.email?.includes('cards') ? 'Cards' : 'Operations'}</code>
                         <span className="font-bold">حقل department:</span>
                       </div>
                     </div>
+
+                    {firebaseUser.email?.includes('admin') && (
+                      <p className="text-[10px] text-red-600 font-bold border-t pt-2 mt-2">
+                        * لا تنسَ الخطوة 6: أضف نفس المعرف UID في مجموعة admins أيضاً.
+                      </p>
+                    )}
                   </div>
                   
                   <div className="flex gap-2 flex-row-reverse">
-                    <Button variant="outline" size="sm" className="w-full" onClick={logout}>تسجيل الخروج والعودة</Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={logout}>خروج وإعادة المحاولة</Button>
                   </div>
                 </AlertDescription>
               </Alert>
@@ -204,7 +210,7 @@ export default function Home() {
                   </form>
 
                   <div className="mt-8 pt-6 border-t">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">بيانات الدخول السريع (للاختبار):</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">بيانات الدخول (التي أنشأتها):</p>
                     <div className="grid grid-cols-1 gap-2">
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
                         <span>المدير العام (بلخرم)</span>
