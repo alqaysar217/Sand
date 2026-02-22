@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from 'react';
@@ -8,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Shield, Lock, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { MOCK_USERS } from '@/lib/mock-data';
 
 export default function Home() {
   const [email, setEmail] = useState('');
@@ -109,11 +109,20 @@ export default function Home() {
               </form>
 
               <div className="mt-8 pt-6 border-t">
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-3">Quick Switch (Demo):</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] px-1" onClick={() => setEmail('ahmed@bank.com')}>Agent</Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1" onClick={() => setEmail('sarah@bank.com')}>Specialist</Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1" onClick={() => setEmail('khalid@bank.com')}>Admin</Button>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-3">Quick Switch (Demo Accounts):</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('ahmed@bank.com')}>
+                    <span className="truncate">Agent: ahmed@bank.com</span>
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('sarah@bank.com')}>
+                    <span className="truncate">Spec(Cards): sarah@bank.com</span>
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('omar@bank.com')}>
+                    <span className="truncate">Spec(Tech): omar@bank.com</span>
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden" onClick={() => setEmail('khalid@bank.com')}>
+                    <span className="truncate">Admin: khalid@bank.com</span>
+                  </Button>
                 </div>
               </div>
             </CardContent>
