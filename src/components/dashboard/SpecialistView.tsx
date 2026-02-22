@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from 'react';
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, UserPlus, Copy, MessageSquare, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, UserPlus, Copy, MessageSquare, Sparkles, ArrowRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
@@ -22,7 +23,7 @@ export function SpecialistView() {
   const [response, setResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // الاستعلام المحدث للأخصائي: يتطلب فهرس (Index) ليعمل مع orderBy
+  // الاستعلام الذي يتطلب الفهرس الثاني: serviceType (Asc) + createdAt (Desc)
   const deptTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.department) return null;
     return query(
@@ -32,7 +33,7 @@ export function SpecialistView() {
     );
   }, [db, user?.department]);
 
-  const { data: tickets, isLoading: isTicketsLoading } = useCollection(deptTicketsQuery);
+  const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(deptTicketsQuery);
 
   const handleClaim = (ticketId: string) => {
     if (!db || !user) return;
@@ -172,7 +173,24 @@ export function SpecialistView() {
         </CardHeader>
         <CardContent>
           {isTicketsLoading ? (
-            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" /></div>
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Loader2 className="animate-spin text-primary h-8 w-8" />
+              <p className="text-sm text-muted-foreground text-center">جاري تحميل المهام وبناء الفهارس...</p>
+            </div>
+          ) : queryError ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-blue-50 rounded-xl border border-blue-200">
+              <AlertCircle className="w-12 h-12 text-blue-600" />
+              <div className="space-y-2 px-6">
+                <h3 className="font-bold text-blue-900">جاري بناء الفهرس (Index)</h3>
+                <p className="text-sm text-blue-800 max-w-md mx-auto leading-relaxed">
+                  عملية بناء الفهرس لهذا الاستعلام لا تزال جارية (Building). <br/>
+                  يرجى الانتظار دقيقتين ثم تحديث الصفحة.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
+                  <RefreshCw className="w-3 h-3 ml-2" /> تحديث الصفحة الآن
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -187,28 +205,36 @@ export function SpecialistView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tickets?.map((ticket: any) => (
-                    <TableRow key={ticket.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSelectedTicket(ticket)}>
-                      <TableCell className="font-mono text-xs font-bold text-right">{ticket.ticketID}</TableCell>
-                      <TableCell className="font-medium text-right">{ticket.customerName}</TableCell>
-                      <TableCell className="text-xs text-right">{ticket.cif}</TableCell>
-                      <TableCell className="text-right"><Badge variant="outline">{ticket.serviceType}</Badge></TableCell>
-                      <TableCell className="text-right">
-                        <Badge className={ticket.status === 'Pending' ? 'status-pending' : ticket.status === 'Resolved' ? 'status-resolved' : 'status-new'}>
-                          {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد المعالجة' : 'تم الحل'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-left" onClick={(e) => e.stopPropagation()}>
-                        {!ticket.assignedToSpecialistId ? (
-                          <Button size="sm" onClick={() => handleClaim(ticket.id)} className="bg-primary text-white">
-                            <UserPlus className="w-4 h-4 ml-2" /> استلام
-                          </Button>
-                        ) : (
-                          <Button variant="outline" size="sm" onClick={() => setSelectedTicket(ticket)}>التفاصيل</Button>
-                        )}
+                  {tickets && tickets.length > 0 ? (
+                    tickets.map((ticket: any) => (
+                      <TableRow key={ticket.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSelectedTicket(ticket)}>
+                        <TableCell className="font-mono text-xs font-bold text-right">{ticket.ticketID}</TableCell>
+                        <TableCell className="font-medium text-right">{ticket.customerName}</TableCell>
+                        <TableCell className="text-xs text-right">{ticket.cif}</TableCell>
+                        <TableCell className="text-right"><Badge variant="outline">{ticket.serviceType}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          <Badge className={ticket.status === 'Pending' ? 'status-pending' : ticket.status === 'Resolved' ? 'status-resolved' : 'status-new'}>
+                            {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد المعالجة' : 'تم الحل'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-left" onClick={(e) => e.stopPropagation()}>
+                          {!ticket.assignedToSpecialistId ? (
+                            <Button size="sm" onClick={() => handleClaim(ticket.id)} className="bg-primary text-white">
+                              <UserPlus className="w-4 h-4 ml-2" /> استلام
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => setSelectedTicket(ticket)}>التفاصيل</Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
+                        لا توجد تذاكر واردة لهذا القسم حالياً.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>

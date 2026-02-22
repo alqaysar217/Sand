@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -30,7 +31,7 @@ export function AgentView() {
     issue: ''
   });
 
-  // الاستعلام المحدث: يتطلب فهرس (Index) ليعمل مع orderBy
+  // الاستعلام الذي يتطلب الفهرس الأول: createdByAgentId (Asc) + createdAt (Desc)
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
@@ -94,8 +95,8 @@ export function AgentView() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-primary">واجهة موظف خدمة العملاء</h1>
-          <p className="text-muted-foreground">قسم {user?.department} - إدارة ورفع البلاغات</p>
+          <h1 className="text-2xl font-bold text-primary text-right">واجهة موظف خدمة العملاء</h1>
+          <p className="text-muted-foreground text-right">قسم {user?.department} - إدارة ورفع البلاغات</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
@@ -207,18 +208,19 @@ export function AgentView() {
             {isTicketsLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2">
                 <Loader2 className="animate-spin text-primary h-8 w-8" />
-                <p className="text-sm text-muted-foreground">جاري تحميل السجل...</p>
+                <p className="text-sm text-muted-foreground text-center">جاري تحميل السجل وتحديث الفهارس...</p>
               </div>
             ) : queryError ? (
-               <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-red-50 rounded-xl border border-red-200">
-                <AlertCircle className="w-12 h-12 text-red-600" />
-                <div className="space-y-2">
-                  <h3 className="font-bold text-red-900">خطأ في عرض البيانات</h3>
-                  <p className="text-sm text-red-800 max-w-md mx-auto">
-                    إذا ظهر هذا الخطأ، يرجى التأكد من أن الفهرس (Index) في Firebase Console قد اكتمل إنشاؤه.
+               <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-blue-50 rounded-xl border border-blue-200">
+                <AlertCircle className="w-12 h-12 text-blue-600" />
+                <div className="space-y-2 px-6">
+                  <h3 className="font-bold text-blue-900">جاري بناء الفهرس (Index)</h3>
+                  <p className="text-sm text-blue-800 max-w-md mx-auto leading-relaxed">
+                    عملية بناء الفهرس في Firebase Console لا تزال جارية (Building). <br/>
+                    يرجى الانتظار دقيقتين ثم تحديث الصفحة.
                   </p>
-                  <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                    <RefreshCw className="w-3 h-3 ml-2" /> تحديث الصفحة
+                  <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
+                    <RefreshCw className="w-3 h-3 ml-2" /> تحديث الصفحة الآن
                   </Button>
                 </div>
               </div>
@@ -239,8 +241,8 @@ export function AgentView() {
                     {tickets && tickets.length > 0 ? (
                       tickets.map((ticket: any) => (
                         <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                          <TableCell className="font-mono text-xs font-bold text-blue-600">{ticket.ticketID}</TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
+                          <TableCell className="font-mono text-xs font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-right">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
                           <TableCell>
                             <div className="flex flex-col text-right">
                               <span className="font-medium text-sm">{ticket.customerName}</span>

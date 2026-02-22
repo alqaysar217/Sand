@@ -1,8 +1,8 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // القاعدة الذهبية للفحص: السماح بالقراءة والكتابة لأي مستخدم سجل دخوله
-    // هذا سيعالج خطأ Permission Denied بشكل نهائي لغرض الفحص
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
