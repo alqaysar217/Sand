@@ -8,14 +8,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق من صلاحيات المدير عبر مجموعة admins
+    // التحقق من صلاحيات المدير عبر مجموعة admins باستخدام exists
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // جلب بيانات المستخدم
+    // جلب بيانات المستخدم بشكل آمن
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) ? get(userPath).data : {"department": "none", "role": "none"};
     }
 
     // --- القواعد ---
@@ -32,8 +33,7 @@ service cloud.firestore {
     }
 
     match /tickets/{ticketId} {
-      // تم تبسيط القواعد لضمان نجاح الاستعلامات (Queries)
-      // القواعد هنا تسمح بالقراءة إذا كان المستخدم هو المنشئ أو المسؤول أو من نفس القسم
+      // السماح بالقراءة (get & list)
       allow read: if isSignedIn() && (
         isAdmin() || 
         (resource.data.createdByAgentId == request.auth.uid) || 
