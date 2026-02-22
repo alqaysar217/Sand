@@ -20,10 +20,10 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    /** جلب بيانات المستخدم بأمان */
+    /** جلب بيانات المستخدم بأمان مع قيم افتراضية لتجنب الأخطاء */
     function getUserData() {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) ? get(userPath).data : {};
+      return exists(userPath) ? get(userPath).data : {"department": "none", "role": "none"};
     }
 
     // --- القواعد ---
@@ -45,23 +45,23 @@ service cloud.firestore {
       /**
        * منطق الوصول للبلاغات:
        * 1. المدير العام يرى كل شيء.
-       * 2. الموظف يرى البلاغات التي أنشأها.
-       * 3. الأخصائي يرى البلاغات المسندة إليه أو التابعة لقسمه.
+       * 2. الموظف يرى البلاغات التي أنشأها (يجب فلترة الاستعلام بـ createdByAgentId).
+       * 3. الأخصائي يرى البلاغات المسندة إليه أو التابعة لقسمه (يجب فلترة الاستعلام بـ serviceType).
        */
       allow read: if isSignedIn() && (
         isAdmin() || 
-        resource.data.createdByAgentId == request.auth.uid || 
-        resource.data.assignedToSpecialistId == request.auth.uid ||
-        getUserData().department == resource.data.serviceType
+        (resource != null && resource.data.createdByAgentId == request.auth.uid) || 
+        (resource != null && resource.data.assignedToSpecialistId == request.auth.uid) ||
+        (resource != null && getUserData().department == resource.data.serviceType)
       );
 
       allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        resource.data.createdByAgentId == request.auth.uid || 
-        resource.data.assignedToSpecialistId == request.auth.uid ||
-        getUserData().department == resource.data.serviceType
+        (resource != null && resource.data.createdByAgentId == request.auth.uid) || 
+        (resource != null && resource.data.assignedToSpecialistId == request.auth.uid) ||
+        (resource != null && getUserData().department == resource.data.serviceType)
       );
 
       allow delete: if isAdmin();
@@ -70,9 +70,9 @@ service cloud.firestore {
     match /tickets/{ticketId}/logs/{logId} {
       allow read: if isSignedIn() && (
         isAdmin() || 
-        resource.data.ticketCreatedByAgentId == request.auth.uid || 
-        resource.data.ticketAssignedToSpecialistId == request.auth.uid ||
-        getUserData().department == resource.data.ticketServiceType
+        (resource != null && resource.data.ticketCreatedByAgentId == request.auth.uid) || 
+        (resource != null && resource.data.ticketAssignedToSpecialistId == request.auth.uid) ||
+        (resource != null && getUserData().department == resource.data.ticketServiceType)
       );
 
       allow create: if isSignedIn() && request.resource.data.changedByUserId == request.auth.uid;
