@@ -18,6 +18,13 @@ export interface Attachment {
   description: string;
 }
 
+export interface TicketLog {
+  action: string;
+  timestamp: string;
+  userName: string;
+  note?: string;
+}
+
 export interface Ticket {
   id: string;
   ticketID: string;
@@ -33,5 +40,9 @@ export interface Ticket {
   createdByAgentId: string;
   createdByAgentName: string; // اسم الموظف الذي رفع البلاغ
   assignedToSpecialistId?: string;
+  assignedToSpecialistName?: string;
+  specialistResponse?: string;
+  resolvedAt?: string;
   attachments: Attachment[];
+  logs?: TicketLog[];
 }

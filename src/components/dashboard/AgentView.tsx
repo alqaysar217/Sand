@@ -14,7 +14,7 @@ import {
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X, Trash2, Filter
+  Upload, User, X, Trash2, Filter, CheckCircle2, AlertCircle, Clock
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
@@ -36,6 +36,7 @@ import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, d
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 const SERVICE_ENTITIES = [
   { id: 'CallCenter', label: 'الكول سنتر' },
@@ -78,11 +79,9 @@ export function AgentView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   
-  // State management for dialogs
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Fix for Radix UI Body Lock issue
   useEffect(() => {
     if (!selectedTicket && !isDeleteDialogOpen) {
       document.body.style.pointerEvents = 'auto';
@@ -114,19 +113,14 @@ export function AgentView() {
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
-    
     return tickets.filter(t => {
-      // 1. Search Logic (Name, Phone, CIF)
       const searchStr = searchQuery.toLowerCase();
       const matchesSearch = 
         t.ticketID.toLowerCase().includes(searchStr) ||
         t.customerName.toLowerCase().includes(searchStr) ||
         t.cif.includes(searchStr) ||
         (t.phoneNumber && t.phoneNumber.includes(searchStr));
-
-      // 2. Status Filter Logic
       const matchesStatus = activeTab === 'all' || t.status === activeTab;
-
       return matchesSearch && matchesStatus;
     });
   }, [tickets, searchQuery, activeTab]);
@@ -134,74 +128,45 @@ export function AgentView() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 500 * 1024) {
-      toast({ 
-        variant: "destructive", 
-        title: "حجم الملف كبير جداً", 
-        description: "يرجى اختيار صورة بحجم أقل من 500 كيلوبايت لضمان حفظ البلاغ بنجاح." 
-      });
+      toast({ variant: "destructive", title: "حجم الملف كبير جداً", description: "يرجى اختيار صورة بحجم أقل من 500 كيلوبايت." });
       return;
     }
-
     setUploadingImage(true);
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result as string;
       setFormData(prev => ({
         ...prev,
-        attachments: [...prev.attachments, { url: base64String, description: 'لقطة شاشة مرفقة' }]
+        attachments: [...prev.attachments, { url: reader.result as string, description: 'لقطة شاشة مرفقة' }]
       }));
       setUploadingImage(false);
-      toast({ title: "تم رفع الصورة", description: "تمت إضافة المرفق بنجاح." });
     };
     reader.readAsDataURL(file);
   };
 
   const removeAttachment = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => ({ ...prev, attachments: prev.attachments.filter((_, i) => i !== index) }));
   };
 
   const handleDeleteTicket = async () => {
     if (!db || !selectedTicket) return;
-    
     const ticketIdToDelete = selectedTicket.id;
-    
-    // Close dialogs immediately
     setIsDeleteDialogOpen(false);
     setSelectedTicket(null);
-    document.body.style.pointerEvents = 'auto';
-
     try {
       deleteDocumentNonBlocking(doc(db, 'tickets', ticketIdToDelete));
-      toast({
-        title: "تم إلغاء البلاغ",
-        description: "تم حذف البلاغ من النظام بنجاح وتحديث السجل.",
-      });
+      toast({ title: "تم إلغاء البلاغ", description: "تم حذف البلاغ نهائياً من النظام." });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "خطأ",
-        description: "حدث خطأ أثناء محاولة حذف البلاغ.",
-      });
+      toast({ variant: "destructive", title: "خطأ", description: "حدث خطأ أثناء الحذف." });
     }
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db) return;
-
-    if (!formData.createdByAgentName) {
-      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسم الموظف الرافع للبلاغ." });
-      return;
-    }
+    if (!user || !db || !formData.createdByAgentName) return;
 
     setIsSubmitting(true);
     const ticketID = `TIC-${Math.floor(1000 + Math.random() * 9000)}`;
-    
     const newTicket = {
       ticketID,
       createdAt: new Date().toISOString(),
@@ -215,26 +180,15 @@ export function AgentView() {
       description: formData.description,
       createdByAgentId: user.id,
       createdByAgentName: formData.createdByAgentName,
-      attachments: formData.attachments
+      attachments: formData.attachments,
+      logs: [{ action: 'تم إنشاء البلاغ', timestamp: new Date().toISOString(), userName: formData.createdByAgentName }]
     };
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
       .then(() => {
-        toast({ title: "تم الرفع بنجاح", description: `تم إنشاء البلاغ رقم ${ticketID}.` });
+        toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}.` });
         setShowNewForm(false);
-        setFormData({ 
-          customerName: '', cif: '', phone: '', serviceType: '', 
-          intakeMethod: '', subIssue: '', description: '', 
-          createdByAgentName: '',
-          attachments: []
-        });
-      })
-      .catch(() => {
-        toast({ 
-          variant: "destructive", 
-          title: "فشل الحفظ", 
-          description: "تأكد من أن حجم الصور المرفقة صغير جداً." 
-        });
+        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '', attachments: [] });
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -246,12 +200,12 @@ export function AgentView() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
-          <h1 className="text-2xl font-bold text-primary">واجهة موظف خدمة العملاء</h1>
-          <p className="text-muted-foreground">نظام إدارة ورفع البلاغات المصرفية</p>
+          <h1 className="text-2xl font-bold text-primary">متابعة بلاغات خدمة العملاء</h1>
+          <p className="text-muted-foreground">تتبع حالة البلاغات، الردود، والأرشيف الفني</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
-            <Plus className="w-4 h-4 ml-2" /> إنشاء بلاغ جديد
+            <Plus className="w-4 h-4 ml-2" /> بلاغ جديد
           </Button>
         )}
       </div>
@@ -260,8 +214,8 @@ export function AgentView() {
         <Card className="max-w-4xl border-2 border-primary/10 shadow-lg animate-in slide-in-from-top-4">
           <CardHeader className="bg-blue-50/50 text-right border-b flex flex-row items-center justify-between">
             <div className="text-right flex-1">
-              <CardTitle className="text-primary">بيانات البلاغ الجديد</CardTitle>
-              <CardDescription>يرجى تعبئة الحقول المطلوبة واختيار اسم الموظف</CardDescription>
+              <CardTitle className="text-primary text-xl">رفع بلاغ جديد إلى الجهات الفنية</CardTitle>
+              <CardDescription>أدخل بيانات العميل والمشكلة بدقة لضمان سرعة الحل</CardDescription>
             </div>
             <Button variant="ghost" onClick={() => setShowNewForm(false)} className="mr-4">
               <ArrowRight className="w-4 h-4 ml-2" /> العودة للسجل
@@ -271,12 +225,12 @@ export function AgentView() {
             <form onSubmit={handleCreateTicket} className="space-y-6">
               <div className="bg-amber-50 p-6 rounded-lg border-2 border-dashed border-accent/40 space-y-4">
                 <div className="flex items-center gap-2 text-primary font-bold justify-end">
-                   <span>اسم الموظف الرافع للبلاغ</span>
+                   <span>اختيار الموظف القائم بالرفع</span>
                    <User className="w-5 h-5 text-accent" />
                 </div>
                 <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required dir="rtl">
                   <SelectTrigger className="text-right bg-white border-primary/30 h-12 text-lg">
-                    <SelectValue placeholder="اختر اسم الموظف من القائمة" />
+                    <SelectValue placeholder="اختر اسم الموظف" />
                   </SelectTrigger>
                   <SelectContent>
                     {AGENT_NAMES.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
@@ -284,46 +238,41 @@ export function AgentView() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">الجهة المعنية (إرسال البلاغ إلى)</Label>
+                  <Label className="font-bold">الجهة المعنية (إلى من يوجه البلاغ؟)</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required dir="rtl">
-                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر الجهة المعنية" /></SelectTrigger>
+                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر الجهة" /></SelectTrigger>
                     <SelectContent>
                       {SERVICE_ENTITIES.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">اسم العميل بالكامل</Label>
-                  <Input placeholder="الاسم كما في الهوية" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="text-right h-11" />
+                  <Label className="font-bold">اسم العميل</Label>
+                  <Input placeholder="الاسم الكامل" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="text-right h-11" />
                 </div>
-
                 <div className="space-y-2 text-right">
                   <Label className="font-bold">رقم الحساب / CIF</Label>
-                  <Input placeholder="أدخل رقم الحساب" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono h-11" />
+                  <Input placeholder="أدخل الرقم" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono h-11" />
                 </div>
-
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">رقم هاتف العميل</Label>
+                  <Label className="font-bold">رقم الهاتف</Label>
                   <Input placeholder="+966..." required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="text-right h-11" />
                 </div>
-
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">وسيلة استلام البلاغ</Label>
+                  <Label className="font-bold">وسيلة الاستلام</Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required dir="rtl">
-                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر وسيلة الاستلام" /></SelectTrigger>
+                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
                     <SelectContent>
                       {INTAKE_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2 text-right">
                   <Label className="font-bold">نوع الخدمة / المشكلة</Label>
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required dir="rtl">
-                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
+                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر المشكلة" /></SelectTrigger>
                     <SelectContent>
                       {ISSUE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </SelectContent>
@@ -332,62 +281,30 @@ export function AgentView() {
               </div>
 
               <div className="space-y-2 text-right">
-                <Label className="font-bold">تفاصيل المشكلة</Label>
-                <Textarea placeholder="اشرح المشكلة بالتفصيل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
+                <Label className="font-bold">شرح تفصيلي للمشكلة</Label>
+                <Textarea placeholder="اكتب هنا..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
               </div>
 
               <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between flex-row-reverse">
-                  <Label className="flex items-center gap-2 font-bold text-primary">إرفاق صور توضيحية (لقطة شاشة) <ImageIcon className="w-4 h-4" /></Label>
-                  <span className="text-[10px] text-red-600 font-bold">الحجم الأقصى للصورة: 500 كيلوبايت</span>
+                <Label className="flex items-center gap-2 font-bold text-primary justify-end">المرفقات التوضيحية <ImageIcon className="w-4 h-4" /></Label>
+                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                <Button type="button" variant="outline" className="border-dashed border-2 h-20 w-full bg-slate-50" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}>
+                  {uploadingImage ? <Loader2 className="animate-spin" /> : <><Upload className="w-5 h-5 ml-2" /> إرفاق صورة (بحد أقصى 500 ك.ب)</>}
+                </Button>
+                <div className="grid grid-cols-4 gap-4">
+                  {formData.attachments.map((att, i) => (
+                    <div key={i} className="relative rounded border bg-white p-1">
+                      <img src={att.url} className="h-16 w-full object-cover rounded" />
+                      <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 rounded-full" onClick={() => removeAttachment(i)}><X className="h-3 w-3" /></Button>
+                    </div>
+                  ))}
                 </div>
-                
-                <div className="flex justify-end">
-                   <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                   />
-                   <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="border-dashed border-2 h-24 w-full bg-slate-50 hover:bg-slate-100 flex flex-col gap-2"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage}
-                   >
-                     {uploadingImage ? <Loader2 className="animate-spin" /> : (
-                       <>
-                        <Upload className="w-6 h-6 text-primary/40" />
-                        <span>اضغط هنا لاختيار صورة من جهازك</span>
-                       </>
-                     )}
-                   </Button>
-                </div>
-
-                {formData.attachments.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                    {formData.attachments.map((att, index) => (
-                      <div key={index} className="relative group rounded-md overflow-hidden border-2 border-primary/10">
-                        <img src={att.url} alt="مرفق" className="w-full h-24 object-cover" />
-                        <button 
-                          type="button"
-                          onClick={() => removeAttachment(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-6 border-t flex-row-reverse">
-                <Button type="button" variant="outline" onClick={() => setShowNewForm(false)} className="px-8">إلغاء</Button>
-                <Button type="submit" className="bg-primary text-white px-12 h-12 text-lg font-bold" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <><Send className="w-4 h-4 ml-2 rotate-180" /> إرسال البلاغ الآن</>}
+                <Button type="button" variant="outline" onClick={() => setShowNewForm(false)}>إلغاء</Button>
+                <Button type="submit" className="bg-primary text-white font-bold" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : "إرسال البلاغ فوراً"}
                 </Button>
               </div>
             </form>
@@ -395,165 +312,147 @@ export function AgentView() {
         </Card>
       ) : (
         <div className="space-y-4">
-          <Card className="shadow-md">
+          <Card className="shadow-sm">
             <CardHeader className="pb-4 border-b space-y-4">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 flex-row-reverse">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 flex-row-reverse">
                 <CardTitle className="text-lg text-right w-full flex items-center gap-2 justify-end">
-                  سجل البلاغات <Filter className="w-4 h-4" />
+                   سجل المتابعة <Filter className="w-4 h-4" />
                 </CardTitle>
                 <div className="relative w-full md:w-96">
                   <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    placeholder="بحث بالاسم، رقم الهاتف، أو الـ CIF..." 
-                    className="pr-10 text-right h-10 border-primary/20 focus:border-primary shadow-sm" 
+                    placeholder="بحث بالاسم، الهاتف، أو الحساب..." 
+                    className="pr-10 text-right h-10 border-primary/20" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
-              
               <Tabs defaultValue="all" onValueChange={setActiveTab} dir="rtl" className="w-full">
                 <TabsList className="grid grid-cols-2 md:grid-cols-5 h-auto p-1 bg-slate-100">
-                  <TabsTrigger value="all" className="py-2">الكل</TabsTrigger>
-                  <TabsTrigger value="New" className="py-2">جديد</TabsTrigger>
-                  <TabsTrigger value="Pending" className="py-2 text-amber-700">قيد المعالجة</TabsTrigger>
-                  <TabsTrigger value="Resolved" className="py-2 text-green-700">تم الحل</TabsTrigger>
-                  <TabsTrigger value="Escalated" className="py-2 text-red-700">محال للمختص</TabsTrigger>
+                  <TabsTrigger value="all">الكل</TabsTrigger>
+                  <TabsTrigger value="New">جديد</TabsTrigger>
+                  <TabsTrigger value="Pending" className="text-amber-700">قيد المعالجة</TabsTrigger>
+                  <TabsTrigger value="Escalated" className="text-red-700">المحالة</TabsTrigger>
+                  <TabsTrigger value="Resolved" className="text-green-700">الأرشيف (تم الحل)</TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
             <CardContent className="pt-4">
               {isTicketsLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2">
-                  <Loader2 className="animate-spin text-primary h-8 w-8" />
-                  <p className="text-sm text-muted-foreground">جاري تحميل سجل البلاغات...</p>
-                </div>
+                <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50/50">
-                        <TableHead className="text-right">رقم البلاغ</TableHead>
-                        <TableHead className="text-right">التاريخ</TableHead>
-                        <TableHead className="text-right">الجهة المعنية</TableHead>
-                        <TableHead className="text-right">اسم العميل</TableHead>
-                        <TableHead className="text-right">CIF</TableHead>
-                        <TableHead className="text-right">الحالة</TableHead>
-                        <TableHead className="text-center">إجراءات</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50">
+                      <TableHead className="text-right">رقم البلاغ</TableHead>
+                      <TableHead className="text-right">الجهة</TableHead>
+                      <TableHead className="text-right">العميل</TableHead>
+                      <TableHead className="text-right">الحالة</TableHead>
+                      <TableHead className="text-center">إجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTickets.map((t: any) => (
+                      <TableRow key={t.id} className="hover:bg-slate-50/50">
+                        <TableCell className="font-bold text-blue-600 text-right">{t.ticketID}</TableCell>
+                        <TableCell className="text-right">{getEntityLabel(t.serviceType)}</TableCell>
+                        <TableCell className="text-right">{t.customerName}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className={
+                            t.status === 'Pending' ? 'status-pending' : 
+                            t.status === 'Resolved' ? 'status-resolved' : 
+                            t.status === 'Escalated' ? 'status-escalated' : 'status-new'
+                          }>
+                            {t.status === 'New' ? 'جديد' : t.status === 'Pending' ? 'قيد العمل' : t.status === 'Resolved' ? 'محلول' : 'محال'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                           <Button variant="ghost" size="sm" onClick={() => setSelectedTicket(t)} className="flex gap-1">
+                             {t.status === 'Resolved' && <CheckCircle2 className="w-3 h-3 text-green-600" />}
+                             التفاصيل
+                           </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTickets.length > 0 ? (
-                        filteredTickets.map((ticket: any) => (
-                          <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                            <TableCell className="font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
-                            <TableCell className="text-xs text-right whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant="outline" className="font-normal bg-blue-50/50">{getEntityLabel(ticket.serviceType)}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-medium">{ticket.customerName}</TableCell>
-                            <TableCell className="text-right font-mono text-xs">{ticket.cif}</TableCell>
-                            <TableCell className="text-right">
-                              <Badge className={
-                                ticket.status === 'Pending' ? 'status-pending' : 
-                                ticket.status === 'Resolved' ? 'status-resolved' : 
-                                ticket.status === 'New' ? 'status-new' : 
-                                ticket.status === 'Escalated' ? 'status-escalated' : ''
-                              }>
-                                {ticket.status === 'New' ? 'جديد' : 
-                                 ticket.status === 'Pending' ? 'قيد المعالجة' : 
-                                 ticket.status === 'Resolved' ? 'تم الحل' : 'محال للمختص'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                               <Button variant="ghost" size="sm" className="h-8 hover:text-primary" onClick={() => setSelectedTicket(ticket)}>
-                                 <FileText className="w-3 h-3 ml-1" /> التفاصيل
-                               </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مطابقة لبحثك أو فلترتك حالياً.</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Details Dialog */}
-      <Dialog open={!!selectedTicket} onOpenChange={(open) => {
-        if (!open) setSelectedTicket(null);
-      }}>
-        <DialogContent className="max-w-3xl text-right p-0 overflow-hidden" dir="rtl">
+      <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
+        <DialogContent className="max-w-3xl text-right p-0" dir="rtl">
           {selectedTicket && (
             <>
               <DialogHeader className="p-6 border-b bg-slate-50/50">
                 <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
-                  تفاصيل البلاغ {selectedTicket.ticketID}
+                  مراجعة البلاغ {selectedTicket.ticketID}
                 </DialogTitle>
-                <DialogDescription className="text-right font-bold text-secondary">بواسطة الموظف: {selectedTicket.createdByAgentName}</DialogDescription>
+                <div className="flex gap-2 justify-end mt-2">
+                   <Badge variant="outline">{getEntityLabel(selectedTicket.serviceType)}</Badge>
+                   <Badge className={selectedTicket.status === 'Resolved' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}>
+                     {selectedTicket.status}
+                   </Badge>
+                </div>
               </DialogHeader>
               
-              <ScrollArea className="max-h-[60vh]">
+              <ScrollArea className="max-h-[70vh]">
                 <div className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 rounded-lg p-4 border border-slate-100">
-                    <div className="space-y-1">
-                      <Label className="text-muted-foreground text-[10px] uppercase">اسم العميل</Label>
-                      <p className="font-bold">{selectedTicket.customerName}</p>
+                  {/* قسم رد الأخصائي - يظهر فقط إذا كان هناك رد */}
+                  {selectedTicket.specialistResponse && (
+                    <div className="bg-green-50 border-2 border-green-200 p-5 rounded-xl space-y-3 animate-in zoom-in-95">
+                      <div className="flex items-center gap-2 text-green-800 font-bold justify-end">
+                        <span>رد القسم الفني (الحل)</span>
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <p className="text-sm leading-relaxed text-green-900 bg-white/50 p-3 rounded border border-green-100">
+                        {selectedTicket.specialistResponse}
+                      </p>
+                      <div className="flex justify-between items-center text-[10px] text-green-700">
+                         <span>بواسطة: {selectedTicket.assignedToSpecialistName || 'الأخصائي'}</span>
+                         <span>تاريخ الحل: {new Date(selectedTicket.resolvedAt || '').toLocaleString('ar-SA')}</span>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-muted-foreground text-[10px] uppercase">رقم الحساب (CIF)</Label>
-                      <p className="font-mono font-bold text-blue-700">{selectedTicket.cif}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-muted-foreground text-[10px] uppercase">رقم الهاتف</Label>
-                      <p className="font-mono" dir="ltr">{selectedTicket.phoneNumber}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-muted-foreground text-[10px] uppercase">وسيلة الاستلام</Label>
-                      <p className="font-bold">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-muted-foreground text-[10px] uppercase">الجهة المعنية</Label>
-                      <p className="font-bold text-blue-700">{getEntityLabel(selectedTicket.serviceType)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-muted-foreground text-[10px] uppercase">نوع الخدمة</Label>
-                      <p className="font-bold">{selectedTicket.subIssue}</p>
-                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-slate-50/50 p-4 rounded-lg border">
+                    <div><Label className="text-[10px] text-muted-foreground block">العميل</Label><p className="font-bold">{selectedTicket.customerName}</p></div>
+                    <div><Label className="text-[10px] text-muted-foreground block">الحساب (CIF)</Label><p className="font-mono font-bold">{selectedTicket.cif}</p></div>
+                    <div><Label className="text-[10px] text-muted-foreground block">وسيلة الاستلام</Label><p className="font-bold">{getIntakeLabel(selectedTicket.intakeMethod)}</p></div>
+                    <div><Label className="text-[10px] text-muted-foreground block">نوع المشكلة</Label><p className="font-bold text-blue-700">{selectedTicket.subIssue}</p></div>
+                    <div><Label className="text-[10px] text-muted-foreground block">الموظف الرافع</Label><p className="font-bold">{selectedTicket.createdByAgentName}</p></div>
+                    <div><Label className="text-[10px] text-muted-foreground block">تاريخ الرفع</Label><p className="text-xs">{new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p></div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground text-[10px] uppercase block font-bold">تفاصيل المشكلة المشروحة</Label>
-                    <div className="bg-white border-2 border-slate-100 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap shadow-inner">
-                      {selectedTicket.description}
+                    <Label className="font-bold text-sm block">تفاصيل البلاغ الأصلي</Label>
+                    <div className="bg-white border p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</div>
+                  </div>
+
+                  {/* سجل الحركات */}
+                  <div className="space-y-3 border-t pt-4">
+                    <Label className="font-bold text-sm flex items-center gap-2 justify-end">تاريخ الإجراءات على البلاغ <Clock className="w-4 h-4" /></Label>
+                    <div className="space-y-2">
+                      {selectedTicket.logs?.map((log: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded border-r-2 border-primary">
+                          <span className="text-muted-foreground">{new Date(log.timestamp).toLocaleString('ar-SA')}</span>
+                          <span className="font-bold text-primary">{log.action} - <span className="text-muted-foreground font-normal">({log.userName})</span></span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
-                  {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                  {selectedTicket.attachments?.length > 0 && (
                     <div className="space-y-3 border-t pt-4">
-                      <Label className="text-muted-foreground text-[10px] uppercase block font-bold">المرفقات التوضيحية</Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Label className="font-bold text-sm block">المرفقات</Label>
+                      <div className="grid grid-cols-2 gap-4">
                         {selectedTicket.attachments.map((att: any, idx: number) => (
-                          <div key={idx} className="space-y-2 border-2 border-slate-100 rounded-lg p-2 bg-white group shadow-sm">
-                            <div className="relative aspect-video rounded-md overflow-hidden bg-black flex items-center justify-center">
-                              <img src={att.url} alt="مرفق" className="max-w-full max-h-full object-contain" />
-                              <a 
-                                href={att.url} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2"
-                              >
-                                <ExternalLink className="w-5 h-5" /> تكبير الصورة
-                              </a>
-                            </div>
-                            <p className="text-[10px] text-center text-muted-foreground font-bold">{att.description}</p>
+                          <div key={idx} className="border rounded overflow-hidden">
+                            <img src={att.url} className="aspect-video object-cover w-full" />
+                            <a href={att.url} target="_blank" rel="noreferrer" className="flex items-center justify-center p-2 bg-slate-100 text-[10px] hover:bg-slate-200"><ExternalLink className="w-3 h-3 ml-1" /> عرض الصورة الأصلية</a>
                           </div>
                         ))}
                       </div>
@@ -564,37 +463,23 @@ export function AgentView() {
 
               <div className="p-6 border-t bg-slate-50/50 flex justify-between items-center flex-row-reverse">
                 <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="font-bold">
-                  <Trash2 className="w-4 h-4 ml-2" /> إلغاء (حذف) البلاغ
+                  <Trash2 className="w-4 h-4 ml-2" /> إلغاء البلاغ نهائياً
                 </Button>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-white">{new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</Badge>
-                  <Label className="text-[10px] text-muted-foreground">تاريخ الإنشاء:</Label>
-                </div>
+                <Button variant="outline" onClick={() => setSelectedTicket(null)}>إغلاق النافذة</Button>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Alert */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من إلغاء البلاغ؟</AlertDialogTitle>
-            <AlertDialogDescription>
-              سيتم حذف هذا البلاغ بشكل نهائي من النظام ولن يظهر في السجل مجدداً.
-            </AlertDialogDescription>
+            <AlertDialogTitle>تأكيد إلغاء البلاغ</AlertDialogTitle>
+            <AlertDialogDescription>سيتم حذف البلاغ من قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2 mt-4">
-            <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault();
-                handleDeleteTicket();
-              }} 
-              className="bg-red-600 hover:bg-red-700"
-            >
-              تأكيد الإلغاء
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-600">تأكيد الحذف</AlertDialogAction>
             <AlertDialogCancel>تراجع</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>

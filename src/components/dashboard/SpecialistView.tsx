@@ -2,18 +2,18 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, UserPlus, Copy, MessageSquare, Sparkles, ArrowRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, UserPlus, Copy, MessageSquare, Sparkles, ArrowRight, Loader2, AlertCircle, RefreshCw, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
-import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, orderBy } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, doc, orderBy, arrayUnion } from 'firebase/firestore';
 
 export function SpecialistView() {
   const { user } = useAuth();
@@ -23,7 +23,6 @@ export function SpecialistView() {
   const [response, setResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // الاستعلام الذي يتطلب الفهرس الثاني: serviceType (Asc) + createdAt (Desc)
   const deptTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.department) return null;
     return query(
@@ -35,54 +34,45 @@ export function SpecialistView() {
 
   const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(deptTicketsQuery);
 
-  const handleClaim = (ticketId: string) => {
+  const handleClaim = (ticket: any) => {
     if (!db || !user) return;
-    const ticketRef = doc(db, 'tickets', ticketId);
+    const ticketRef = doc(db, 'tickets', ticket.id);
     updateDocumentNonBlocking(ticketRef, {
       assignedToSpecialistId: user.id,
-      status: 'Pending'
+      assignedToSpecialistName: user.name,
+      status: 'Pending',
+      logs: arrayUnion({
+        action: 'تم استلام البلاغ من قبل الأخصائي',
+        timestamp: new Date().toISOString(),
+        userName: user.name
+      })
     });
-    
-    addDocumentNonBlocking(collection(db, `tickets/${ticketId}/logs`), {
-      ticketId,
-      changedByUserId: user.id,
-      changedAt: new Date().toISOString(),
-      oldStatus: 'New',
-      newStatus: 'Pending',
-      response: 'تم استلام التذكرة من قبل الأخصائي.',
-      ticketServiceType: user.department,
-      ticketCreatedByAgentId: '',
-      ticketAssignedToSpecialistId: user.id
-    });
-
-    toast({ title: "تم الاستلام", description: `تم تعيين التذكرة لك بنجاح.` });
+    toast({ title: "تم الاستلام", description: `تم تعيين التذكرة لك.` });
   };
 
   const handleResolve = () => {
     if (!db || !user || !selectedTicket) return;
-    const ticketRef = doc(db, 'tickets', selectedTicket.id);
-    updateDocumentNonBlocking(ticketRef, { status: 'Resolved' });
+    if (!response) {
+      toast({ variant: "destructive", title: "تنبيه", description: "يجب كتابة رد فني قبل إغلاق البلاغ." });
+      return;
+    }
 
-    addDocumentNonBlocking(collection(db, `tickets/${selectedTicket.id}/logs`), {
-      ticketId: selectedTicket.id,
-      changedByUserId: user.id,
-      changedAt: new Date().toISOString(),
-      oldStatus: selectedTicket.status,
-      newStatus: 'Resolved',
-      response: response || 'تم حل المشكلة.',
-      ticketServiceType: selectedTicket.serviceType,
-      ticketCreatedByAgentId: selectedTicket.createdByAgentId,
-      ticketAssignedToSpecialistId: user.id
+    const ticketRef = doc(db, 'tickets', selectedTicket.id);
+    updateDocumentNonBlocking(ticketRef, {
+      status: 'Resolved',
+      specialistResponse: response,
+      resolvedAt: new Date().toISOString(),
+      logs: arrayUnion({
+        action: 'تم حل البلاغ وإغلاقه',
+        timestamp: new Date().toISOString(),
+        userName: user.name,
+        note: response
+      })
     });
 
-    toast({ title: "تم الحل", description: "تم إغلاق التذكرة بنجاح." });
+    toast({ title: "تم الحل بنجاح", description: "تم إرسال الرد للموظف وإغلاق البلاغ." });
     setSelectedTicket(null);
     setResponse('');
-  };
-
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "تم النسخ", description: `تم نسخ ${label}.` });
   };
 
   const handleAiSuggest = async () => {
@@ -90,12 +80,12 @@ export function SpecialistView() {
     setIsGenerating(true);
     try {
       const result = await smartResponseAssistant({
-        complaintDetails: `العميل: ${selectedTicket.customerName}, المشكلة: ${selectedTicket.subIssue}`,
-        resolutionHistory: ["إعادة تعيين كلمة السر", "تحديث حدود الائتمان"]
+        complaintDetails: `المشكلة: ${selectedTicket.subIssue}, التفاصيل: ${selectedTicket.description}`,
+        resolutionHistory: ["إعادة تعيين الرقم السري للبطاقة", "تفعيل الحساب المجمد"]
       });
       setResponse(result.suggestedResponse);
     } catch (e) {
-      toast({ variant: "destructive", title: "خطأ AI", description: "فشل إنشاء رد." });
+      toast({ variant: "destructive", title: "خطأ AI", description: "فشل استخراج الرد." });
     } finally {
       setIsGenerating(false);
     }
@@ -103,55 +93,47 @@ export function SpecialistView() {
 
   if (selectedTicket) {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
         <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="mb-4">
-          <ArrowRight className="w-4 h-4 ml-2" /> العودة لقائمة المهام
+          <ArrowRight className="w-4 h-4 ml-2" /> قائمة المهام
         </Button>
-        <Card className="border-r-4 border-r-primary">
-          <CardHeader className="text-right">
+        <Card className="border-r-4 border-r-primary shadow-lg">
+          <CardHeader className="text-right border-b bg-slate-50/50">
             <div className="flex justify-between items-start flex-row-reverse">
               <div>
-                <CardTitle className="text-xl">تذكرة رقم: {selectedTicket.ticketID}</CardTitle>
-                <p className="text-muted-foreground text-sm">المشكلة: {selectedTicket.subIssue}</p>
+                <CardTitle className="text-xl">معالجة بلاغ رقم: {selectedTicket.ticketID}</CardTitle>
+                <p className="text-muted-foreground text-sm">تاريخ البلاغ: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p>
               </div>
-              <Badge variant="outline" className="bg-blue-50">القسم: {selectedTicket.serviceType}</Badge>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700">العميل: {selectedTicket.customerName}</Badge>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg">
-              <div className="space-y-1 text-right">
-                <Label className="text-xs uppercase text-muted-foreground">رقم العميل (CIF)</Label>
-                <div className="flex items-center gap-2 justify-end">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(selectedTicket.cif, 'رقم العميل')}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <span className="font-mono font-bold">{selectedTicket.cif}</span>
-                </div>
+          <CardContent className="pt-6 space-y-6">
+            <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="text-right"><Label className="text-[10px] text-muted-foreground block">نوع المشكلة</Label><p className="font-bold">{selectedTicket.subIssue}</p></div>
+                 <div className="text-right"><Label className="text-[10px] text-muted-foreground block">الحساب (CIF)</Label><p className="font-mono font-bold">{selectedTicket.cif}</p></div>
               </div>
-              <div className="space-y-1 text-right">
-                <Label className="text-xs uppercase text-muted-foreground">رقم الهاتف</Label>
-                <div className="flex items-center gap-2 justify-end">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(selectedTicket.phoneNumber, 'رقم الهاتف')}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <span className="font-mono font-bold" dir="ltr">{selectedTicket.phoneNumber}</span>
-                </div>
+              <Separator />
+              <div className="text-right">
+                <Label className="text-[10px] text-muted-foreground block">شرح الموظف للمشكلة</Label>
+                <p className="text-sm bg-white p-3 rounded border mt-1 leading-relaxed">{selectedTicket.description}</p>
               </div>
             </div>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between flex-row-reverse">
-                <Label className="flex items-center gap-2 font-bold">
-                  <MessageSquare className="w-4 h-4" /> رد الأخصائي
+                <Label className="flex items-center gap-2 font-bold text-primary">
+                  <MessageSquare className="w-4 h-4" /> الرد الفني والحل المقترح
                 </Label>
                 <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating}>
                   {isGenerating ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2 text-accent" />}
                   مساعد الرد الذكي
                 </Button>
               </div>
-              <Textarea value={response} onChange={(e) => setResponse(e.target.value)} placeholder="أدخل الرد الفني هنا..." className="min-h-[200px] text-right" />
+              <Textarea value={response} onChange={(e) => setResponse(e.target.value)} placeholder="اكتب هنا الإجراء الذي تم اتخاذه لحل المشكلة..." className="min-h-[150px] text-right" />
               <div className="flex justify-end gap-3 flex-row-reverse">
-                <Button className="bg-secondary text-white" onClick={handleResolve}>
-                  <CheckCircle2 className="w-4 h-4 ml-2" /> حل التذكرة
+                <Button className="bg-green-600 hover:bg-green-700 text-white font-bold h-12 px-10" onClick={handleResolve}>
+                  <CheckCircle2 className="w-4 h-4 ml-2" /> إرسال الحل وإغلاق البلاغ
                 </Button>
               </div>
             </div>
@@ -164,80 +146,57 @@ export function SpecialistView() {
   return (
     <div className="space-y-6">
       <div className="text-right">
-        <h1 className="text-2xl font-bold text-primary">محطة عمل الأخصائي</h1>
-        <p className="text-muted-foreground">إدارة تذاكر قسم <span className="font-bold text-secondary">{user?.department}</span></p>
+        <h1 className="text-2xl font-bold text-primary">محطة عمل الأخصائي الفني</h1>
+        <p className="text-muted-foreground">بلاغات قسم <span className="font-bold text-secondary">{user?.department}</span></p>
       </div>
-      <Card>
-        <CardHeader className="text-right">
-          <CardTitle className="text-lg">قائمة المهام الواردة</CardTitle>
+      <Card className="shadow-sm">
+        <CardHeader className="text-right border-b pb-4">
+          <CardTitle className="text-lg flex items-center gap-2 justify-end">المهام الواردة للمعالجة <Clock className="w-5 h-5 text-accent" /></CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {isTicketsLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Loader2 className="animate-spin text-primary h-8 w-8" />
-              <p className="text-sm text-muted-foreground text-center">جاري تحميل المهام وبناء الفهارس...</p>
-            </div>
+            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>
           ) : queryError ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-blue-50 rounded-xl border border-blue-200">
-              <AlertCircle className="w-12 h-12 text-blue-600" />
-              <div className="space-y-2 px-6">
-                <h3 className="font-bold text-blue-900">جاري بناء الفهرس (Index)</h3>
-                <p className="text-sm text-blue-800 max-w-md mx-auto leading-relaxed">
-                  عملية بناء الفهرس لهذا الاستعلام لا تزال جارية (Building). <br/>
-                  يرجى الانتظار دقيقتين ثم تحديث الصفحة.
-                </p>
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
-                  <RefreshCw className="w-3 h-3 ml-2" /> تحديث الصفحة الآن
-                </Button>
-              </div>
+            <div className="text-center py-12 bg-blue-50 rounded-xl">
+               <AlertCircle className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+               <h3 className="font-bold">جاري تحديث الفهارس</h3>
+               <p className="text-sm text-blue-800">يرجى الانتظار دقيقة ثم تحديث الصفحة.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead className="text-right">رقم التذكرة</TableHead>
-                    <TableHead className="text-right">العميل</TableHead>
-                    <TableHead className="text-right">CIF</TableHead>
-                    <TableHead className="text-right">الخدمة</TableHead>
-                    <TableHead className="text-right">الحالة</TableHead>
-                    <TableHead className="text-left">إجراءات</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="text-right">رقم البلاغ</TableHead>
+                  <TableHead className="text-right">العميل</TableHead>
+                  <TableHead className="text-right">المشكلة</TableHead>
+                  <TableHead className="text-right">الحالة</TableHead>
+                  <TableHead className="text-left">إجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tickets?.map((t: any) => (
+                  <TableRow key={t.id} className="hover:bg-slate-50/50 cursor-pointer" onClick={() => t.assignedToSpecialistId === user?.id && setSelectedTicket(t)}>
+                    <TableCell className="font-bold text-blue-600 text-right">{t.ticketID}</TableCell>
+                    <TableCell className="text-right">{t.customerName}</TableCell>
+                    <TableCell className="text-right">{t.subIssue}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge className={t.status === 'Pending' ? 'status-pending' : t.status === 'Resolved' ? 'status-resolved' : 'status-new'}>
+                        {t.status === 'New' ? 'جديد' : t.status === 'Pending' ? 'قيد العمل' : 'محلول'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-left">
+                      {!t.assignedToSpecialistId ? (
+                        <Button size="sm" onClick={(e) => { e.stopPropagation(); handleClaim(t); }} className="bg-primary">استلام</Button>
+                      ) : t.assignedToSpecialistId === user?.id ? (
+                        <Button variant="outline" size="sm">فتح ومعالجة</Button>
+                      ) : (
+                        <Badge variant="secondary">مستلم</Badge>
+                      )}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tickets && tickets.length > 0 ? (
-                    tickets.map((ticket: any) => (
-                      <TableRow key={ticket.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSelectedTicket(ticket)}>
-                        <TableCell className="font-mono text-xs font-bold text-right">{ticket.ticketID}</TableCell>
-                        <TableCell className="font-medium text-right">{ticket.customerName}</TableCell>
-                        <TableCell className="text-xs text-right">{ticket.cif}</TableCell>
-                        <TableCell className="text-right"><Badge variant="outline">{ticket.serviceType}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          <Badge className={ticket.status === 'Pending' ? 'status-pending' : ticket.status === 'Resolved' ? 'status-resolved' : 'status-new'}>
-                            {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد المعالجة' : 'تم الحل'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-left" onClick={(e) => e.stopPropagation()}>
-                          {!ticket.assignedToSpecialistId ? (
-                            <Button size="sm" onClick={() => handleClaim(ticket.id)} className="bg-primary text-white">
-                              <UserPlus className="w-4 h-4 ml-2" /> استلام
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm" onClick={() => setSelectedTicket(ticket)}>التفاصيل</Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
-                        لا توجد تذاكر واردة لهذا القسم حالياً.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
