@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- دالات المساعدة ---
+    // --- دالات المساعدة (Helper Functions) ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -19,7 +19,7 @@ service cloud.firestore {
       return exists(userPath) ? get(userPath).data : {"department": "none", "role": "none"};
     }
 
-    // --- القواعد ---
+    // --- القواعد (Rules) ---
 
     match /users/{userId} {
       allow get: if isSignedIn();
@@ -33,22 +33,32 @@ service cloud.firestore {
     }
 
     match /tickets/{ticketId} {
-      // السماح للقراءة (get & list)
-      // يتم السماح إذا كان المستخدم مديراً، أو منشئ البلاغ، أو المعالج الفني، أو من نفس القسم المعني
-      allow read: if isSignedIn() && (
+      // تقسيم الصلاحيات إلى get و list يسهل على فيربيس تحليل الاستعلامات المفلترة
+      
+      // صلاحية قراءة بلاغ واحد بالتفصيل
+      allow get: if isSignedIn() && (
         isAdmin() || 
-        (resource.data.createdByAgentId == request.auth.uid) || 
-        (resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (getUserData().department == resource.data.serviceType)
+        resource.data.createdByAgentId == request.auth.uid || 
+        resource.data.assignedToSpecialistId == request.auth.uid ||
+        getUserData().department == resource.data.serviceType
+      );
+
+      // صلاحية عرض قائمة البلاغات (Query)
+      // تنجح هذه القاعدة فقط إذا كان الاستعلام يحتوي على فلتر مطابق لأحد الشروط أدناه
+      allow list: if isSignedIn() && (
+        isAdmin() || 
+        (resource.data.createdByAgentId != null && resource.data.createdByAgentId == request.auth.uid) || 
+        (resource.data.assignedToSpecialistId != null && resource.data.assignedToSpecialistId == request.auth.uid) ||
+        (getUserData().department != "none" && getUserData().department == resource.data.serviceType)
       );
 
       allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        (resource.data.createdByAgentId == request.auth.uid) || 
-        (resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (getUserData().department == resource.data.serviceType)
+        resource.data.createdByAgentId == request.auth.uid || 
+        resource.data.assignedToSpecialistId == request.auth.uid ||
+        getUserData().department == resource.data.serviceType
       );
 
       allow delete: if isAdmin();
@@ -56,9 +66,9 @@ service cloud.firestore {
       match /logs/{logId} {
         allow read: if isSignedIn() && (
           isAdmin() || 
-          (resource.data.ticketCreatedByAgentId == request.auth.uid) || 
-          (resource.data.ticketAssignedToSpecialistId == request.auth.uid) ||
-          (getUserData().department == resource.data.ticketServiceType)
+          resource.data.ticketCreatedByAgentId == request.auth.uid || 
+          resource.data.ticketAssignedToSpecialistId == request.auth.uid ||
+          getUserData().department == resource.data.ticketServiceType
         );
         allow create: if isSignedIn();
         allow update, delete: if isAdmin();
