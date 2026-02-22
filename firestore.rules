@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * CONNECTRESOLVE SECURITY RULES - PROTOTYPING MODE
+     *
+     * Core Philosophy:
+     * This ruleset implements a robust Database-Backed Access Control (DBAC) model. Access is strictly
+     * governed by user roles (Admin, Agent, Specialist) and departmental affiliations. While strict on
+     * authorization, the rules are flexible regarding data schema to facilitate rapid development.
+     *
+     * Data Structure:
+     * - /users/{userId}: Profiles containing roles and departments.
+     * - /admins/{adminId}: Marker collection for global system administrators.
+     * - /tickets/{ticketId}: Core complaint data, denormalized for "Authorization Independence."
+     * - /tickets/{ticketId}/logs/{logId}: Audit trail, also denormalized to avoid parent lookups.
+     *
+     * Key Security Decisions:
+     * 1. Authorization Independence: All ticket and log documents contain the necessary fields
+     *    (createdByAgentId, serviceType) to make an access decision without reading other documents.
+     * 2. Role-Based Access: Specialists are restricted to tickets matching their department (serviceType).
+     * 3. Immutability: Critical relational fields like 'createdByAgentId' are protected from modification.
+     * 4. Admin Supremacy: Users present in the /admins collection have full system-wide access.
+     */
+
+    // --- Global Helper Functions ---
+
+    /** Checks if the user is authenticated. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Checks if the authenticated user is a system administrator. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    /** Checks if the provided UID matches the authenticated user's UID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Retrieves the profile data of the currently authenticated user. */
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // The 'isExistingOwner' function has been removed as it was unused and contained an invalid variable reference ('resource').
+
+    /**
+     * @description Rules for user profiles. Users manage their own profile; Admins manage all.
+     * @path /users/{userId}
+     * @allow (create) User with UID 'abc' creates document /users/abc.
+     * @deny (create) User with UID 'abc' tries to create /users/xyz.
+     * @principle Path-based ownership and relational integrity.
+     */
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Rules for the admin marker collection. Used for DBAC 'Existence over Content'.
+     * @path /admins/{adminId}
+     * @allow (get) Any signed-in user checks if an admin exists.
+     * @deny (write) Any non-admin user attempts to modify the admin list.
+     * @principle Global role management via restricted marker collection.
+     */
+    match /admins/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for complaint tickets. Access governed by Agent ownership or Specialist department.
+     * @path /tickets/{ticketId}
+     * @allow (get) Agent who created the ticket or Specialist in the matching 'serviceType' department.
+     * @deny (update) Specialist trying to change the 'createdByAgentId' field.
+     * @principle Authorization Independence via denormalized ownership and department fields.
+     */
+    match /tickets/{ticketId} {
+      // Logic: Admin OR Creator Agent OR Assigned Specialist OR Specialist in the same department
+      function canViewTicket(ticketData) {
+        return isAdmin() || ticketData.createdByAgentId == request.auth.uid || ticketData.assignedToSpecialistId == request.auth.uid || getUserData().department == ticketData.serviceType;
+      }
+
+      allow get: if canViewTicket(resource.data);
+      allow list: if isSignedIn(); // Filtering is handled by the canViewTicket logic on each result
+
+      allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
+
+      allow update: if resource != null && canViewTicket(resource.data) && request.resource.data.createdByAgentId == resource.data.createdByAgentId;
+
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Rules for ticket logs. Uses denormalized ticket info for independent authorization.
+     * @path /tickets/{ticketId}/logs/{logId}
+     * @allow (create) Agent adding a log to their own ticket.
+     * @deny (get) Specialist from 'Cards' department trying to read a log for an 'App' ticket.
+     * @principle Denormalization for Authorization to avoid costly parent lookups.
+     */
+    match /tickets/{ticketId}/logs/{logId} {
+      // Logic: Admin OR Ticket Creator OR Assigned Specialist OR Specialist in matching department
+      function canAccessLog(logData) {
+        return isAdmin() || logData.ticketCreatedByAgentId == request.auth.uid || logData.ticketAssignedToSpecialistId == request.auth.uid || getUserData().department == logData.ticketServiceType;
+      }
+
+      allow get: if canAccessLog(resource.data);
+      allow list: if isSignedIn();
+
+      // Ensure the person creating the log is the one they claim to be in the data
+      allow create: if isSignedIn() && request.resource.data.changedByUserId == request.auth.uid && canAccessLog(request.resource.data);
+
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+  }
+}

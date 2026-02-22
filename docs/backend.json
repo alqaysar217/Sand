@@ -1,0 +1,230 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user within the ConnectResolve system, including their identification, role, and departmental assignment. Authentication details are handled by an external system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The assigned role of the user within the system (e.g., 'Admin', 'Agent', 'Specialist')."
+        },
+        "department": {
+          "type": "string",
+          "description": "The primary department the user is associated with (e.g., 'Cards', 'App', 'Operations')."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "role",
+        "department"
+      ]
+    },
+    "ComplaintTicket": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ComplaintTicket",
+      "type": "object",
+      "description": "Represents a single complaint ticket submitted by a customer, detailing its status, customer information, classification, and assignment within the banking system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ComplaintTicket entity (auto-generated)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the complaint ticket was created.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the complaint ticket (e.g., 'New', 'Pending', 'Resolved', 'Escalated', 'Rejected')."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "The full name of the customer who filed the complaint."
+        },
+        "cif": {
+          "type": "string",
+          "description": "The Customer Information File (CIF) number associated with the customer."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The contact phone number of the customer."
+        },
+        "serviceType": {
+          "type": "string",
+          "description": "The general category of service the complaint pertains to (e.g., 'Cards', 'Digital', 'Support')."
+        },
+        "subIssue": {
+          "type": "string",
+          "description": "A more specific detail or sub-classification of the issue (e.g., 'PIN', 'Login', 'Delay')."
+        },
+        "createdByAgentId": {
+          "type": "string",
+          "description": "Reference to the UserProfile ID of the Agent who created this ticket. (Relationship: UserProfile 1:N ComplaintTicket)"
+        },
+        "assignedToSpecialistId": {
+          "type": "string",
+          "description": "Reference to the UserProfile ID of the Specialist currently assigned to handle this ticket. Can be empty if unassigned. (Relationship: UserProfile 1:N ComplaintTicket)"
+        },
+        "attachments": {
+          "type": "array",
+          "description": "An array of URLs pointing to uploaded files or images relevant to the complaint.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "status",
+        "customerName",
+        "cif",
+        "phoneNumber",
+        "serviceType",
+        "subIssue",
+        "createdByAgentId"
+      ]
+    },
+    "TicketLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TicketLog",
+      "type": "object",
+      "description": "Records an audit trail of changes made to a complaint ticket, including status updates, who made the change, and any associated responses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TicketLog entry."
+        },
+        "ticketId": {
+          "type": "string",
+          "description": "Reference to the ComplaintTicket ID this log entry belongs to. (Relationship: ComplaintTicket 1:N TicketLog)"
+        },
+        "changedByUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile ID of the user who performed this action or made this change. (Relationship: UserProfile 1:N TicketLog)"
+        },
+        "changedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the change occurred.",
+          "format": "date-time"
+        },
+        "oldStatus": {
+          "type": "string",
+          "description": "The status of the ticket before this log entry's change."
+        },
+        "newStatus": {
+          "type": "string",
+          "description": "The status of the ticket after this log entry's change."
+        },
+        "response": {
+          "type": "string",
+          "description": "The technical or administrative response/comment provided during this status change. This serves as the content for the 'administrative chat' system."
+        }
+      },
+      "required": [
+        "id",
+        "ticketId",
+        "changedByUserId",
+        "changedAt",
+        "newStatus"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profiles including name, email, role, and department. This collection is central to DBAC, allowing security rules to look up user roles and department affiliations required for access decisions.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/admins/{adminId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "A marker collection for system administrators, implementing the 'Existence over Content' pattern for DBAC. A document in this collection signifies that `adminId` (corresponding to a `UserProfile.id`) holds administrative privileges. This enables fast `exists()` checks for global admin permissions in security rules.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique identifier of an administrator, corresponding to `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tickets/{ticketId}",
+        "definition": {
+          "entityName": "ComplaintTicket",
+          "schema": {
+            "$ref": "#/backend/entities/ComplaintTicket"
+          },
+          "description": "The main collection for complaint tickets. Each document includes critical denormalized fields: 'createdByAgentId' (for agent ownership), 'serviceType' (acting as the department for specialist routing and authorization), 'assignedToSpecialistId' (for specialist assignment), and 'assignedToSpecialistName' (for UI display). This structure ensures Authorization Independence, allowing security rules to evaluate access without requiring `get()` calls to other documents for ticket-level authorization and enabling efficient QAPs for agent and specialist lists.",
+          "params": [
+            {
+              "name": "ticketId",
+              "description": "The unique identifier for a complaint ticket."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tickets/{ticketId}/logs/{logId}",
+        "definition": {
+          "entityName": "TicketLog",
+          "schema": {
+            "$ref": "#/backend/entities/TicketLog"
+          },
+          "description": "A subcollection for each complaint ticket, storing an audit trail of changes and administrative responses. Each `TicketLog` document includes denormalized 'ticketServiceType', 'ticketCreatedByAgentId', and 'ticketAssignedToSpecialistId' from its parent `ComplaintTicket`. This is a crucial denormalization to achieve Authorization Independence, allowing security rules to evaluate access to log entries (e.g., for QAPs for agents and specialists) without relying on `get()` calls to the parent `ComplaintTicket` document.",
+          "params": [
+            {
+              "name": "ticketId",
+              "description": "The unique identifier of the parent complaint ticket."
+            },
+            {
+              "name": "logId",
+              "description": "The unique identifier for a specific log entry within the ticket."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be highly secure, scalable, and debuggable, strictly adhering to the core design principles and strategy mandates. It leverages denormalization for authorization independence, segregates data based on security posture, and employs standardized access modeling patterns.\n\n**Authorization Independence (CRITICAL):**\n1.  **ComplaintTicket Collection (`/tickets/{ticketId}`):** Each `ComplaintTicket` document is self-sufficient for authorization. It contains `createdByAgentId` (for agent-specific access), `serviceType` (which doubles as the department for specialist routing and access control), and `assignedToSpecialistId` (for individual specialist ownership). This eliminates the need for security rules to perform `get()` calls on parent documents when evaluating access to a `ComplaintTicket`, which is crucial as it is a root collection. \n2.  **TicketLog Subcollection (`/tickets/{ticketId}/logs/{logId}`):** To explicitly address the critical mandate of avoiding hierarchical authorization dependencies, each `TicketLog` document includes denormalized fields from its parent `ComplaintTicket`: `ticketServiceType`, `ticketCreatedByAgentId`, and `ticketAssignedToSpecialistId`. This means that when a security rule evaluates access to a `TicketLog` entry, it has all the necessary authorization context directly within the `resource.data` of the `TicketLog` document itself, entirely removing the need for `get('/tickets/{ticketId}')` calls. This significantly simplifies rule writing, improves rule evaluation performance, and enables atomic batched writes.\n\n**QAPs (Queries as Authorization Primitives):**\nThe structure fully supports Query-as-Authorization-Primitives:\n1.  **Agent Access:** Agents can securely list their own tickets using queries like `firestore.collection('tickets').where('createdByAgentId', '==', request.auth.uid)`. Similarly, they can list logs for their tickets using `firestore.collection('tickets/{ticketId}/logs').where('ticketCreatedByAgentId', '==', request.auth.uid)`.\n2.  **Specialist Access:** Specialists can securely list tickets relevant to their department using `firestore.collection('tickets').where('serviceType', '==', userDepartment)`. The `userDepartment` value is retrieved from the specialist's own `UserProfile` during rule evaluation (a single `get()` call to establish user context is permissible and standard for DBAC, not a hierarchical dependency issue). This also applies to `TicketLog` entries using `firestore.collection('tickets/{ticketId}/logs').where('ticketServiceType', '==', userDepartment)`.\n3.  **Admin Access:** Administrators have full read/write access across the entire system, allowing them to perform any query without specific filtering.\n\n**DBAC (Database-Backed Access Control):**\nUser roles (`Agent`, `Specialist`) and their `department` are stored directly within each user's `UserProfile` document in the `/users/{userId}` collection. The `Admin` role is implemented using the 'Existence over Content' pattern via a dedicated `/admins/{adminId}` collection. This allows security rules to perform a fast `exists()` check to grant global administrative privileges, ensuring that all access control decisions are derived directly from data stored within the database and `request.auth.uid` without relying on custom claims.\n\n**Structural Segregation & Access Modeling:**\n*   **Private User Data:** `/users/{userId}` follows a path-based ownership model, ensuring users can primarily manage their own profiles.\n*   **Global Roles:** `/admins/{adminId}` provides a segregated collection for explicit and efficient Admin role management.\n*   **Homogeneous Security Posture:** Each collection (`/users`, `/tickets`, `/admins`, and the `/logs` subcollection) is designed to hold documents with a uniform security requirement, simplifying rule logic. For instance, all documents in `/tickets` have a consistent set of fields (`createdByAgentId`, `serviceType`, `assignedToSpecialistId`) used for access control, preventing mixed access types within the same collection. The `TicketLog` subcollection also maintains a homogeneous security posture through its denormalized fields."
+  }
+}
