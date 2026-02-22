@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -52,13 +52,11 @@ export default function Home() {
     }
   };
 
-  const copyUid = () => {
-    if (firebaseUser) {
-      navigator.clipboard.writeText(firebaseUser.uid);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({ title: "تم النسخ", description: "تم نسخ المعرف UID بنجاح." });
-    }
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: "تم النسخ", description: "تم نسخ النص بنجاح." });
   };
 
   const setDemoLogin = (email: string, pass: string) => {
@@ -76,6 +74,19 @@ export default function Home() {
       </div>
     );
   }
+
+  // Determine suggested fields based on email
+  const getSuggestedFields = () => {
+    if (!firebaseUser?.email) return null;
+    const email = firebaseUser.email;
+    if (email.includes('admin')) return { name: 'بلخرم (المدير العام)', role: 'Admin', dept: 'Operations', isAdmin: true };
+    if (email.includes('cards')) return { name: 'الأخصائي الفني', role: 'Specialist', dept: 'Cards', isAdmin: false };
+    if (email.includes('callcenter')) return { name: 'موظف الاتصال', role: 'Agent', dept: 'Support', isAdmin: false };
+    if (email.includes('cs.')) return { name: 'موظف الميدان', role: 'Agent', dept: 'Digital', isAdmin: false };
+    return { name: 'موظف جديد', role: 'Agent', dept: 'Support', isAdmin: false };
+  };
+
+  const suggestions = getSuggestedFields();
 
   return (
     <div className="min-h-screen bg-[#F6F9FA] flex flex-col">
@@ -115,49 +126,77 @@ export default function Home() {
           </div>
 
           <div className="space-y-4">
-            {error === "MISSING_PROFILE" && firebaseUser && (
-              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2 shadow-lg">
-                <Info className="h-5 w-5" />
-                <AlertTitle className="text-right font-bold text-lg mb-2">الخطوة رقم 5 و 6 مطلوبة الآن</AlertTitle>
-                <AlertDescription className="text-right space-y-4">
-                  <p>تم التعرف عليك في نظام الهوية، ولكن نحتاج الآن لإنشاء "ملف موظف" في Firestore لتعرف صلاحياتك.</p>
-                  
-                  <div className="bg-white/90 p-4 rounded-md space-y-3 text-sm border-r-4 border-primary shadow-inner">
-                    <p className="font-bold text-primary italic">يرجى الذهاب لتبويب Data في Firestore وإنشاء مستند جديد:</p>
-                    
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between gap-2 border p-2 rounded bg-slate-50">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={copyUid}>
-                          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            {error === "MISSING_PROFILE" && firebaseUser && suggestions && (
+              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2 shadow-xl bg-white text-slate-900 overflow-hidden">
+                <div className="bg-red-600 p-4 -mx-4 -mt-4 mb-4 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-6 w-6" />
+                    <AlertTitle className="text-right font-bold text-lg m-0">دليل ربط قاعدة البيانات (الخطوة 5)</AlertTitle>
+                  </div>
+                </div>
+                <AlertDescription className="text-right space-y-6">
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-800">
+                    تم تسجيل دخولك بنجاح! الآن نحتاج لإنشاء ملفك في <strong>Firestore</strong> ليعرف النظام صلاحياتك.
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-slate-500 font-bold">1. في مجموعة (Collection) "users"، أنشئ مستنداً جديداً بـ ID التالي:</Label>
+                      <div className="flex items-center justify-between gap-2 border-2 border-primary/20 p-2 rounded bg-slate-50 shadow-inner">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={() => copyText(firebaseUser.uid)}>
+                          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-primary" />}
                         </Button>
-                        <code className="text-primary font-mono text-xs break-all">{firebaseUser.uid}</code>
-                        <span className="font-bold shrink-0">معرف المستند (ID):</span>
+                        <code className="text-primary font-mono text-sm font-bold break-all">{firebaseUser.uid}</code>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 text-xs">
-                      <div className="flex justify-between border-b pb-1"><span>users</span><span className="font-bold">المجموعة:</span></div>
-                      <div className="flex justify-between border-b pb-1"><span>{firebaseUser.email?.split('@')[0]}</span><span className="font-bold">حقل name:</span></div>
-                      <div className="flex justify-between border-b pb-1"><span>{firebaseUser.email}</span><span className="font-bold">حقل email:</span></div>
-                      <div className="flex justify-between border-b pb-1 text-blue-700">
-                        <code className="bg-blue-100 px-1">{firebaseUser.email?.includes('admin') ? 'Admin' : firebaseUser.email?.includes('ops') ? 'Specialist' : 'Agent'}</code>
-                        <span className="font-bold">حقل role:</span>
-                      </div>
-                      <div className="flex justify-between border-b pb-1 text-blue-700">
-                        <code className="bg-blue-100 px-1">{firebaseUser.email?.includes('cards') ? 'Cards' : firebaseUser.email?.includes('callcenter') ? 'Support' : 'Digital'}</code>
-                        <span className="font-bold">حقل department:</span>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500 font-bold">2. أضف الحقول (Fields) التالية داخل المستند:</Label>
+                      <div className="border rounded-lg overflow-hidden text-xs shadow-sm">
+                        <table className="w-full text-right bg-white border-collapse">
+                          <thead className="bg-slate-100 border-b">
+                            <tr>
+                              <th className="p-2 border-l">قيمة الحقل (Value)</th>
+                              <th className="p-2 border-l w-20 text-center">النوع (Type)</th>
+                              <th className="p-2">اسم الحقل (Field)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            <tr>
+                              <td className="p-2 border-l font-bold text-blue-700">{suggestions.name}</td>
+                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
+                              <td className="p-2 font-mono font-bold">name</td>
+                            </tr>
+                            <tr>
+                              <td className="p-2 border-l font-bold text-blue-700">{firebaseUser.email}</td>
+                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
+                              <td className="p-2 font-mono font-bold">email</td>
+                            </tr>
+                            <tr>
+                              <td className="p-2 border-l font-bold text-red-600 bg-red-50/30">{suggestions.role}</td>
+                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
+                              <td className="p-2 font-mono font-bold">role</td>
+                            </tr>
+                            <tr>
+                              <td className="p-2 border-l font-bold text-blue-700">{suggestions.dept}</td>
+                              <td className="p-2 border-l text-center text-slate-400 italic">string</td>
+                              <td className="p-2 font-mono font-bold">department</td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
 
-                    {firebaseUser.email?.includes('admin') && (
-                      <p className="text-[10px] text-red-600 font-bold border-t pt-2 mt-2">
-                        * لا تنسَ الخطوة 6: أضف نفس المعرف UID في مجموعة admins أيضاً (كـ Document ID).
-                      </p>
+                    {suggestions.isAdmin && (
+                      <div className="bg-red-50 p-3 rounded-md border border-red-200 text-xs">
+                        <p className="font-bold text-red-700 mb-1">الخطوة رقم 6 (للمدير فقط):</p>
+                        <p className="text-red-600">أنشئ مجموعة جديدة باسم <code className="bg-white px-1">admins</code> وضع فيها مستنداً يحمل نفس الـ ID الطويل أعلاه، واتركه فارغاً.</p>
+                      </div>
                     )}
                   </div>
                   
-                  <div className="flex gap-2 flex-row-reverse">
-                    <Button variant="outline" size="sm" className="w-full" onClick={logout}>خروج وإعادة المحاولة</Button>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" className="w-full" onClick={logout}>تسجيل الخروج والمحاولة لاحقاً</Button>
                   </div>
                 </AlertDescription>
               </Alert>
@@ -210,23 +249,35 @@ export default function Home() {
                   </form>
 
                   <div className="mt-8 pt-6 border-t">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">دخول سريع (أدخلته أنت):</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">دخول سريع ببياناتك المحددة:</p>
                     <div className="grid grid-cols-1 gap-2">
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
-                        <span>المدير العام (بلخرم)</span>
-                        <code className="opacity-60">ADMIN773362423</code>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
+                        <div className="text-right">
+                          <p className="font-bold">بلخرم (المدير العام)</p>
+                          <p className="opacity-50">ADMIN773362423</p>
+                        </div>
+                        <Shield className="h-4 w-4 opacity-30" />
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SECURE_2024')}>
-                        <span>قسم البطائق</span>
-                        <code className="opacity-60">CARDS_SECURE_2024</code>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SECURE_2024')}>
+                        <div className="text-right">
+                          <p className="font-bold">قسم البطائق</p>
+                          <p className="opacity-50">CARDS_SECURE_2024</p>
+                        </div>
+                        <Database className="h-4 w-4 opacity-30" />
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'CALL7788_CC')}>
-                        <span>الكول سنتر</span>
-                        <code className="opacity-60">CALL7788_CC</code>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'CALL7788_CC')}>
+                        <div className="text-right">
+                          <p className="font-bold">الكول سنتر</p>
+                          <p className="opacity-50">CALL7788_CC</p>
+                        </div>
+                        <Mail className="h-4 w-4 opacity-30" />
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
-                        <span>خدمة العملاء</span>
-                        <code className="opacity-60">CS_GUEST_99</code>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
+                        <div className="text-right">
+                          <p className="font-bold">خدمة العملاء</p>
+                          <p className="opacity-50">CS_GUEST_99</p>
+                        </div>
+                        <Info className="h-4 w-4 opacity-30" />
                       </Button>
                     </div>
                   </div>
