@@ -13,7 +13,7 @@ export function Navbar() {
 
   const roleMap: Record<string, string> = {
     'Agent': 'موظف رفع بلاغات',
-    'Specialist': 'أخصائي معالجة',
+    'Specialist': 'أخصائي معالجة فنية',
     'Admin': 'المدير العام (بلخرم)'
   };
 

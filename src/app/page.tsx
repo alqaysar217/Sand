@@ -116,28 +116,43 @@ export default function Home() {
 
           <div className="space-y-4">
             {error === "MISSING_PROFILE" && firebaseUser && (
-              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2">
-                <Info className="h-4 w-4" />
-                <AlertTitle className="text-right font-bold">خطوة أخيرة مطلوبة لإتمام الإعداد الحقيقي</AlertTitle>
-                <AlertDescription className="text-right space-y-3">
-                  <p>تم تسجيل دخولك، ولكن نحتاج لربط حسابك بملف تعريفي في قاعدة البيانات Firestore.</p>
-                  <div className="bg-white/50 p-3 rounded-md space-y-2 text-xs">
-                    <p className="font-bold">يرجى إنشاء مستند في Firestore بالتفاصيل التالية:</p>
-                    <div className="flex items-center justify-between gap-2 border p-2 rounded bg-white">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={copyUid}>
-                        {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                      <code className="text-primary break-all">{firebaseUser.uid}</code>
-                      <span className="font-bold shrink-0">معرف المستند (ID):</span>
+              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2 shadow-lg">
+                <Info className="h-5 w-5" />
+                <AlertTitle className="text-right font-bold text-lg mb-2">خطوة أخيرة مطلوبة لإتمام الإعداد الحقيقي</AlertTitle>
+                <AlertDescription className="text-right space-y-4">
+                  <p>تم تسجيل دخولك بنجاح، ولكن نحتاج الآن لربط هذا الحساب بملف تعريفي في قاعدة بيانات Firestore لتحديد صلاحياتك.</p>
+                  
+                  <div className="bg-white/90 p-4 rounded-md space-y-3 text-sm border-r-4 border-primary shadow-inner">
+                    <p className="font-bold text-primary">يرجى إنشاء مستند في Firestore بالتفاصيل التالية:</p>
+                    
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2 border p-2 rounded bg-slate-50">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={copyUid}>
+                          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                        <code className="text-primary font-mono text-xs break-all selection:bg-blue-200">{firebaseUser.uid}</code>
+                        <span className="font-bold shrink-0">معرف المستند (ID):</span>
+                      </div>
                     </div>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>المجموعة: <span className="font-bold">users</span></li>
-                      <li>حقل <span className="font-bold">name</span>: (اسم المستخدم)</li>
-                      <li>حقل <span className="font-bold">role</span>: <code className="bg-slate-200 px-1">Admin</code> أو <code className="bg-slate-200 px-1">Specialist</code> أو <code className="bg-slate-200 px-1">Agent</code></li>
-                      <li>حقل <span className="font-bold">department</span>: <code className="bg-slate-200 px-1">Operations</code> أو <code className="bg-slate-200 px-1">Cards</code> أو <code className="bg-slate-200 px-1">Support</code> أو <code className="bg-slate-200 px-1">Digital</code></li>
-                    </ul>
+
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <div className="flex justify-between border-b pb-1"><span>users</span><span className="font-bold">المجموعة:</span></div>
+                      <div className="flex justify-between border-b pb-1"><span>(اسمك الكامل)</span><span className="font-bold">حقل name:</span></div>
+                      <div className="flex justify-between border-b pb-1"><span>{firebaseUser.email}</span><span className="font-bold">حقل email:</span></div>
+                      <div className="flex justify-between border-b pb-1 text-blue-700">
+                        <code className="bg-blue-100 px-1">Admin / Specialist / Agent</code>
+                        <span className="font-bold">حقل role:</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1 text-blue-700">
+                        <code className="bg-blue-100 px-1">Operations / Cards / Support / Digital</code>
+                        <span className="font-bold">حقل department:</span>
+                      </div>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={logout}>تسجيل الخروج والعودة</Button>
+                  
+                  <div className="flex gap-2 flex-row-reverse">
+                    <Button variant="outline" size="sm" className="w-full" onClick={logout}>تسجيل الخروج والعودة</Button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
@@ -193,19 +208,19 @@ export default function Home() {
                     <div className="grid grid-cols-1 gap-2">
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
                         <span>المدير العام (بلخرم)</span>
-                        <code className="opacity-60">balkharam.admin@bank.com</code>
+                        <code className="opacity-60">ADMIN773362423</code>
                       </Button>
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SECURE_2024')}>
                         <span>قسم البطائق</span>
-                        <code className="opacity-60">cards.ops@bank.com</code>
+                        <code className="opacity-60">CARDS_SECURE_2024</code>
                       </Button>
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'CALL7788_CC')}>
                         <span>الكول سنتر</span>
-                        <code className="opacity-60">callcenter.agent@bank.com</code>
+                        <code className="opacity-60">CALL7788_CC</code>
                       </Button>
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
                         <span>خدمة العملاء</span>
-                        <code className="opacity-60">cs.frontline@bank.com</code>
+                        <code className="opacity-60">CS_GUEST_99</code>
                       </Button>
                     </div>
                   </div>
