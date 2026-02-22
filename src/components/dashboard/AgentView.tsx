@@ -22,7 +22,6 @@ export function AgentView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     customerName: '',
     cif: '',
@@ -31,10 +30,9 @@ export function AgentView() {
     issue: ''
   });
 
-  // استعلام البلاغات الخاصة بهذا الموظف فقط (مطابق للقواعد الأمنية)
+  // استعلام مفلتر بدقة ليتوافق مع القواعد الأمنية المبسطة
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
-    // التأكد من أن الاستعلام يفلتر بـ createdByAgentId ليتوافق مع القواعد
     return query(
       collection(db, 'tickets'),
       where('createdByAgentId', '==', user.id),
@@ -49,7 +47,6 @@ export function AgentView() {
     if (!user || !db) return;
 
     setIsSubmitting(true);
-    
     const ticketID = `TIC-${Math.floor(1000 + Math.random() * 9000)}`;
     
     const newTicket = {
@@ -67,10 +64,7 @@ export function AgentView() {
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
       .then(() => {
-        toast({
-          title: "تم الرفع بنجاح",
-          description: `تم إنشاء البلاغ رقم ${ticketID}.`,
-        });
+        toast({ title: "تم الرفع بنجاح", description: `تم إنشاء البلاغ رقم ${ticketID}.` });
         setShowNewForm(false);
         setFormData({ customerName: '', cif: '', phone: '', service: '', issue: '' });
       })
@@ -83,7 +77,7 @@ export function AgentView() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-    toast({ title: "تم النسخ", description: "تم نسخ البيانات للعمل السريع." });
+    toast({ title: "تم النسخ", description: "تم نسخ البيانات." });
   };
 
   return (
@@ -183,11 +177,7 @@ export function AgentView() {
       ) : (
         <Card className="shadow-md">
           <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-2 gap-4 flex-row-reverse">
-            <CardTitle className="text-lg">سجل البلاغات المرفوعة</CardTitle>
-            <div className="relative w-full md:w-64">
-              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="بحث برقم CIF..." className="pr-8 text-right" />
-            </div>
+            <CardTitle className="text-lg text-right w-full">سجل البلاغات المرفوعة</CardTitle>
           </CardHeader>
           <CardContent>
             {isTicketsLoading ? (
@@ -211,27 +201,22 @@ export function AgentView() {
                         <TableCell className="font-mono text-xs font-bold text-blue-600">{ticket.ticketID}</TableCell>
                         <TableCell className="text-xs whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col">
+                          <div className="flex flex-col text-right">
                             <span className="font-medium text-sm">{ticket.customerName}</span>
-                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                               {ticket.cif}
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-4 w-4" 
-                                onClick={() => copyToClipboard(ticket.cif, ticket.id)}
-                              >
+                              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => copyToClipboard(ticket.cif, ticket.id)}>
                                 {copiedId === ticket.id ? <Check className="h-2 w-2 text-green-600" /> : <Copy className="h-2 w-2" />}
                               </Button>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">
                           <Badge variant="outline" className="text-[10px] whitespace-nowrap">
                             {ticket.serviceType === 'Cards' ? 'قسم البطائق' : ticket.serviceType === 'Digital' ? 'خدمة العملاء' : 'الكول سنتر'}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">
                           <Badge className={
                             ticket.status === 'Pending' ? 'status-pending' : 
                             ticket.status === 'Resolved' ? 'status-resolved' : 
