@@ -30,8 +30,7 @@ export function AgentView() {
     issue: ''
   });
 
-  // الاستعلام المفلتر الخاص بالموظف لرؤية بلاغاته فقط
-  // تم تحسين الاستعلام ليكون بسيطاً ومتوافقاً مع القواعد الأمنية
+  // استعلام مبسط جداً لضمان عدم حدوث خطأ في الصلاحيات أو الفهارس (Indexes)
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
@@ -41,7 +40,7 @@ export function AgentView() {
     );
   }, [db, user?.id]);
 
-  const { data: tickets, isLoading: isTicketsLoading } = useCollection(agentTicketsQuery);
+  const { data: tickets, isLoading: isTicketsLoading, error } = useCollection(agentTicketsQuery);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +75,7 @@ export function AgentView() {
         toast({ 
           variant: "destructive",
           title: "خطأ في الإرسال", 
-          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. يرجى التحقق من الاتصال." 
+          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. يرجى التحقق من الصلاحيات." 
         });
       })
       .finally(() => {
@@ -267,6 +266,7 @@ export function AgentView() {
                           <div className="flex flex-col items-center gap-2 opacity-50">
                             <FileText className="h-10 w-10" />
                             <p>لا توجد بلاغات مرفوعة حالياً.</p>
+                            {error && <p className="text-xs text-red-500 mt-2">خطأ في جلب البيانات: {error.message}</p>}
                           </div>
                         </TableCell>
                       </TableRow>
