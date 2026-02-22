@@ -20,11 +20,7 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /** جلب بيانات المستخدم بأمان مع تجنب الأخطاء في حال عدم الوجود */
+    /** جلب بيانات المستخدم بأمان */
     function getUserData() {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(userPath) ? get(userPath).data : {};
@@ -35,8 +31,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -49,47 +45,34 @@ service cloud.firestore {
       /**
        * منطق الوصول للبلاغات:
        * 1. المدير العام يرى كل شيء.
-       * 2. الموظف (Agent) يرى البلاغات التي أنشأها فقط.
-       * 3. الأخصائي (Specialist) يرى البلاغات المسندة إليه أو التابعة لقسمه.
+       * 2. الموظف يرى البلاغات التي أنشأها.
+       * 3. الأخصائي يرى البلاغات المسندة إليه أو التابعة لقسمه.
        */
-      function canReadTicket(ticketData) {
-        let user = getUserData();
-        return isAdmin() 
-          || ticketData.createdByAgentId == request.auth.uid 
-          || ticketData.assignedToSpecialistId == request.auth.uid 
-          || user.department == ticketData.serviceType;
-      }
-
-      // استخدمنا 'read' لتشمل 'get' و 'list' معاً لضمان عمل الفلترة في الواجهة
       allow read: if isSignedIn() && (
         isAdmin() || 
-        (resource != null && canReadTicket(resource.data)) ||
-        (resource == null) // للسماح بالاستعلامات الأولية التي ستفلتر لاحقاً
+        resource.data.createdByAgentId == request.auth.uid || 
+        resource.data.assignedToSpecialistId == request.auth.uid ||
+        getUserData().department == resource.data.serviceType
       );
 
       allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        (resource != null && canReadTicket(resource.data))
+        resource.data.createdByAgentId == request.auth.uid || 
+        resource.data.assignedToSpecialistId == request.auth.uid ||
+        getUserData().department == resource.data.serviceType
       );
 
       allow delete: if isAdmin();
     }
 
     match /tickets/{ticketId}/logs/{logId} {
-      function canAccessLog(logData) {
-        let user = getUserData();
-        return isAdmin() 
-          || logData.ticketCreatedByAgentId == request.auth.uid 
-          || logData.ticketAssignedToSpecialistId == request.auth.uid 
-          || user.department == logData.ticketServiceType;
-      }
-
       allow read: if isSignedIn() && (
         isAdmin() || 
-        (resource != null && canAccessLog(resource.data)) ||
-        (resource == null)
+        resource.data.ticketCreatedByAgentId == request.auth.uid || 
+        resource.data.ticketAssignedToSpecialistId == request.auth.uid ||
+        getUserData().department == resource.data.ticketServiceType
       );
 
       allow create: if isSignedIn() && request.resource.data.changedByUserId == request.auth.uid;
