@@ -13,7 +13,7 @@ import {
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X
+  Upload, User, X, CheckCircle2
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
@@ -47,6 +47,14 @@ const ISSUE_TYPES = [
   'أخرى'
 ];
 
+// قائمة الموظفين المحددة
+const AGENT_NAMES = [
+  "وليد بن قبوس",
+  "ابراهيم العمودي",
+  "عبدالله باخميس",
+  "محمد بلخرم"
+];
+
 export function AgentView() {
   const { user } = useAuth();
   const db = useFirestore();
@@ -65,6 +73,7 @@ export function AgentView() {
     intakeMethod: '',
     subIssue: '',
     description: '',
+    createdByAgentName: '', // الموظف الذي سيتم اختياره من القائمة
     attachments: [] as { url: string; description: string }[]
   });
 
@@ -83,8 +92,13 @@ export function AgentView() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // التحقق من حجم الملف (الحد الأقصى 2 ميجابايت)
     if (file.size > 2 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "حجم الملف كبير", description: "الحد الأقصى للصور هو 2 ميجابايت." });
+      toast({ 
+        variant: "destructive", 
+        title: "حجم الملف كبير", 
+        description: "يرجى اختيار صورة بحجم أقل من 2 ميجابايت لضمان سرعة الرفع." 
+      });
       return;
     }
 
@@ -98,6 +112,10 @@ export function AgentView() {
       }));
       setUploadingImage(false);
       toast({ title: "تم رفع الصورة", description: "تمت إضافة المرفق بنجاح." });
+    };
+    reader.onerror = () => {
+      setUploadingImage(false);
+      toast({ variant: "destructive", title: "خطأ", description: "فشل في قراءة ملف الصورة." });
     };
     reader.readAsDataURL(file);
   };
@@ -113,6 +131,11 @@ export function AgentView() {
     e.preventDefault();
     if (!user || !db) return;
 
+    if (!formData.createdByAgentName) {
+      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسم الموظف الرافع للبلاغ." });
+      return;
+    }
+
     setIsSubmitting(true);
     const ticketID = `TIC-${Math.floor(1000 + Math.random() * 9000)}`;
     
@@ -127,8 +150,8 @@ export function AgentView() {
       intakeMethod: formData.intakeMethod,
       subIssue: formData.subIssue,
       description: formData.description,
-      createdByAgentId: user.id,
-      createdByAgentName: user.name, // سيتم تخزينه كاسم الموظف الرافع للبلاغ
+      createdByAgentId: user.id, // ID الموظف المسجل حالياً للفلترة
+      createdByAgentName: formData.createdByAgentName, // الاسم المختار من القائمة
       attachments: formData.attachments
     };
 
@@ -139,6 +162,7 @@ export function AgentView() {
         setFormData({ 
           customerName: '', cif: '', phone: '', serviceType: '', 
           intakeMethod: '', subIssue: '', description: '', 
+          createdByAgentName: '',
           attachments: []
         });
       })
@@ -156,7 +180,7 @@ export function AgentView() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
           <h1 className="text-2xl font-bold text-primary">واجهة موظف خدمة العملاء</h1>
-          <p className="text-muted-foreground">أهلاً بك، {user?.name} - سجل بلاغاتك المرفوعة</p>
+          <p className="text-muted-foreground">أهلاً بك - سجل بلاغاتك المرفوعة باسم {user?.name}</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
@@ -178,20 +202,29 @@ export function AgentView() {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleCreateTicket} className="space-y-6">
-              {/* قسم الموظف الرافع للبلاغ */}
-              <div className="bg-slate-50 p-4 rounded-lg flex items-center justify-between flex-row-reverse border border-dashed border-primary/20">
-                <div className="flex items-center gap-2 text-primary font-bold">
+              
+              {/* قسم اختيار اسم الموظف الرافع للبلاغ */}
+              <div className="bg-slate-50 p-6 rounded-lg border-2 border-dashed border-primary/20 space-y-4">
+                <div className="flex items-center gap-2 text-primary font-bold justify-end">
+                   <span>اختيار الموظف الرافع للبلاغ</span>
                    <User className="w-5 h-5" />
-                   <span>الموظف الرافع للبلاغ:</span>
                 </div>
-                <span className="text-lg font-bold text-secondary">{user?.name}</span>
+                <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required dir="rtl">
+                  <SelectTrigger className="text-right bg-white border-primary/30 h-12 text-lg">
+                    <SelectValue placeholder="اختر اسم الموظف من القائمة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGENT_NAMES.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground text-right italic">* سيتم تسجيل البلاغ رسمياً باسم الموظف المختار أعلاه.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 <div className="space-y-2 text-right">
                   <Label>الجهة المعنية (إرسال البلاغ إلى)</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required dir="rtl">
-                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر الجهة" /></SelectTrigger>
+                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر الجهة المعنية" /></SelectTrigger>
                     <SelectContent>
                       {SERVICE_ENTITIES.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
                     </SelectContent>
@@ -200,7 +233,7 @@ export function AgentView() {
                 <div className="space-y-2 text-right">
                   <Label>وسيلة استلام البلاغ</Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required dir="rtl">
-                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
+                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر وسيلة الاستلام" /></SelectTrigger>
                     <SelectContent>
                       {INTAKE_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                     </SelectContent>
@@ -231,11 +264,11 @@ export function AgentView() {
 
               <div className="space-y-2 text-right">
                 <Label>تفاصيل المشكلة</Label>
-                <Textarea placeholder="اشرح المشكلة بالتفصيل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[100px]" />
+                <Textarea placeholder="اشرح المشكلة بالتفصيل لمساعدة الأخصائي على الحل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
               </div>
 
               <div className="space-y-4 border-t pt-4">
-                <Label className="flex items-center gap-2 justify-end text-primary font-bold">إرفاق صور (لقطة شاشة، إلخ) <ImageIcon className="w-4 h-4" /></Label>
+                <Label className="flex items-center gap-2 justify-end text-primary font-bold">إرفاق صور توضيحية (لقطة شاشة، مستندات) <ImageIcon className="w-4 h-4" /></Label>
                 
                 <div className="flex justify-end">
                    <input 
@@ -248,23 +281,29 @@ export function AgentView() {
                    <Button 
                     type="button" 
                     variant="outline" 
-                    className="border-dashed border-2 h-20 w-full"
+                    className="border-dashed border-2 h-24 w-full bg-slate-50 hover:bg-slate-100 flex flex-col gap-2"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage}
                    >
-                     {uploadingImage ? <Loader2 className="animate-spin" /> : <><Upload className="ml-2" /> اضغط هنا لرفع صورة من جهازك</>}
+                     {uploadingImage ? <Loader2 className="animate-spin" /> : (
+                       <>
+                        <Upload className="w-6 h-6 text-primary/40" />
+                        <span>اضغط هنا لاختيار صورة من جهازك</span>
+                        <span className="text-[10px] text-muted-foreground">(الحد الأقصى 2 ميجابايت)</span>
+                       </>
+                     )}
                    </Button>
                 </div>
 
                 {formData.attachments.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                     {formData.attachments.map((att, index) => (
-                      <div key={index} className="relative group rounded-md overflow-hidden border">
+                      <div key={index} className="relative group rounded-md overflow-hidden border-2 border-primary/10">
                         <img src={att.url} alt="مرفق" className="w-full h-24 object-cover" />
                         <button 
                           type="button"
                           onClick={() => removeAttachment(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -274,10 +313,10 @@ export function AgentView() {
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t flex-row-reverse">
-                <Button type="button" variant="outline" onClick={() => setShowNewForm(false)}>إلغاء</Button>
-                <Button type="submit" className="bg-primary text-white px-10" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4 ml-2 rotate-180" /> إرسال البلاغ</>}
+              <div className="flex justify-end gap-3 pt-6 border-t flex-row-reverse">
+                <Button type="button" variant="outline" onClick={() => setShowNewForm(false)} className="px-8">إلغاء</Button>
+                <Button type="submit" className="bg-primary text-white px-12 h-12 text-lg font-bold" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <><Send className="w-4 h-4 ml-2 rotate-180" /> إرسال البلاغ الآن</>}
                 </Button>
               </div>
             </form>
@@ -296,7 +335,7 @@ export function AgentView() {
             {isTicketsLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2">
                 <Loader2 className="animate-spin text-primary h-8 w-8" />
-                <p className="text-sm text-muted-foreground">جاري تحميل السجل...</p>
+                <p className="text-sm text-muted-foreground">جاري تحميل سجل البلاغات...</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -308,6 +347,7 @@ export function AgentView() {
                       <TableHead className="text-right">الجهة المعنية</TableHead>
                       <TableHead className="text-right">اسم العميل</TableHead>
                       <TableHead className="text-right">CIF</TableHead>
+                      <TableHead className="text-right">الموظف الرافع</TableHead>
                       <TableHead className="text-right">الحالة</TableHead>
                       <TableHead className="text-center">إجراءات</TableHead>
                     </TableRow>
@@ -319,10 +359,11 @@ export function AgentView() {
                           <TableCell className="font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
                           <TableCell className="text-xs text-right whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
                           <TableCell className="text-right">
-                            <Badge variant="outline" className="font-normal">{getEntityLabel(ticket.serviceType)}</Badge>
+                            <Badge variant="outline" className="font-normal bg-blue-50/50">{getEntityLabel(ticket.serviceType)}</Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">{ticket.customerName}</TableCell>
                           <TableCell className="text-right font-mono text-xs">{ticket.cif}</TableCell>
+                          <TableCell className="text-right text-xs font-bold text-slate-600">{ticket.createdByAgentName}</TableCell>
                           <TableCell className="text-right">
                             <Badge className={
                               ticket.status === 'Pending' ? 'status-pending' : 
@@ -344,7 +385,7 @@ export function AgentView() {
                                   <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
                                     تفاصيل البلاغ {ticket.ticketID}
                                   </DialogTitle>
-                                  <DialogDescription className="text-right">الموظف الرافع للبلاغ: {ticket.createdByAgentName}</DialogDescription>
+                                  <DialogDescription className="text-right font-bold text-secondary">الموظف الرافع للبلاغ: {ticket.createdByAgentName}</DialogDescription>
                                 </DialogHeader>
                                 <div className="grid grid-cols-2 gap-6 py-4 border-t border-b">
                                   <div className="space-y-1">
@@ -380,15 +421,22 @@ export function AgentView() {
                                 </div>
                                 {ticket.attachments && ticket.attachments.length > 0 && (
                                   <div className="py-4 border-t">
-                                    <Label className="text-muted-foreground text-xs uppercase block mb-3">المرفقات (الصور)</Label>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <Label className="text-muted-foreground text-xs uppercase block mb-3">المرفقات التوضيحية</Label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       {ticket.attachments.map((att: any, idx: number) => (
-                                        <div key={idx} className="space-y-2 border rounded p-2 bg-slate-50">
-                                          <img src={att.url} alt="مرفق" className="w-full h-40 object-contain bg-black rounded" />
-                                          <p className="text-xs text-center font-medium">{att.description}</p>
-                                          <a href={att.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center justify-center gap-1 text-[10px]">
-                                            فتح في نافذة جديدة <ExternalLink className="w-3 h-3" />
-                                          </a>
+                                        <div key={idx} className="space-y-2 border-2 border-slate-100 rounded-lg p-2 bg-slate-50 group">
+                                          <div className="relative aspect-video rounded-md overflow-hidden bg-black flex items-center justify-center">
+                                            <img src={att.url} alt="مرفق" className="max-w-full max-h-full object-contain" />
+                                            <a 
+                                              href={att.url} 
+                                              target="_blank" 
+                                              rel="noreferrer" 
+                                              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2"
+                                            >
+                                              <ExternalLink className="w-5 h-5" /> تكبير الصورة
+                                            </a>
+                                          </div>
+                                          <p className="text-[10px] text-center font-bold text-slate-500">{att.description}</p>
                                         </div>
                                       ))}
                                     </div>
@@ -401,7 +449,7 @@ export function AgentView() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مرفوعة حالياً.</TableCell>
+                        <TableCell colSpan={8} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مرفوعة حالياً.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
