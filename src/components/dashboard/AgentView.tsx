@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-  Plus, Send, Copy, Search, Loader2, FileText, Check, 
-  ArrowRight, AlertCircle, RefreshCw, Image as ImageIcon, 
-  MessageSquare, Phone, MapPin, ExternalLink
+  Plus, Send, Search, Loader2, FileText, 
+  ArrowRight, ImageIcon, 
+  MessageSquare, Phone, MapPin, ExternalLink,
+  Upload, User, X
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
-  DialogDescription, DialogFooter, DialogTrigger 
+  DialogDescription, DialogTrigger 
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -50,9 +51,11 @@ export function AgentView() {
   const { user } = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -62,8 +65,7 @@ export function AgentView() {
     intakeMethod: '',
     subIssue: '',
     description: '',
-    attachmentUrl: '',
-    attachmentDesc: ''
+    attachments: [] as { url: string; description: string }[]
   });
 
   const agentTicketsQuery = useMemoFirebase(() => {
@@ -75,7 +77,37 @@ export function AgentView() {
     );
   }, [db, user?.id]);
 
-  const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
+  const { data: tickets, isLoading: isTicketsLoading } = useCollection(agentTicketsQuery);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "حجم الملف كبير", description: "الحد الأقصى للصور هو 2 ميجابايت." });
+      return;
+    }
+
+    setUploadingImage(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData(prev => ({
+        ...prev,
+        attachments: [...prev.attachments, { url: base64String, description: 'لقطة شاشة مرفقة' }]
+      }));
+      setUploadingImage(false);
+      toast({ title: "تم رفع الصورة", description: "تمت إضافة المرفق بنجاح." });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index)
+    }));
+  };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,10 +128,8 @@ export function AgentView() {
       subIssue: formData.subIssue,
       description: formData.description,
       createdByAgentId: user.id,
-      createdByAgentName: user.name,
-      attachments: formData.attachmentUrl ? [
-        { url: formData.attachmentUrl, description: formData.attachmentDesc }
-      ] : []
+      createdByAgentName: user.name, // سيتم تخزينه كاسم الموظف الرافع للبلاغ
+      attachments: formData.attachments
     };
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
@@ -109,7 +139,7 @@ export function AgentView() {
         setFormData({ 
           customerName: '', cif: '', phone: '', serviceType: '', 
           intakeMethod: '', subIssue: '', description: '', 
-          attachmentUrl: '', attachmentDesc: '' 
+          attachments: []
         });
       })
       .catch(() => {
@@ -148,6 +178,15 @@ export function AgentView() {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleCreateTicket} className="space-y-6">
+              {/* قسم الموظف الرافع للبلاغ */}
+              <div className="bg-slate-50 p-4 rounded-lg flex items-center justify-between flex-row-reverse border border-dashed border-primary/20">
+                <div className="flex items-center gap-2 text-primary font-bold">
+                   <User className="w-5 h-5" />
+                   <span>الموظف الرافع للبلاغ:</span>
+                </div>
+                <span className="text-lg font-bold text-secondary">{user?.name}</span>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-right">
                   <Label>الجهة المعنية (إرسال البلاغ إلى)</Label>
@@ -196,11 +235,43 @@ export function AgentView() {
               </div>
 
               <div className="space-y-4 border-t pt-4">
-                <Label className="flex items-center gap-2 justify-end text-primary font-bold">إضافة مرفق (اختياري) <ImageIcon className="w-4 h-4" /></Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input placeholder="رابط الصورة (URL)" value={formData.attachmentUrl} onChange={e => setFormData({...formData, attachmentUrl: e.target.value})} className="text-right" />
-                  <Input placeholder="وصف المرفق (مثلاً: لقطة شاشة للتطبيق)" value={formData.attachmentDesc} onChange={e => setFormData({...formData, attachmentDesc: e.target.value})} className="text-right" />
+                <Label className="flex items-center gap-2 justify-end text-primary font-bold">إرفاق صور (لقطة شاشة، إلخ) <ImageIcon className="w-4 h-4" /></Label>
+                
+                <div className="flex justify-end">
+                   <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                   />
+                   <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="border-dashed border-2 h-20 w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                   >
+                     {uploadingImage ? <Loader2 className="animate-spin" /> : <><Upload className="ml-2" /> اضغط هنا لرفع صورة من جهازك</>}
+                   </Button>
                 </div>
+
+                {formData.attachments.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    {formData.attachments.map((att, index) => (
+                      <div key={index} className="relative group rounded-md overflow-hidden border">
+                        <img src={att.url} alt="مرفق" className="w-full h-24 object-cover" />
+                        <button 
+                          type="button"
+                          onClick={() => removeAttachment(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t flex-row-reverse">
@@ -236,6 +307,7 @@ export function AgentView() {
                       <TableHead className="text-right">التاريخ</TableHead>
                       <TableHead className="text-right">الجهة المعنية</TableHead>
                       <TableHead className="text-right">اسم العميل</TableHead>
+                      <TableHead className="text-right">CIF</TableHead>
                       <TableHead className="text-right">الحالة</TableHead>
                       <TableHead className="text-center">إجراءات</TableHead>
                     </TableRow>
@@ -250,6 +322,7 @@ export function AgentView() {
                             <Badge variant="outline" className="font-normal">{getEntityLabel(ticket.serviceType)}</Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">{ticket.customerName}</TableCell>
+                          <TableCell className="text-right font-mono text-xs">{ticket.cif}</TableCell>
                           <TableCell className="text-right">
                             <Badge className={
                               ticket.status === 'Pending' ? 'status-pending' : 
@@ -271,7 +344,7 @@ export function AgentView() {
                                   <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
                                     تفاصيل البلاغ {ticket.ticketID}
                                   </DialogTitle>
-                                  <DialogDescription className="text-right">تم الرفع بواسطة: {ticket.createdByAgentName}</DialogDescription>
+                                  <DialogDescription className="text-right">الموظف الرافع للبلاغ: {ticket.createdByAgentName}</DialogDescription>
                                 </DialogHeader>
                                 <div className="grid grid-cols-2 gap-6 py-4 border-t border-b">
                                   <div className="space-y-1">
@@ -301,20 +374,21 @@ export function AgentView() {
                                 </div>
                                 <div className="py-4">
                                   <Label className="text-muted-foreground text-xs uppercase block mb-2">تفاصيل المشكلة</Label>
-                                  <div className="bg-slate-50 p-4 rounded-lg text-sm leading-relaxed">
+                                  <div className="bg-slate-50 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">
                                     {ticket.description}
                                   </div>
                                 </div>
                                 {ticket.attachments && ticket.attachments.length > 0 && (
                                   <div className="py-4 border-t">
-                                    <Label className="text-muted-foreground text-xs uppercase block mb-3">المرفقات</Label>
-                                    <div className="space-y-2">
+                                    <Label className="text-muted-foreground text-xs uppercase block mb-3">المرفقات (الصور)</Label>
+                                    <div className="grid grid-cols-2 gap-4">
                                       {ticket.attachments.map((att: any, idx: number) => (
-                                        <div key={idx} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-100">
-                                          <a href={att.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
-                                            عرض المرفق <ExternalLink className="w-3 h-3" />
+                                        <div key={idx} className="space-y-2 border rounded p-2 bg-slate-50">
+                                          <img src={att.url} alt="مرفق" className="w-full h-40 object-contain bg-black rounded" />
+                                          <p className="text-xs text-center font-medium">{att.description}</p>
+                                          <a href={att.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center justify-center gap-1 text-[10px]">
+                                            فتح في نافذة جديدة <ExternalLink className="w-3 h-3" />
                                           </a>
-                                          <span className="text-xs font-medium">{att.description}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -327,7 +401,7 @@ export function AgentView() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مرفوعة حالياً.</TableCell>
+                        <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مرفوعة حالياً.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
