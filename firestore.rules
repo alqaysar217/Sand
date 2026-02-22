@@ -2,73 +2,75 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- دالات المساعدة (Helper Functions) ---
-
+    // دالة التحقق من تسجيل الدخول
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // التحقق من صلاحيات المدير عبر مجموعة admins
+    // دالة التحقق من صلاحية المدير (Admin) عبر مجموعة admins
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // جلب بيانات المستخدم بشكل آمن مع التعامل مع الحالات غير الموجودة
-    function getUserData() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) ? get(userPath).data : {"department": "none", "role": "none"};
+    // دالة جلب بيانات المستخدم الحالية (لأغراض التحقق من القسم في البلاغات الفردية)
+    function getUserDept() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.department;
     }
 
-    // --- القواعد (Rules) ---
-
+    // قواعد مجموعة المستخدمين
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
+    // قواعد مجموعة المديرين
     match /admins/{adminId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
+    // القواعد النهائية لمجموعة البلاغات (Tickets)
     match /tickets/{ticketId} {
-      // تقسيم الصلاحيات إلى get و list يسهل على فيربيس تحليل الاستعلامات المفلترة
       
-      // صلاحية قراءة بلاغ واحد بالتفصيل
+      // السماح بعرض قائمة البلاغات (List/Query)
+      // يجب أن يحتوي الاستعلام على فلتر يطابق أحد هذه الشروط
+      allow list: if isSignedIn() && (
+        isAdmin() || 
+        resource.data.createdByAgentId == request.auth.uid || 
+        resource.data.assignedToSpecialistId == request.auth.uid ||
+        (resource.data.serviceType != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.serviceType == getUserDept())
+      );
+
+      // السماح بقراءة بلاغ واحد (Get)
       allow get: if isSignedIn() && (
         isAdmin() || 
         resource.data.createdByAgentId == request.auth.uid || 
         resource.data.assignedToSpecialistId == request.auth.uid ||
-        getUserData().department == resource.data.serviceType
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.serviceType == getUserDept())
       );
 
-      // صلاحية عرض قائمة البلاغات (Query)
-      // تنجح هذه القاعدة فقط إذا كان الاستعلام يحتوي على فلتر مطابق لأحد الشروط أدناه
-      allow list: if isSignedIn() && (
-        isAdmin() || 
-        (resource.data.createdByAgentId != null && resource.data.createdByAgentId == request.auth.uid) || 
-        (resource.data.assignedToSpecialistId != null && resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (getUserData().department != "none" && getUserData().department == resource.data.serviceType)
-      );
-
+      // السماح بإنشاء بلاغ جديد
       allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
       
+      // السماح بتحديث البلاغ
       allow update: if isSignedIn() && (
         isAdmin() || 
         resource.data.createdByAgentId == request.auth.uid || 
         resource.data.assignedToSpecialistId == request.auth.uid ||
-        getUserData().department == resource.data.serviceType
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.serviceType == getUserDept())
       );
 
+      // الحذف للمدير فقط
       allow delete: if isAdmin();
 
+      // قواعد السجلات الفرعية (Logs)
       match /logs/{logId} {
         allow read: if isSignedIn() && (
           isAdmin() || 
           resource.data.ticketCreatedByAgentId == request.auth.uid || 
           resource.data.ticketAssignedToSpecialistId == request.auth.uid ||
-          getUserData().department == resource.data.ticketServiceType
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.ticketServiceType == getUserDept())
         );
         allow create: if isSignedIn();
         allow update, delete: if isAdmin();

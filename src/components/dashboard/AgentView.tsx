@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState } from 'react';
@@ -32,15 +31,16 @@ export function AgentView() {
     issue: ''
   });
 
-  // Query tickets created by this agent
+  // استعلام البلاغات الخاصة بهذا الموظف فقط (مطابق للقواعد الأمنية)
   const agentTicketsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
+    if (!db || !user?.id) return null;
+    // التأكد من أن الاستعلام يفلتر بـ createdByAgentId ليتوافق مع القواعد
     return query(
       collection(db, 'tickets'),
       where('createdByAgentId', '==', user.id),
       orderBy('createdAt', 'desc')
     );
-  }, [db, user]);
+  }, [db, user?.id]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection(agentTicketsQuery);
 
@@ -65,23 +65,18 @@ export function AgentView() {
       attachments: []
     };
 
-    try {
-      addDocumentNonBlocking(collection(db, 'tickets'), newTicket);
-      toast({
-        title: "تم الرفع بنجاح",
-        description: `تم إنشاء البلاغ رقم ${ticketID}.`,
+    addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
+      .then(() => {
+        toast({
+          title: "تم الرفع بنجاح",
+          description: `تم إنشاء البلاغ رقم ${ticketID}.`,
+        });
+        setShowNewForm(false);
+        setFormData({ customerName: '', cif: '', phone: '', service: '', issue: '' });
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
-      setShowNewForm(false);
-      setFormData({ customerName: '', cif: '', phone: '', service: '', issue: '' });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "خطأ في الرفع",
-        description: "يرجى المحاولة مرة أخرى.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const copyToClipboard = (text: string, id: string) => {

@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState } from 'react';
@@ -31,14 +30,15 @@ export function SpecialistView() {
   const [response, setResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Query tickets for the specialist's department
+  // استعلام البلاغات الخاصة بقسم الأخصائي (مطابق للقواعد الأمنية)
   const deptTicketsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
+    if (!db || !user?.department) return null;
+    // التأكد من أن الاستعلام يفلتر بـ serviceType ليتوافق مع القواعد
     return query(
       collection(db, 'tickets'),
       where('serviceType', '==', user.department)
     );
-  }, [db, user]);
+  }, [db, user?.department]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection(deptTicketsQuery);
 
@@ -57,7 +57,10 @@ export function SpecialistView() {
       changedAt: new Date().toISOString(),
       oldStatus: 'New',
       newStatus: 'Pending',
-      response: 'تم استلام التذكرة من قبل الأخصائي.'
+      response: 'تم استلام التذكرة من قبل الأخصائي.',
+      ticketServiceType: user.department,
+      ticketCreatedByAgentId: '', // Ideally fetched from ticket
+      ticketAssignedToSpecialistId: user.id
     });
 
     toast({
@@ -80,7 +83,10 @@ export function SpecialistView() {
       changedAt: new Date().toISOString(),
       oldStatus: selectedTicket.status,
       newStatus: 'Resolved',
-      response: response || 'تم حل المشكلة.'
+      response: response || 'تم حل المشكلة.',
+      ticketServiceType: selectedTicket.serviceType,
+      ticketCreatedByAgentId: selectedTicket.createdByAgentId,
+      ticketAssignedToSpecialistId: user.id
     });
 
     toast({
