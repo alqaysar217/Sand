@@ -34,18 +34,10 @@ export default function DashboardPage() {
       // واجهة الموظف مفعلة بالكامل وجاهزة للفحص
       return <AgentView />;
     case 'Specialist':
-      // واجهة الأخصائي معطلة مؤقتاً لغرض فحص واجهة الموظف أولاً
-      return (
-        <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 min-h-[400px]">
-          <ShieldAlert className="w-16 h-16 text-blue-500 mb-4" />
-          <h2 className="text-2xl font-bold text-primary">واجهة الأخصائي (متوقفة مؤقتاً)</h2>
-          <p className="text-muted-foreground mt-2 max-w-md">
-            تم إيقاف هذا القسم مؤقتاً لتمكينك من فحص واجهة "خدمة العملاء" أولاً.
-          </p>
-          <Button variant="outline" onClick={logout} className="mt-8">تسجيل الخروج</Button>
-        </div>
-      );
+      // واجهة الأخصائي مفعلة الآن للفحص
+      return <SpecialistView />;
     case 'Admin':
+      // واجهة المدير العام
       return <AdminView />;
     default:
       return (

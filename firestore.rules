@@ -7,7 +7,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // السماح بالاستعلامات الجماعية لجميع الموظفين والأدمن
+    // القواعد المفصلة (ستفعل لاحقاً بعد استقرار الواجهات)
     match /tickets/{ticketId} {
       allow list: if request.auth != null;
       allow get: if request.auth != null;
