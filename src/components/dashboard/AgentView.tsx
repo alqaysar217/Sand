@@ -31,6 +31,7 @@ export function AgentView() {
   });
 
   // الاستعلام المفلتر الخاص بالموظف لرؤية بلاغاته فقط
+  // تم تحسين الاستعلام ليكون بسيطاً ومتوافقاً مع القواعد الأمنية
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
@@ -75,7 +76,7 @@ export function AgentView() {
         toast({ 
           variant: "destructive",
           title: "خطأ في الإرسال", 
-          description: "حدث خطأ أثناء محاولة إنشاء البلاغ." 
+          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. يرجى التحقق من الاتصال." 
         });
       })
       .finally(() => {
@@ -223,43 +224,44 @@ export function AgentView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tickets?.map((ticket: any) => (
-                      <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                        <TableCell className="font-mono text-xs font-bold text-blue-600">{ticket.ticketID}</TableCell>
-                        <TableCell className="text-xs whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col text-right">
-                            <span className="font-medium text-sm">{ticket.customerName}</span>
-                            <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground font-mono">
-                              {ticket.cif}
-                              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => copyToClipboard(ticket.cif, ticket.id)}>
-                                {copiedId === ticket.id ? <Check className="h-2 w-2 text-green-600" /> : <Copy className="h-2 w-2" />}
-                              </Button>
+                    {tickets && tickets.length > 0 ? (
+                      tickets.map((ticket: any) => (
+                        <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
+                          <TableCell className="font-mono text-xs font-bold text-blue-600">{ticket.ticketID}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-right">
+                              <span className="font-medium text-sm">{ticket.customerName}</span>
+                              <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground font-mono">
+                                {ticket.cif}
+                                <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => copyToClipboard(ticket.cif, ticket.id)}>
+                                  {copiedId === ticket.id ? <Check className="h-2 w-2 text-green-600" /> : <Copy className="h-2 w-2" />}
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="outline" className="text-[10px] whitespace-nowrap font-normal">
-                            {ticket.serviceType === 'Cards' ? 'قسم البطائق' : ticket.serviceType === 'Digital' ? 'خدمة العملاء' : 'الكول سنتر'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge className={
-                            ticket.status === 'Pending' ? 'status-pending' : 
-                            ticket.status === 'Resolved' ? 'status-resolved' : 
-                            ticket.status === 'New' ? 'status-new' : ''
-                          }>
-                            {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد المعالجة' : 'تم الحل'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button variant="ghost" size="sm" className="h-8 hover:text-primary">
-                            <FileText className="w-3 h-3 ml-1" /> تفاصيل
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!tickets || tickets.length === 0) && (
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline" className="text-[10px] whitespace-nowrap font-normal">
+                              {ticket.serviceType === 'Cards' ? 'قسم البطائق' : ticket.serviceType === 'Digital' ? 'خدمات الأونلاين' : 'الدعم الفني'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge className={
+                              ticket.status === 'Pending' ? 'status-pending' : 
+                              ticket.status === 'Resolved' ? 'status-resolved' : 
+                              ticket.status === 'New' ? 'status-new' : ''
+                            }>
+                              {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد المعالجة' : 'تم الحل'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button variant="ghost" size="sm" className="h-8 hover:text-primary">
+                              <FileText className="w-3 h-3 ml-1" /> تفاصيل
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-20">
                           <div className="flex flex-col items-center gap-2 opacity-50">
