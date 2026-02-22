@@ -9,11 +9,42 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Send, Copy, Search, Loader2, FileText, Check, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { 
+  Plus, Send, Copy, Search, Loader2, FileText, Check, 
+  ArrowRight, AlertCircle, RefreshCw, Image as ImageIcon, 
+  MessageSquare, Phone, MapPin, ExternalLink
+} from 'lucide-react';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, 
+  DialogDescription, DialogFooter, DialogTrigger 
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import { Textarea } from '@/components/ui/textarea';
+
+const SERVICE_ENTITIES = [
+  { id: 'CallCenter', label: 'الكول سنتر' },
+  { id: 'Cards', label: 'قسم البطاقات' },
+  { id: 'Digital', label: 'خدمات أونلاين الإلكترونية' },
+  { id: 'AppAdmin', label: 'إدارة تطبيق البنك' },
+];
+
+const INTAKE_METHODS = [
+  { id: 'WhatsApp', label: 'واتساب', icon: MessageSquare },
+  { id: 'Call', label: 'اتصال هاتف', icon: Phone },
+  { id: 'Branch', label: 'من أحد الفروع', icon: MapPin },
+];
+
+const ISSUE_TYPES = [
+  'تأخر رمز PIN',
+  'تأخر فتح الحساب',
+  'الرسائل لا تعمل',
+  'استعلام عن حوالة',
+  'تغيير رمز PIN',
+  'أخرى'
+];
 
 export function AgentView() {
   const { user } = useAuth();
@@ -21,17 +52,20 @@ export function AgentView() {
   const { toast } = useToast();
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     customerName: '',
     cif: '',
     phone: '',
-    service: '',
-    issue: ''
+    serviceType: '',
+    intakeMethod: '',
+    subIssue: '',
+    description: '',
+    attachmentUrl: '',
+    attachmentDesc: ''
   });
 
-  // الاستعلام الذي يتطلب الفهرس الأول: createdByAgentId (Asc) + createdAt (Desc)
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
@@ -57,46 +91,42 @@ export function AgentView() {
       customerName: formData.customerName,
       cif: formData.cif,
       phoneNumber: formData.phone,
-      serviceType: formData.service,
-      subIssue: formData.issue,
+      serviceType: formData.serviceType,
+      intakeMethod: formData.intakeMethod,
+      subIssue: formData.subIssue,
+      description: formData.description,
       createdByAgentId: user.id,
-      attachments: []
+      createdByAgentName: user.name,
+      attachments: formData.attachmentUrl ? [
+        { url: formData.attachmentUrl, description: formData.attachmentDesc }
+      ] : []
     };
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
       .then(() => {
-        toast({ 
-          title: "تم الرفع بنجاح", 
-          description: `تم إنشاء البلاغ رقم ${ticketID} بنجاح.` 
-        });
+        toast({ title: "تم الرفع بنجاح", description: `تم إنشاء البلاغ رقم ${ticketID}.` });
         setShowNewForm(false);
-        setFormData({ customerName: '', cif: '', phone: '', service: '', issue: '' });
-      })
-      .catch((err) => {
-        toast({ 
-          variant: "destructive",
-          title: "خطأ في الإرسال", 
-          description: "حدث خطأ أثناء محاولة إنشاء البلاغ." 
+        setFormData({ 
+          customerName: '', cif: '', phone: '', serviceType: '', 
+          intakeMethod: '', subIssue: '', description: '', 
+          attachmentUrl: '', attachmentDesc: '' 
         });
       })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+      .catch(() => {
+        toast({ variant: "destructive", title: "خطأ", description: "فشل إنشاء البلاغ." });
+      })
+      .finally(() => setIsSubmitting(false));
   };
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast({ title: "تم النسخ", description: "تم نسخ البيانات إلى الحافظة." });
-  };
+  const getEntityLabel = (id: string) => SERVICE_ENTITIES.find(e => e.id === id)?.label || id;
+  const getIntakeLabel = (id: string) => INTAKE_METHODS.find(m => m.id === id)?.label || id;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-primary text-right">واجهة موظف خدمة العملاء</h1>
-          <p className="text-muted-foreground text-right">قسم {user?.department} - إدارة ورفع البلاغات</p>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold text-primary">واجهة موظف خدمة العملاء</h1>
+          <p className="text-muted-foreground">أهلاً بك، {user?.name} - سجل بلاغاتك المرفوعة</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
@@ -110,7 +140,7 @@ export function AgentView() {
           <CardHeader className="bg-blue-50/50 text-right border-b flex flex-row items-center justify-between">
             <div className="text-right flex-1">
               <CardTitle className="text-primary">بيانات البلاغ الجديد</CardTitle>
-              <CardDescription>يرجى إدخال تفاصيل العميل والشكوى بدقة</CardDescription>
+              <CardDescription>يرجى تعبئة كافة الحقول المطلوبة بدقة</CardDescription>
             </div>
             <Button variant="ghost" onClick={() => setShowNewForm(false)} className="mr-4">
               <ArrowRight className="w-4 h-4 ml-2" /> العودة للسجل
@@ -120,76 +150,63 @@ export function AgentView() {
             <form onSubmit={handleCreateTicket} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-right">
-                  <Label htmlFor="customerName">اسم العميل بالكامل</Label>
-                  <Input 
-                    id="customerName" 
-                    placeholder="أدخل الاسم الثلاثي أو الرباعي" 
-                    required 
-                    className="text-right"
-                    value={formData.customerName}
-                    onChange={(e) => setFormData({...formData, customerName: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label htmlFor="cif">رقم الهوية / CIF</Label>
-                  <Input 
-                    id="cif" 
-                    placeholder="رقم العميل الموحد" 
-                    required 
-                    className="text-right font-mono"
-                    value={formData.cif}
-                    onChange={(e) => setFormData({...formData, cif: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label htmlFor="phone">رقم الاتصال</Label>
-                  <Input 
-                    id="phone" 
-                    placeholder="+966..." 
-                    required 
-                    dir="ltr" 
-                    className="text-right"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label htmlFor="service">نوع الخدمة / القسم المعني</Label>
-                  <Select 
-                    required 
-                    dir="rtl"
-                    onValueChange={(val) => setFormData({...formData, service: val})}
-                  >
-                    <SelectTrigger className="text-right">
-                      <SelectValue placeholder="اختر القسم" />
-                    </SelectTrigger>
+                  <Label>الجهة المعنية (إرسال البلاغ إلى)</Label>
+                  <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required dir="rtl">
+                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر الجهة" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Cards">قسم البطائق</SelectItem>
-                      <SelectItem value="Digital">خدمات الأونلاين</SelectItem>
-                      <SelectItem value="Support">الدعم الفني العام</SelectItem>
+                      {SERVICE_ENTITIES.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label>وسيلة استلام البلاغ</Label>
+                  <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required dir="rtl">
+                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
+                    <SelectContent>
+                      {INTAKE_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label>اسم العميل بالكامل</Label>
+                  <Input placeholder="الاسم كما في الهوية" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="text-right" />
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label>رقم الحساب / CIF</Label>
+                  <Input placeholder="0000000" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono" />
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label>رقم هاتف العميل</Label>
+                  <Input placeholder="+966..." required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="text-right" />
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label>نوع الخدمة / المشكلة</Label>
+                  <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required dir="rtl">
+                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
+                    <SelectContent>
+                      {ISSUE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
               <div className="space-y-2 text-right">
-                <Label htmlFor="issue">تفاصيل الشكوى</Label>
-                <textarea 
-                  id="issue" 
-                  placeholder="اشرح المشكلة التي يواجهها العميل بالتفصيل..." 
-                  required 
-                  className="w-full min-h-[120px] p-3 rounded-md border text-right focus:ring-2 focus:ring-primary outline-none transition-all"
-                  value={formData.issue}
-                  onChange={(e) => setFormData({...formData, issue: e.target.value})}
-                />
+                <Label>تفاصيل المشكلة</Label>
+                <Textarea placeholder="اشرح المشكلة بالتفصيل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[100px]" />
               </div>
+
+              <div className="space-y-4 border-t pt-4">
+                <Label className="flex items-center gap-2 justify-end text-primary font-bold">إضافة مرفق (اختياري) <ImageIcon className="w-4 h-4" /></Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input placeholder="رابط الصورة (URL)" value={formData.attachmentUrl} onChange={e => setFormData({...formData, attachmentUrl: e.target.value})} className="text-right" />
+                  <Input placeholder="وصف المرفق (مثلاً: لقطة شاشة للتطبيق)" value={formData.attachmentDesc} onChange={e => setFormData({...formData, attachmentDesc: e.target.value})} className="text-right" />
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-4 border-t flex-row-reverse">
                 <Button type="button" variant="outline" onClick={() => setShowNewForm(false)}>إلغاء</Button>
                 <Button type="submit" className="bg-primary text-white px-10" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <><Loader2 className="w-4 h-4 animate-spin ml-2" /> جاري الإرسال...</>
-                  ) : (
-                    <><Send className="w-4 h-4 ml-2 rotate-180" /> إرسال البلاغ</>
-                  )}
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4 ml-2 rotate-180" /> إرسال البلاغ</>}
                 </Button>
               </div>
             </form>
@@ -198,7 +215,7 @@ export function AgentView() {
       ) : (
         <Card className="shadow-md">
           <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4 flex-row-reverse border-b">
-            <CardTitle className="text-lg text-right w-full">سجل بلاغاتك الأخيرة</CardTitle>
+            <CardTitle className="text-lg text-right w-full">سجل البلاغات الأخير</CardTitle>
             <div className="relative w-full md:w-64">
               <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="بحث برقم البلاغ..." className="pr-10 text-right h-9" />
@@ -208,21 +225,7 @@ export function AgentView() {
             {isTicketsLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2">
                 <Loader2 className="animate-spin text-primary h-8 w-8" />
-                <p className="text-sm text-muted-foreground text-center">جاري تحميل السجل وتحديث الفهارس...</p>
-              </div>
-            ) : queryError ? (
-               <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-blue-50 rounded-xl border border-blue-200">
-                <AlertCircle className="w-12 h-12 text-blue-600" />
-                <div className="space-y-2 px-6">
-                  <h3 className="font-bold text-blue-900">جاري بناء الفهرس (Index)</h3>
-                  <p className="text-sm text-blue-800 max-w-md mx-auto leading-relaxed">
-                    عملية بناء الفهرس في Firebase Console لا تزال جارية (Building). <br/>
-                    يرجى الانتظار دقيقتين ثم تحديث الصفحة.
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
-                    <RefreshCw className="w-3 h-3 ml-2" /> تحديث الصفحة الآن
-                  </Button>
-                </div>
+                <p className="text-sm text-muted-foreground">جاري تحميل السجل...</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -231,34 +234,22 @@ export function AgentView() {
                     <TableRow className="bg-slate-50/50">
                       <TableHead className="text-right">رقم البلاغ</TableHead>
                       <TableHead className="text-right">التاريخ</TableHead>
+                      <TableHead className="text-right">الجهة المعنية</TableHead>
                       <TableHead className="text-right">اسم العميل</TableHead>
-                      <TableHead className="text-right">القسم</TableHead>
                       <TableHead className="text-right">الحالة</TableHead>
-                      <TableHead className="text-center">الإجراءات</TableHead>
+                      <TableHead className="text-center">إجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {tickets && tickets.length > 0 ? (
                       tickets.map((ticket: any) => (
                         <TableRow key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                          <TableCell className="font-mono text-xs font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
-                          <TableCell className="text-xs whitespace-nowrap text-right">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col text-right">
-                              <span className="font-medium text-sm">{ticket.customerName}</span>
-                              <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground font-mono">
-                                {ticket.cif}
-                                <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => copyToClipboard(ticket.cif, ticket.id)}>
-                                  {copiedId === ticket.id ? <Check className="h-2 w-2 text-green-600" /> : <Copy className="h-2 w-2" />}
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
+                          <TableCell className="font-bold text-blue-600 text-right">{ticket.ticketID}</TableCell>
+                          <TableCell className="text-xs text-right whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
                           <TableCell className="text-right">
-                            <Badge variant="outline" className="text-[10px] whitespace-nowrap font-normal">
-                              {ticket.serviceType === 'Cards' ? 'قسم البطائق' : ticket.serviceType === 'Digital' ? 'خدمات الأونلاين' : 'الدعم الفني'}
-                            </Badge>
+                            <Badge variant="outline" className="font-normal">{getEntityLabel(ticket.serviceType)}</Badge>
                           </TableCell>
+                          <TableCell className="text-right font-medium">{ticket.customerName}</TableCell>
                           <TableCell className="text-right">
                             <Badge className={
                               ticket.status === 'Pending' ? 'status-pending' : 
@@ -269,20 +260,74 @@ export function AgentView() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button variant="ghost" size="sm" className="h-8 hover:text-primary">
-                              <FileText className="w-3 h-3 ml-1" /> تفاصيل
-                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 hover:text-primary">
+                                  <FileText className="w-3 h-3 ml-1" /> التفاصيل
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl text-right" dir="rtl">
+                                <DialogHeader>
+                                  <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
+                                    تفاصيل البلاغ {ticket.ticketID}
+                                  </DialogTitle>
+                                  <DialogDescription className="text-right">تم الرفع بواسطة: {ticket.createdByAgentName}</DialogDescription>
+                                </DialogHeader>
+                                <div className="grid grid-cols-2 gap-6 py-4 border-t border-b">
+                                  <div className="space-y-1">
+                                    <Label className="text-muted-foreground text-xs uppercase">اسم العميل</Label>
+                                    <p className="font-bold">{ticket.customerName}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-muted-foreground text-xs uppercase">رقم الحساب (CIF)</Label>
+                                    <p className="font-mono font-bold">{ticket.cif}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-muted-foreground text-xs uppercase">رقم الهاتف</Label>
+                                    <p className="font-mono" dir="ltr">{ticket.phoneNumber}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-muted-foreground text-xs uppercase">وسيلة الاستلام</Label>
+                                    <p className="font-bold">{getIntakeLabel(ticket.intakeMethod)}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-muted-foreground text-xs uppercase">الجهة المعنية</Label>
+                                    <p className="font-bold text-blue-700">{getEntityLabel(ticket.serviceType)}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-muted-foreground text-xs uppercase">نوع المشكلة</Label>
+                                    <p className="font-bold">{ticket.subIssue}</p>
+                                  </div>
+                                </div>
+                                <div className="py-4">
+                                  <Label className="text-muted-foreground text-xs uppercase block mb-2">تفاصيل المشكلة</Label>
+                                  <div className="bg-slate-50 p-4 rounded-lg text-sm leading-relaxed">
+                                    {ticket.description}
+                                  </div>
+                                </div>
+                                {ticket.attachments && ticket.attachments.length > 0 && (
+                                  <div className="py-4 border-t">
+                                    <Label className="text-muted-foreground text-xs uppercase block mb-3">المرفقات</Label>
+                                    <div className="space-y-2">
+                                      {ticket.attachments.map((att: any, idx: number) => (
+                                        <div key={idx} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-100">
+                                          <a href={att.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
+                                            عرض المرفق <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                          <span className="text-xs font-medium">{att.description}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </DialogContent>
+                            </Dialog>
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-20">
-                          <div className="flex flex-col items-center gap-2 opacity-50">
-                            <FileText className="h-10 w-10" />
-                            <p>لا توجد بلاغات مرفوعة حالياً.</p>
-                          </div>
-                        </TableCell>
+                        <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">لا توجد بلاغات مرفوعة حالياً.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

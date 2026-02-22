@@ -2,7 +2,8 @@
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
 export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
-export type ServiceType = 'Cards' | 'Digital' | 'Support' | string;
+export type ServiceType = 'Cards' | 'Digital' | 'AppAdmin' | 'CallCenter' | string;
+export type IntakeMethod = 'WhatsApp' | 'Call' | 'Branch';
 
 export interface UserProfile {
   id: string;
@@ -12,14 +13,9 @@ export interface UserProfile {
   department: Department;
 }
 
-export interface TicketLog {
-  id: string;
-  ticketId: string;
-  changedByUserId: string;
-  changedAt: string;
-  oldStatus?: TicketStatus;
-  newStatus: TicketStatus;
-  response: string;
+export interface Attachment {
+  url: string;
+  description: string;
 }
 
 export interface Ticket {
@@ -30,9 +26,12 @@ export interface Ticket {
   customerName: string;
   cif: string;
   phoneNumber: string;
-  serviceType: ServiceType;
-  subIssue: string;
+  serviceType: ServiceType; // الجهه المعنية
+  subIssue: string; // نوع المشكلة
+  intakeMethod: IntakeMethod; // وسيلة استلام البلاغ
+  description: string; // تفاصيل المشكلة
   createdByAgentId: string;
+  createdByAgentName: string; // اسم الموظف الذي رفع البلاغ
   assignedToSpecialistId?: string;
-  attachments: string[];
+  attachments: Attachment[];
 }
