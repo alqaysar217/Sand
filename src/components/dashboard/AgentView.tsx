@@ -12,7 +12,7 @@ import { Plus, Send, Copy, Search, Loader2, FileText, Check, ArrowRight, AlertCi
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export function AgentView() {
   const { user } = useAuth();
@@ -30,25 +30,17 @@ export function AgentView() {
     issue: ''
   });
 
-  // تم إزالة orderBy من هنا لتجنب طلب إنشاء "فهرس" (Index) يدوي
-  // سيتم الترتيب برمجياً في الأسفل لضمان عمل التطبيق فوراً
+  // الاستعلام المحدث: يتطلب فهرس (Index) ليعمل مع orderBy
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
       collection(db, 'tickets'),
-      where('createdByAgentId', '==', user.id)
+      where('createdByAgentId', '==', user.id),
+      orderBy('createdAt', 'desc')
     );
   }, [db, user?.id]);
 
-  const { data: rawTickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
-
-  // ترتيب التذاكر برمجياً حسب التاريخ (من الأحدث للأقدم) لضمان عدم الحاجة لفهرس يدوي
-  const tickets = useMemo(() => {
-    if (!rawTickets) return [];
-    return [...rawTickets].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [rawTickets]);
+  const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +75,7 @@ export function AgentView() {
         toast({ 
           variant: "destructive",
           title: "خطأ في الإرسال", 
-          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. يرجى مراجعة إعدادات قاعدة البيانات." 
+          description: "حدث خطأ أثناء محاولة إنشاء البلاغ." 
         });
       })
       .finally(() => {
@@ -221,12 +213,12 @@ export function AgentView() {
                <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-red-50 rounded-xl border border-red-200">
                 <AlertCircle className="w-12 h-12 text-red-600" />
                 <div className="space-y-2">
-                  <h3 className="font-bold text-red-900">حدث خطأ في جلب البيانات</h3>
+                  <h3 className="font-bold text-red-900">خطأ في عرض البيانات</h3>
                   <p className="text-sm text-red-800 max-w-md mx-auto">
-                    يرجى التأكد من تسجيل الدخول بشكل صحيح أو مراجعة إعدادات قاعدة البيانات.
+                    إذا ظهر هذا الخطأ، يرجى التأكد من أن الفهرس (Index) في Firebase Console قد اكتمل إنشاؤه.
                   </p>
                   <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                    <RefreshCw className="w-3 h-3 ml-2" /> إعادة محاولة
+                    <RefreshCw className="w-3 h-3 ml-2" /> تحديث الصفحة
                   </Button>
                 </div>
               </div>

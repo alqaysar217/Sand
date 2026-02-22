@@ -22,7 +22,7 @@ export function SpecialistView() {
   const [response, setResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // استعلام مفلتر بالقسم ليتوافق مع القواعد الأمنية
+  // الاستعلام المحدث للأخصائي: يتطلب فهرس (Index) ليعمل مع orderBy
   const deptTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.department) return null;
     return query(
