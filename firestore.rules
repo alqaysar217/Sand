@@ -7,38 +7,47 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // دالة جلب بيانات المستخدم الحالية
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // دالة التحقق من وجود مستخدم في قائمة المديرين
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // قواعد مجموعة المستخدمين والمديرين
+    // قواعد المستخدمين
     match /users/{userId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == userId || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
+    // قواعد المديرين
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if isAdmin();
     }
 
     // القواعد النهائية لمجموعة البلاغات (Tickets)
     match /tickets/{ticketId} {
       
-      // تبسيط قواعد العرض (List) لضمان عدم حدوث خطأ Permission Denied
-      // Firestore يتطلب أن يتطابق الاستعلام مع القاعدة بدقة
+      // تقسيم قواعد القائمة (List) لضمان عدم حدوث تعارض في مفسر الاستعلامات
+      // يسمح للمدير برؤية الكل
+      allow list: if isSignedIn() && isAdmin();
+      
+      // يسمح للموظف برؤية ما أنشأه فقط
+      allow list: if isSignedIn() && resource.data.createdByAgentId == request.auth.uid;
+      
+      // يسمح للأخصائي برؤية ما هو معين له
+      allow list: if isSignedIn() && resource.data.assignedToSpecialistId == request.auth.uid;
+      
+      // يسمح للأخصائي برؤية ما يخص قسمه
       allow list: if isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
-        resource.data.createdByAgentId == request.auth.uid || 
-        resource.data.assignedToSpecialistId == request.auth.uid ||
-        resource.data.serviceType == getUserData().department
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        resource.data.serviceType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.department
       );
 
       // قواعد القراءة الفردية والإنشاء والتحديث
-      allow get, update, create: if isSignedIn();
+      allow get, create, update: if isSignedIn();
       
       // الحذف للمدير فقط
-      allow delete: if isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow delete: if isAdmin();
 
       // قواعد السجلات الفرعية (Logs)
       match /logs/{logId} {

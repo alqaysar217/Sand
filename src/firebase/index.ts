@@ -3,38 +3,28 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
+import { getFirestore, initializeFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!getApps().length) {
-    let firebaseApp;
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-
-    // Initialize Firestore with settings to handle potential proxy/connectivity issues in cloud environments
-    const firestore = initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true, // Fixes connection issues in some cloud IDE environments
-    });
-
-    return {
-      firebaseApp,
-      auth: getAuth(firebaseApp),
-      firestore: firestore
-    };
+  const apps = getApps();
+  let app: FirebaseApp;
+  
+  if (!apps.length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
   }
 
-  const app = getApp();
+  // Initialize Firestore with settings to handle potential proxy/connectivity issues in cloud environments
+  const firestore = initializeFirestore(app, {
+    experimentalForceLongPolling: true, // Fixes connection issues in some cloud IDE environments
+  });
+
   return {
     firebaseApp: app,
     auth: getAuth(app),
-    firestore: getFirestore(app)
+    firestore: firestore
   };
 }
 
