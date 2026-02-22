@@ -9,6 +9,7 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 interface AuthContextType {
   user: UserProfile | null;
+  firebaseUser: any;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -30,7 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (firebaseUser && db) {
       setLoading(true);
-      // استخدام onSnapshot لجعل ملف المستخدم يتحدث لحظياً
       unsubscribe = onSnapshot(
         doc(db, 'users', firebaseUser.uid),
         (docSnap) => {
@@ -39,19 +39,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(null);
           } else {
             setProfile(null);
-            setError("لم يتم العثور على ملف تعريفي لهذا المستخدم في قاعدة البيانات.");
+            setError("MISSING_PROFILE");
           }
           setLoading(false);
         },
         (err) => {
           console.error("Error fetching profile:", err);
-          setError("خطأ في جلب بيانات المستخدم.");
+          setError("خطأ في جلب بيانات المستخدم من قاعدة البيانات.");
           setLoading(false);
         }
       );
     } else if (!isUserLoading) {
       setProfile(null);
       setLoading(false);
+      setError(null);
     }
 
     return () => unsubscribe();
@@ -68,11 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await signOut(auth);
     setProfile(null);
+    setError(null);
   };
 
   return (
     <AuthContext.Provider value={{ 
-      user: profile, 
+      user: profile,
+      firebaseUser,
       login, 
       logout, 
       loading: loading || isUserLoading,

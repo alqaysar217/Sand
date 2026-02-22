@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -16,7 +16,8 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const { login, user, loading, error } = useAuth();
+  const [copied, setCopied] = useState(false);
+  const { login, user, firebaseUser, loading, error, logout } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -39,8 +40,6 @@ export default function Home() {
       let message = "فشل تسجيل الدخول. يرجى التحقق من البيانات.";
       if (error.code === 'auth/invalid-credential') {
         message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-      } else if (error.code === 'auth/user-not-found') {
-        message = "هذا المستخدم غير موجود في النظام.";
       }
       
       toast({
@@ -50,6 +49,15 @@ export default function Home() {
       });
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const copyUid = () => {
+    if (firebaseUser) {
+      navigator.clipboard.writeText(firebaseUser.uid);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "تم النسخ", description: "تم نسخ المعرف UID بنجاح." });
     }
   };
 
@@ -102,86 +110,91 @@ export default function Home() {
           </div>
 
           <div className="space-y-4">
-            {error && (
-              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4">
+            {error === "MISSING_PROFILE" && firebaseUser && (
+              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2">
                 <Info className="h-4 w-4" />
-                <AlertTitle className="text-right">تنبيه الإعداد</AlertTitle>
-                <AlertDescription className="text-right">
-                  {error}
-                  <div className="mt-2 text-xs font-bold underline">
-                    يجب إضافة بيانات المستخدم في Firestore باستخدام الـ UID الخاص به.
+                <AlertTitle className="text-right font-bold">خطوة أخيرة مطلوبة لإكمال الإعداد</AlertTitle>
+                <AlertDescription className="text-right space-y-3">
+                  <p>تم تسجيل دخولك بنجاح، ولكن نحتاج لربط حسابك بملف تعريفي في قاعدة البيانات Firestore.</p>
+                  <div className="bg-white/50 p-3 rounded-md space-y-2 text-xs">
+                    <p className="font-bold">يرجى إنشاء مستند في Firestore بالتفاصيل التالية:</p>
+                    <div className="flex items-center justify-between gap-2 border p-2 rounded bg-white">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={copyUid}>
+                        {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                      <code className="text-primary break-all">{firebaseUser.uid}</code>
+                      <span className="font-bold shrink-0">معرف المستند (ID):</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>المجموعة: <span className="font-bold">users</span></li>
+                      <li>حقل <span className="font-bold">name</span>: (اسمك)</li>
+                      <li>حقل <span className="font-bold">role</span>: <code className="bg-slate-200 px-1">Agent</code> أو <code className="bg-slate-200 px-1">Specialist</code> أو <code className="bg-slate-200 px-1">Admin</code></li>
+                      <li>حقل <span className="font-bold">department</span>: <code className="bg-slate-200 px-1">Operations</code> أو <code className="bg-slate-200 px-1">Cards</code></li>
+                    </ul>
                   </div>
+                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={logout}>تسجيل الخروج والعودة</Button>
                 </AlertDescription>
               </Alert>
             )}
 
-            <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-bold text-right">دخول الموظفين</CardTitle>
-                <CardDescription className="text-right">أدخل بيانات الاعتماد الخاصة بك للمتابعة</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="block text-right">البريد الإلكتروني</Label>
-                    <div className="relative">
-                      <Mail className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="name@bank.com" 
-                        className="pr-10 text-right"
-                        dir="ltr"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required 
-                      />
+            {!firebaseUser && (
+              <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
+                <CardHeader className="space-y-1 text-right">
+                  <CardTitle className="text-2xl font-bold">دخول الموظفين</CardTitle>
+                  <CardDescription>أدخل بيانات الاعتماد الخاصة بك للمتابعة</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2 text-right">
+                      <Label htmlFor="email">البريد الإلكتروني</Label>
+                      <div className="relative">
+                        <Mail className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
+                        <Input 
+                          id="email" 
+                          type="email" 
+                          placeholder="name@bank.com" 
+                          className="pr-10 text-right"
+                          dir="ltr"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required 
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center flex-row-reverse">
+                    <div className="space-y-2 text-right">
                       <Label htmlFor="password">كلمة المرور</Label>
-                      <a href="#" className="text-xs text-secondary hover:underline">نسيت كلمة المرور؟</a>
+                      <div className="relative">
+                        <Lock className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
+                        <Input 
+                          id="password" 
+                          type="password" 
+                          placeholder="••••••••" 
+                          className="pr-10 text-right"
+                          dir="ltr"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required 
+                        />
+                      </div>
                     </div>
-                    <div className="relative">
-                      <Lock className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder="••••••••" 
-                        className="pr-10 text-right"
-                        dir="ltr"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full bg-primary text-white font-bold h-12" disabled={isLoggingIn}>
-                    {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : "تسجيل الدخول"}
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                  </Button>
-                </form>
+                    <Button type="submit" className="w-full bg-primary text-white font-bold h-12" disabled={isLoggingIn}>
+                      {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : "تسجيل الدخول"}
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                    </Button>
+                  </form>
 
-                <div className="mt-8 pt-6 border-t">
-                  <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية (كلمة السر: password123):</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('ahmed@bank.com'); setPassword('password123'); }}>
-                      <span className="truncate">موظف: ahmed@bank.com</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('sarah@bank.com'); setPassword('password123'); }}>
-                      <span className="truncate">أخصائي: sarah@bank.com</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('omar@bank.com'); setPassword('password123'); }}>
-                      <span className="truncate">تقني: omar@bank.com</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('khalid@bank.com'); setPassword('password123'); }}>
-                      <span className="truncate">مدير: khalid@bank.com</span>
-                    </Button>
+                  <div className="mt-8 pt-6 border-t">
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية للإعداد:</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-xs" onClick={() => { setEmail('ahmed@bank.com'); setPassword('password123'); }}>
+                        <span>أحمد العميل (موظف)</span>
+                        <code className="text-[10px] opacity-60">ahmed@bank.com</code>
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>
