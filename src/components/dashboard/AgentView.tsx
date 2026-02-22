@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Send, Copy, Search, Loader2, FileText, Check, ArrowRight } from 'lucide-react';
+import { Plus, Send, Copy, Search, Loader2, FileText, Check, ArrowRight, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -30,19 +30,14 @@ export function AgentView() {
     issue: ''
   });
 
-  // استعلام مفلتر بـ UID الموظف لضمان الخصوصية والأداء
+  // استعلام مفلتر بـ UID الموظف
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
-    try {
-      return query(
-        collection(db, 'tickets'),
-        where('createdByAgentId', '==', user.id),
-        orderBy('createdAt', 'desc')
-      );
-    } catch (e) {
-      console.error("Query formation error:", e);
-      return null;
-    }
+    return query(
+      collection(db, 'tickets'),
+      where('createdByAgentId', '==', user.id),
+      orderBy('createdAt', 'desc')
+    );
   }, [db, user?.id]);
 
   const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
@@ -215,14 +210,19 @@ export function AgentView() {
                 <p className="text-sm text-muted-foreground">جاري تحميل السجل...</p>
               </div>
             ) : queryError ? (
-               <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-                <Badge variant="destructive" className="mb-2">تنبيه تقني</Badge>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  يرجى التأكد من إنشاء الفهرس (Index) في Firebase Console لتمكين عرض البلاغات.
-                </p>
-                <code className="text-[10px] bg-slate-100 p-2 rounded mt-2">
-                  tickets: createdByAgentId (ASC), createdAt (DESC)
-                </code>
+               <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-amber-50 rounded-xl border border-amber-200">
+                <AlertCircle className="w-12 h-12 text-amber-600" />
+                <div className="space-y-2">
+                  <h3 className="font-bold text-amber-900">مطلوب تفعيل الفهرس (Index)</h3>
+                  <p className="text-sm text-amber-800 max-w-md mx-auto">
+                    بما أنك أنشأت مستند المستخدم بنجاح، يتبقى فقط إنشاء "الفهرس" في كونسول Firebase لكي يتمكن التطبيق من ترتيب البلاغات حسب التاريخ.
+                  </p>
+                  <div className="bg-white p-3 rounded-lg border border-amber-300 text-[11px] font-mono text-left inline-block mt-2">
+                    Collection: tickets<br/>
+                    Field 1: createdByAgentId (Ascending)<br/>
+                    Field 2: createdAt (Descending)
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
