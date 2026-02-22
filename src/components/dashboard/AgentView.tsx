@@ -13,7 +13,7 @@ import {
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X, CheckCircle2
+  Upload, User, X, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
@@ -73,7 +73,7 @@ export function AgentView() {
     intakeMethod: '',
     subIssue: '',
     description: '',
-    createdByAgentName: '', // الموظف الذي سيتم اختياره من القائمة
+    createdByAgentName: '',
     attachments: [] as { url: string; description: string }[]
   });
 
@@ -92,12 +92,12 @@ export function AgentView() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // التحقق من حجم الملف (الحد الأقصى 2 ميجابايت)
-    if (file.size > 2 * 1024 * 1024) {
+    // تقليل الحد الأقصى لضمان عدم تجاوز سعة المستند في Firestore (500 كيلوبايت كحد أقصى)
+    if (file.size > 500 * 1024) {
       toast({ 
         variant: "destructive", 
-        title: "حجم الملف كبير", 
-        description: "يرجى اختيار صورة بحجم أقل من 2 ميجابايت لضمان سرعة الرفع." 
+        title: "حجم الملف كبير جداً", 
+        description: "يرجى اختيار صورة بحجم أقل من 500 كيلوبايت (لقطة شاشة مثلاً) لضمان حفظ البلاغ بنجاح." 
       });
       return;
     }
@@ -132,7 +132,7 @@ export function AgentView() {
     if (!user || !db) return;
 
     if (!formData.createdByAgentName) {
-      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسم الموظف الرافع للبلاغ." });
+      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسم الموظف الرافع للبلاغ من القائمة." });
       return;
     }
 
@@ -150,8 +150,8 @@ export function AgentView() {
       intakeMethod: formData.intakeMethod,
       subIssue: formData.subIssue,
       description: formData.description,
-      createdByAgentId: user.id, // ID الموظف المسجل حالياً للفلترة
-      createdByAgentName: formData.createdByAgentName, // الاسم المختار من القائمة
+      createdByAgentId: user.id,
+      createdByAgentName: formData.createdByAgentName,
       attachments: formData.attachments
     };
 
@@ -166,8 +166,13 @@ export function AgentView() {
           attachments: []
         });
       })
-      .catch(() => {
-        toast({ variant: "destructive", title: "خطأ", description: "فشل إنشاء البلاغ." });
+      .catch((err) => {
+        console.error(err);
+        toast({ 
+          variant: "destructive", 
+          title: "فشل الحفظ", 
+          description: "تأكد من أن حجم الصور المرفقة صغير جداً، حيث أن قاعدة البيانات لها سعة محدودة لكل بلاغ." 
+        });
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -180,7 +185,7 @@ export function AgentView() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
           <h1 className="text-2xl font-bold text-primary">واجهة موظف خدمة العملاء</h1>
-          <p className="text-muted-foreground">أهلاً بك - سجل بلاغاتك المرفوعة باسم {user?.name}</p>
+          <p className="text-muted-foreground">سجل البلاغات المرفوعة - النظام المصرفي المتكامل</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
@@ -194,7 +199,7 @@ export function AgentView() {
           <CardHeader className="bg-blue-50/50 text-right border-b flex flex-row items-center justify-between">
             <div className="text-right flex-1">
               <CardTitle className="text-primary">بيانات البلاغ الجديد</CardTitle>
-              <CardDescription>يرجى تعبئة كافة الحقول المطلوبة بدقة</CardDescription>
+              <CardDescription>يرجى تعبئة الحقول المطلوبة واختيار اسم الموظف</CardDescription>
             </div>
             <Button variant="ghost" onClick={() => setShowNewForm(false)} className="mr-4">
               <ArrowRight className="w-4 h-4 ml-2" /> العودة للسجل
@@ -203,58 +208,66 @@ export function AgentView() {
           <CardContent className="pt-6">
             <form onSubmit={handleCreateTicket} className="space-y-6">
               
-              {/* قسم اختيار اسم الموظف الرافع للبلاغ */}
-              <div className="bg-slate-50 p-6 rounded-lg border-2 border-dashed border-primary/20 space-y-4">
+              {/* قسم اختيار الموظف - طلب المستخدم */}
+              <div className="bg-amber-50 p-6 rounded-lg border-2 border-dashed border-accent/40 space-y-4">
                 <div className="flex items-center gap-2 text-primary font-bold justify-end">
-                   <span>اختيار الموظف الرافع للبلاغ</span>
-                   <User className="w-5 h-5" />
+                   <span>اسم الموظف الرافع للبلاغ</span>
+                   <User className="w-5 h-5 text-accent" />
                 </div>
                 <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required dir="rtl">
                   <SelectTrigger className="text-right bg-white border-primary/30 h-12 text-lg">
-                    <SelectValue placeholder="اختر اسم الموظف من القائمة" />
+                    <SelectValue placeholder="اختر اسمك من القائمة" />
                   </SelectTrigger>
                   <SelectContent>
                     {AGENT_NAMES.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground text-right italic">* سيتم تسجيل البلاغ رسمياً باسم الموظف المختار أعلاه.</p>
+                <div className="flex items-center gap-1 justify-end text-[10px] text-amber-800">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>ملاحظة: سيتم تسجيل البلاغ رسمياً بالاسم المختار أعلاه</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 <div className="space-y-2 text-right">
-                  <Label>الجهة المعنية (إرسال البلاغ إلى)</Label>
+                  <Label className="font-bold">الجهة المعنية (إرسال البلاغ إلى)</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required dir="rtl">
-                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر الجهة المعنية" /></SelectTrigger>
+                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر الجهة المعنية" /></SelectTrigger>
                     <SelectContent>
                       {SERVICE_ENTITIES.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+                
                 <div className="space-y-2 text-right">
-                  <Label>وسيلة استلام البلاغ</Label>
+                  <Label className="font-bold">اسم العميل بالكامل</Label>
+                  <Input placeholder="الاسم كما في الهوية" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="text-right h-11" />
+                </div>
+
+                <div className="space-y-2 text-right">
+                  <Label className="font-bold">رقم الحساب / CIF</Label>
+                  <Input placeholder="0000000" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono h-11" />
+                </div>
+
+                <div className="space-y-2 text-right">
+                  <Label className="font-bold">رقم هاتف العميل</Label>
+                  <Input placeholder="+966..." required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="text-right h-11" />
+                </div>
+
+                <div className="space-y-2 text-right">
+                  <Label className="font-bold">وسيلة استلام البلاغ</Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required dir="rtl">
-                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر وسيلة الاستلام" /></SelectTrigger>
+                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر وسيلة الاستلام" /></SelectTrigger>
                     <SelectContent>
                       {INTAKE_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2 text-right">
-                  <Label>اسم العميل بالكامل</Label>
-                  <Input placeholder="الاسم كما في الهوية" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="text-right" />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label>رقم الحساب / CIF</Label>
-                  <Input placeholder="0000000" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono" />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label>رقم هاتف العميل</Label>
-                  <Input placeholder="+966..." required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="text-right" />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label>نوع الخدمة / المشكلة</Label>
+                  <Label className="font-bold">نوع الخدمة / المشكلة</Label>
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required dir="rtl">
-                    <SelectTrigger className="text-right"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
+                    <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
                     <SelectContent>
                       {ISSUE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </SelectContent>
@@ -263,12 +276,15 @@ export function AgentView() {
               </div>
 
               <div className="space-y-2 text-right">
-                <Label>تفاصيل المشكلة</Label>
+                <Label className="font-bold">تفاصيل المشكلة</Label>
                 <Textarea placeholder="اشرح المشكلة بالتفصيل لمساعدة الأخصائي على الحل..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
               </div>
 
               <div className="space-y-4 border-t pt-4">
-                <Label className="flex items-center gap-2 justify-end text-primary font-bold">إرفاق صور توضيحية (لقطة شاشة، مستندات) <ImageIcon className="w-4 h-4" /></Label>
+                <div className="flex items-center justify-between flex-row-reverse">
+                  <Label className="flex items-center gap-2 font-bold text-primary">إرفاق صور توضيحية (لقطة شاشة) <ImageIcon className="w-4 h-4" /></Label>
+                  <span className="text-[10px] text-red-600 font-bold">الحجم الأقصى للصورة: 500 كيلوبايت فقط</span>
+                </div>
                 
                 <div className="flex justify-end">
                    <input 
@@ -289,7 +305,6 @@ export function AgentView() {
                        <>
                         <Upload className="w-6 h-6 text-primary/40" />
                         <span>اضغط هنا لاختيار صورة من جهازك</span>
-                        <span className="text-[10px] text-muted-foreground">(الحد الأقصى 2 ميجابايت)</span>
                        </>
                      )}
                    </Button>
@@ -436,7 +451,6 @@ export function AgentView() {
                                               <ExternalLink className="w-5 h-5" /> تكبير الصورة
                                             </a>
                                           </div>
-                                          <p className="text-[10px] text-center font-bold text-slate-500">{att.description}</p>
                                         </div>
                                       ))}
                                     </div>
