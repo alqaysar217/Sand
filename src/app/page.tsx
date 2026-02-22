@@ -8,14 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const { login, user, loading } = useAuth();
+  const { login, user, loading, error } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -52,7 +53,7 @@ export default function Home() {
     }
   };
 
-  if (loading || user) {
+  if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -100,73 +101,88 @@ export default function Home() {
             </div>
           </div>
 
-          <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-right">دخول الموظفين</CardTitle>
-              <CardDescription className="text-right">أدخل بيانات الاعتماد الخاصة بك للمتابعة</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="block text-right">البريد الإلكتروني</Label>
-                  <div className="relative">
-                    <Mail className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      placeholder="name@bank.com" 
-                      className="pr-10 text-right"
-                      dir="ltr"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required 
-                    />
+          <div className="space-y-4">
+            {error && (
+              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle className="text-right">تنبيه الإعداد</AlertTitle>
+                <AlertDescription className="text-right">
+                  {error}
+                  <div className="mt-2 text-xs font-bold underline">
+                    يجب إضافة بيانات المستخدم في Firestore باستخدام الـ UID الخاص به.
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center flex-row-reverse">
-                    <Label htmlFor="password">كلمة المرور</Label>
-                    <a href="#" className="text-xs text-secondary hover:underline">نسيت كلمة المرور؟</a>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="pr-10 text-right"
-                      dir="ltr"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full bg-primary text-white font-bold h-12" disabled={isLoggingIn}>
-                  {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : "تسجيل الدخول"}
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                </Button>
-              </form>
+                </AlertDescription>
+              </Alert>
+            )}
 
-              <div className="mt-8 pt-6 border-t">
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية (كلمة السر: password123):</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('ahmed@bank.com'); setPassword('password123'); }}>
-                    <span className="truncate">موظف: ahmed@bank.com</span>
+            <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl font-bold text-right">دخول الموظفين</CardTitle>
+                <CardDescription className="text-right">أدخل بيانات الاعتماد الخاصة بك للمتابعة</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="block text-right">البريد الإلكتروني</Label>
+                    <div className="relative">
+                      <Mail className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        placeholder="name@bank.com" 
+                        className="pr-10 text-right"
+                        dir="ltr"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center flex-row-reverse">
+                      <Label htmlFor="password">كلمة المرور</Label>
+                      <a href="#" className="text-xs text-secondary hover:underline">نسيت كلمة المرور؟</a>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        id="password" 
+                        type="password" 
+                        placeholder="••••••••" 
+                        className="pr-10 text-right"
+                        dir="ltr"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full bg-primary text-white font-bold h-12" disabled={isLoggingIn}>
+                    {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : "تسجيل الدخول"}
+                    <ArrowLeft className="w-4 h-4 mr-2" />
                   </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('sarah@bank.com'); setPassword('password123'); }}>
-                    <span className="truncate">أخصائي: sarah@bank.com</span>
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('omar@bank.com'); setPassword('password123'); }}>
-                    <span className="truncate">تقني: omar@bank.com</span>
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('khalid@bank.com'); setPassword('password123'); }}>
-                    <span className="truncate">مدير: khalid@bank.com</span>
-                  </Button>
+                </form>
+
+                <div className="mt-8 pt-6 border-t">
+                  <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية (كلمة السر: password123):</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('ahmed@bank.com'); setPassword('password123'); }}>
+                      <span className="truncate">موظف: ahmed@bank.com</span>
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('sarah@bank.com'); setPassword('password123'); }}>
+                      <span className="truncate">أخصائي: sarah@bank.com</span>
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('omar@bank.com'); setPassword('password123'); }}>
+                      <span className="truncate">تقني: omar@bank.com</span>
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-[10px] px-1 justify-start overflow-hidden flex-row-reverse" onClick={() => { setEmail('khalid@bank.com'); setPassword('password123'); }}>
+                      <span className="truncate">مدير: khalid@bank.com</span>
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
 
