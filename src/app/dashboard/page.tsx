@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -29,26 +28,18 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  // توجيه المستخدم حسب دوره الوظيفي مع تعطيل الواجهات مؤقتاً للفحص
+  // توجيه المستخدم حسب دوره الوظيفي
   switch (user.role) {
     case 'Agent':
-      return (
-        <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 min-h-[400px]">
-          <Construction className="w-16 h-16 text-amber-500 mb-4" />
-          <h2 className="text-2xl font-bold text-primary">واجهة الموظف (متوقفة مؤقتاً)</h2>
-          <p className="text-muted-foreground mt-2 max-w-md">
-            تم إيقاف هذا القسم مؤقتاً لتمكينك من فحص واجهة "المدير العام" دون تداخل.
-          </p>
-          <Button variant="outline" onClick={logout} className="mt-8">تسجيل الخروج</Button>
-        </div>
-      );
+      // واجهة الموظف مفعلة الآن بالكامل
+      return <AgentView />;
     case 'Specialist':
       return (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200 min-h-[400px]">
           <ShieldAlert className="w-16 h-16 text-blue-500 mb-4" />
           <h2 className="text-2xl font-bold text-primary">واجهة الأخصائي (متوقفة مؤقتاً)</h2>
           <p className="text-muted-foreground mt-2 max-w-md">
-            تم إيقاف هذا القسم مؤقتاً لتمكينك من فحص واجهة "المدير العام" أولاً.
+            تم إيقاف هذا القسم مؤقتاً لتمكينك من فحص واجهة "خدمة العملاء" أولاً.
           </p>
           <Button variant="outline" onClick={logout} className="mt-8">تسجيل الخروج</Button>
         </div>

@@ -1,9 +1,7 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // تم فتح الصلاحيات بالكامل مؤقتاً للسماح بالفحص والاختبار الشامل
-    // سيتم إعادة تطبيق القواعد الأمنية الصارمة بعد التأكد من عمل الأقسام
+    // فتح الصلاحيات بالكامل مؤقتاً لتسهيل عملية الفحص والاختبار لجميع الأقسام
     match /{document=**} {
       allow read, write: if true;
     }
