@@ -16,7 +16,7 @@ export function initializeFirebase() {
     app = getApp();
   }
 
-  // استخدام Long Polling لتجنب مشاكل انقطاع الـ WebSocket في المتصفح
+  // استخدام Long Polling لتجنب مشاكل انقطاع الـ WebSocket في المتصفح السحابي
   const firestore = initializeFirestore(app, {
     experimentalForceLongPolling: true,
   });

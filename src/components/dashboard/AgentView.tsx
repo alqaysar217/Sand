@@ -30,17 +30,22 @@ export function AgentView() {
     issue: ''
   });
 
-  // استعلام مبسط جداً لضمان عدم حدوث خطأ في الصلاحيات أو الفهارس (Indexes)
+  // استعلام مفلتر بـ UID الموظف لضمان الخصوصية والأداء
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
-    return query(
-      collection(db, 'tickets'),
-      where('createdByAgentId', '==', user.id),
-      orderBy('createdAt', 'desc')
-    );
+    try {
+      return query(
+        collection(db, 'tickets'),
+        where('createdByAgentId', '==', user.id),
+        orderBy('createdAt', 'desc')
+      );
+    } catch (e) {
+      console.error("Query formation error:", e);
+      return null;
+    }
   }, [db, user?.id]);
 
-  const { data: tickets, isLoading: isTicketsLoading, error } = useCollection(agentTicketsQuery);
+  const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +80,7 @@ export function AgentView() {
         toast({ 
           variant: "destructive",
           title: "خطأ في الإرسال", 
-          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. يرجى التحقق من الصلاحيات." 
+          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. تأكد من إعدادات Firestore." 
         });
       })
       .finally(() => {
@@ -209,6 +214,16 @@ export function AgentView() {
                 <Loader2 className="animate-spin text-primary h-8 w-8" />
                 <p className="text-sm text-muted-foreground">جاري تحميل السجل...</p>
               </div>
+            ) : queryError ? (
+               <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                <Badge variant="destructive" className="mb-2">تنبيه تقني</Badge>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  يرجى التأكد من إنشاء الفهرس (Index) في Firebase Console لتمكين عرض البلاغات.
+                </p>
+                <code className="text-[10px] bg-slate-100 p-2 rounded mt-2">
+                  tickets: createdByAgentId (ASC), createdAt (DESC)
+                </code>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -266,7 +281,6 @@ export function AgentView() {
                           <div className="flex flex-col items-center gap-2 opacity-50">
                             <FileText className="h-10 w-10" />
                             <p>لا توجد بلاغات مرفوعة حالياً.</p>
-                            {error && <p className="text-xs text-red-500 mt-2">خطأ في جلب البيانات: {error.message}</p>}
                           </div>
                         </TableCell>
                       </TableRow>
