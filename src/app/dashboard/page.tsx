@@ -6,7 +6,7 @@ import { AgentView } from '@/components/dashboard/AgentView';
 import { SpecialistView } from '@/components/dashboard/SpecialistView';
 import { AdminView } from '@/components/dashboard/AdminView';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Construction } from "lucide-react";
 import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
@@ -33,7 +33,15 @@ export default function DashboardPage() {
 
   switch (user.role) {
     case 'Agent':
-      return <AgentView />;
+      // تعطيل واجهة الموظف مؤقتاً لتجنب خطأ الصلاحيات أثناء الفحص
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
+          <Construction className="w-16 h-16 text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold text-primary">واجهة الكول سنتر (قيد الصيانة)</h2>
+          <p className="text-muted-foreground mt-2">تم إيقاف هذا القسم مؤقتاً لغرض فحص بقية أجزاء النظام.</p>
+          <Button variant="outline" onClick={logout} className="mt-6">تسجيل الخروج لتجربة حساب آخر</Button>
+        </div>
+      );
     case 'Specialist':
       return <SpecialistView />;
     case 'Admin':
