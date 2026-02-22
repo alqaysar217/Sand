@@ -3,16 +3,16 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { useAuth as useFirebaseAuth } from '@/firebase';
 
 interface AuthContextType {
   user: UserProfile | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,32 +23,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const auth = useFirebaseAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchProfile() {
-      if (firebaseUser && db) {
-        try {
-          const docRef = doc(db, 'users', firebaseUser.uid);
-          const docSnap = await getDoc(docRef);
-          
+    let unsubscribe = () => {};
+
+    if (firebaseUser && db) {
+      setLoading(true);
+      // استخدام onSnapshot لجعل ملف المستخدم يتحدث لحظياً
+      unsubscribe = onSnapshot(
+        doc(db, 'users', firebaseUser.uid),
+        (docSnap) => {
           if (docSnap.exists()) {
             setProfile({ ...docSnap.data() as UserProfile, id: firebaseUser.uid });
+            setError(null);
           } else {
             setProfile(null);
+            setError("لم يتم العثور على ملف تعريفي لهذا المستخدم في قاعدة البيانات.");
           }
-        } catch (error) {
-          console.error("Error fetching profile:", error);
-          setProfile(null);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("Error fetching profile:", err);
+          setError("خطأ في جلب بيانات المستخدم.");
+          setLoading(false);
         }
-      } else {
-        setProfile(null);
-      }
+      );
+    } else if (!isUserLoading) {
+      setProfile(null);
       setLoading(false);
     }
 
-    if (!isUserLoading) {
-      fetchProfile();
-    }
+    return () => unsubscribe();
   }, [firebaseUser, isUserLoading, db]);
 
   const login = async (email: string, password: string) => {
@@ -65,7 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user: profile, login, logout, loading: loading || isUserLoading }}>
+    <AuthContext.Provider value={{ 
+      user: profile, 
+      login, 
+      logout, 
+      loading: loading || isUserLoading,
+      error 
+    }}>
       {children}
     </AuthContext.Provider>
   );
