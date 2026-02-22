@@ -1,4 +1,3 @@
-
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
 export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
@@ -42,7 +41,12 @@ export interface Ticket {
   assignedToSpecialistId?: string;
   assignedToSpecialistName?: string;
   specialistResponse?: string;
+  rejectionReason?: string;
   resolvedAt?: string;
+  rejectedAt?: string;
+  escalatedBy?: string;
+  escalationNote?: string;
+  acknowledged?: boolean; // هل تم رؤية الرد من قبل الموظف
   attachments: Attachment[];
   logs?: TicketLog[];
 }

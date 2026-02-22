@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -13,7 +12,8 @@ import {
   AlertCircle,
   FileCheck,
   Archive,
-  Clock
+  Clock,
+  Shield
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,33 +27,36 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { Shield } from 'lucide-react';
 
 export function AppSidebar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   if (!user) return null;
+
+  // إرسال حدث مخصص للتحكم في الواجهة بدلاً من إعادة تحميل الصفحة
+  const handleNav = (action: string) => {
+    window.dispatchEvent(new CustomEvent('sidebar-nav', { detail: action }));
+  };
 
   const getNavItems = () => {
     switch (user.role) {
       case 'Agent':
         return [
-          { title: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
-          { title: 'بلاغ جديد', icon: PlusSquare, href: '/dashboard' },
-          { title: 'سجل البلاغات', icon: History, href: '/dashboard' },
-          { title: 'الأرشيف', icon: Archive, href: '/dashboard' },
+          { title: 'الرئيسية (السجل)', icon: LayoutDashboard, action: 'home' },
+          { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
+          { title: 'البلاغات المحالة', icon: History, action: 'home' }, // سنستخدم الفلتر داخل الواجهة
+          { title: 'الأرشيف المحلول', icon: Archive, action: 'home' },
         ];
       case 'Specialist':
         return [
-          { title: 'محطة العمل', icon: Inbox, href: '/dashboard' },
-          { title: 'المهام الواردة', icon: Clock, href: '/dashboard' },
-          { title: 'بلاغات محلولة', icon: FileCheck, href: '/dashboard' },
+          { title: 'محطة العمل', icon: Inbox, action: 'home' },
+          { title: 'المهام الواردة', icon: Clock, action: 'home' },
+          { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home' },
         ];
       case 'Admin':
         return [
-          { title: 'لوحة التحكم', icon: BarChart3, href: '/dashboard' },
-          { title: 'تذاكر متأخرة', icon: AlertCircle, href: '/dashboard' },
-          { title: 'إدارة الموظفين', icon: Users, href: '/dashboard' },
-          { title: 'الإعدادات', icon: Settings, href: '/dashboard' },
+          { title: 'لوحة التحكم', icon: BarChart3, action: 'home' },
+          { title: 'تذاكر متأخرة', icon: AlertCircle, action: 'home' },
+          { title: 'إدارة الموظفين', icon: Users, action: 'home' },
         ];
       default:
         return [];
@@ -71,17 +74,18 @@ export function AppSidebar() {
       <SidebarContent className="bg-white">
         <SidebarGroup>
           <SidebarGroupLabel className="text-primary font-bold px-4 py-2 mt-2 text-right">
-            قائمة الوصول السريع
+            لوحة الوصول السريع
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {getNavItems().map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="flex-row-reverse hover:bg-slate-100 h-11">
-                    <a href={item.href}>
-                      <item.icon className="w-5 h-5 ml-3 mr-0 text-slate-500" />
-                      <span className="text-sm font-medium">{item.title}</span>
-                    </a>
+                  <SidebarMenuButton 
+                    onClick={() => handleNav(item.action)}
+                    className="flex-row-reverse hover:bg-slate-100 h-11 w-full"
+                  >
+                    <item.icon className="w-5 h-5 ml-3 mr-0 text-slate-500" />
+                    <span className="text-sm font-medium">{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -90,7 +94,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t bg-slate-50 text-[10px] text-muted-foreground text-center">
-        نظام إدارة البلاغات v1.0
+        نظام إدارة البلاغات المصرفي v1.2
       </SidebarFooter>
     </Sidebar>
   );

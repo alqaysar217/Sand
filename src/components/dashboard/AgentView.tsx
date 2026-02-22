@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -14,7 +13,8 @@ import {
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X, Trash2, Filter, CheckCircle2, AlertCircle, Clock
+  Upload, User, X, Trash2, Filter, CheckCircle2, AlertCircle, Clock,
+  BellRing
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
@@ -81,6 +81,16 @@ export function AgentView() {
   
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // مستمع للتحكم من القائمة الجانبية (Sidebar)
+  useEffect(() => {
+    const handleSidebarAction = (e: any) => {
+      if (e.detail === 'new-ticket') setShowNewForm(true);
+      if (e.detail === 'home') setShowNewForm(false);
+    };
+    window.addEventListener('sidebar-nav', handleSidebarAction);
+    return () => window.removeEventListener('sidebar-nav', handleSidebarAction);
+  }, []);
 
   useEffect(() => {
     if (!selectedTicket && !isDeleteDialogOpen) {
@@ -200,8 +210,8 @@ export function AgentView() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
-          <h1 className="text-2xl font-bold text-primary">متابعة بلاغات خدمة العملاء</h1>
-          <p className="text-muted-foreground">تتبع حالة البلاغات، الردود، والأرشيف الفني</p>
+          <h1 className="text-2xl font-bold text-primary">نظام إدارة البلاغات (ConnectResolve)</h1>
+          <p className="text-muted-foreground">مركز التحكم في بلاغات العملاء والردود الفنية</p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="bg-accent hover:bg-accent/90 text-primary font-bold w-full md:w-auto">
@@ -316,7 +326,7 @@ export function AgentView() {
             <CardHeader className="pb-4 border-b space-y-4">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 flex-row-reverse">
                 <CardTitle className="text-lg text-right w-full flex items-center gap-2 justify-end">
-                   سجل المتابعة <Filter className="w-4 h-4" />
+                   سجل البلاغات الأخيرة (من الأحدث للأقدم) <Clock className="w-4 h-4" />
                 </CardTitle>
                 <div className="relative w-full md:w-96">
                   <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -329,12 +339,13 @@ export function AgentView() {
                 </div>
               </div>
               <Tabs defaultValue="all" onValueChange={setActiveTab} dir="rtl" className="w-full">
-                <TabsList className="grid grid-cols-2 md:grid-cols-5 h-auto p-1 bg-slate-100">
+                <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100">
                   <TabsTrigger value="all">الكل</TabsTrigger>
-                  <TabsTrigger value="New">جديد</TabsTrigger>
+                  <TabsTrigger value="New">الجديدة</TabsTrigger>
                   <TabsTrigger value="Pending" className="text-amber-700">قيد المعالجة</TabsTrigger>
                   <TabsTrigger value="Escalated" className="text-red-700">المحالة</TabsTrigger>
-                  <TabsTrigger value="Resolved" className="text-green-700">الأرشيف (تم الحل)</TabsTrigger>
+                  <TabsTrigger value="Resolved" className="text-green-700">تم الحل</TabsTrigger>
+                  <TabsTrigger value="Rejected" className="text-gray-700">المرفوضة</TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
@@ -355,21 +366,29 @@ export function AgentView() {
                   <TableBody>
                     {filteredTickets.map((t: any) => (
                       <TableRow key={t.id} className="hover:bg-slate-50/50">
-                        <TableCell className="font-bold text-blue-600 text-right">{t.ticketID}</TableCell>
+                        <TableCell className="font-bold text-blue-600 text-right flex items-center gap-2">
+                           {t.status === 'Resolved' && !t.acknowledged && (
+                             <BellRing className="w-3 h-3 text-red-500 animate-bounce" title="رد جديد!" />
+                           )}
+                           {t.ticketID}
+                        </TableCell>
                         <TableCell className="text-right">{getEntityLabel(t.serviceType)}</TableCell>
-                        <TableCell className="text-right">{t.customerName}</TableCell>
+                        <TableCell className="text-right">
+                           <div>{t.customerName}</div>
+                           <div className="text-[10px] text-muted-foreground">{t.cif}</div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Badge className={
                             t.status === 'Pending' ? 'status-pending' : 
                             t.status === 'Resolved' ? 'status-resolved' : 
-                            t.status === 'Escalated' ? 'status-escalated' : 'status-new'
+                            t.status === 'Escalated' ? 'status-escalated' : 
+                            t.status === 'Rejected' ? 'status-rejected' : 'status-new'
                           }>
-                            {t.status === 'New' ? 'جديد' : t.status === 'Pending' ? 'قيد العمل' : t.status === 'Resolved' ? 'محلول' : 'محال'}
+                            {t.status === 'New' ? 'جديد' : t.status === 'Pending' ? 'قيد المعالجة' : t.status === 'Resolved' ? 'تم الحل' : t.status === 'Rejected' ? 'مرفوض' : 'محال'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
                            <Button variant="ghost" size="sm" onClick={() => setSelectedTicket(t)} className="flex gap-1">
-                             {t.status === 'Resolved' && <CheckCircle2 className="w-3 h-3 text-green-600" />}
                              التفاصيل
                            </Button>
                         </TableCell>
@@ -389,7 +408,7 @@ export function AgentView() {
             <>
               <DialogHeader className="p-6 border-b bg-slate-50/50">
                 <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
-                  مراجعة البلاغ {selectedTicket.ticketID}
+                  مراجعة تفصيلية للبلاغ {selectedTicket.ticketID}
                 </DialogTitle>
                 <div className="flex gap-2 justify-end mt-2">
                    <Badge variant="outline">{getEntityLabel(selectedTicket.serviceType)}</Badge>
@@ -401,26 +420,43 @@ export function AgentView() {
               
               <ScrollArea className="max-h-[70vh]">
                 <div className="p-6 space-y-6">
-                  {/* قسم رد الأخصائي - يظهر فقط إذا كان هناك رد */}
-                  {selectedTicket.specialistResponse && (
-                    <div className="bg-green-50 border-2 border-green-200 p-5 rounded-xl space-y-3 animate-in zoom-in-95">
-                      <div className="flex items-center gap-2 text-green-800 font-bold justify-end">
-                        <span>رد القسم الفني (الحل)</span>
-                        <CheckCircle2 className="w-5 h-5" />
+                  {/* قسم رد الأخصائي - يظهر في حالة الحل أو الرفض */}
+                  {(selectedTicket.specialistResponse || selectedTicket.rejectionReason) && (
+                    <div className={`${selectedTicket.status === 'Rejected' ? 'bg-gray-50 border-gray-200' : 'bg-green-50 border-green-200'} border-2 p-5 rounded-xl space-y-3 animate-in zoom-in-95`}>
+                      <div className={`flex items-center gap-2 ${selectedTicket.status === 'Rejected' ? 'text-gray-800' : 'text-green-800'} font-bold justify-end`}>
+                        <span>{selectedTicket.status === 'Rejected' ? 'سبب رفض البلاغ' : 'رد القسم الفني (الحل)'}</span>
+                        {selectedTicket.status === 'Rejected' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
                       </div>
-                      <p className="text-sm leading-relaxed text-green-900 bg-white/50 p-3 rounded border border-green-100">
-                        {selectedTicket.specialistResponse}
+                      <p className={`text-sm leading-relaxed ${selectedTicket.status === 'Rejected' ? 'text-gray-900' : 'text-green-900'} bg-white/50 p-3 rounded border`}>
+                        {selectedTicket.specialistResponse || selectedTicket.rejectionReason}
                       </p>
-                      <div className="flex justify-between items-center text-[10px] text-green-700">
+                      <div className="flex justify-between items-center text-[10px] text-muted-foreground">
                          <span>بواسطة: {selectedTicket.assignedToSpecialistName || 'الأخصائي'}</span>
-                         <span>تاريخ الحل: {new Date(selectedTicket.resolvedAt || '').toLocaleString('ar-SA')}</span>
+                         <span>تاريخ الإجراء: {new Date(selectedTicket.resolvedAt || selectedTicket.rejectedAt || '').toLocaleString('ar-SA')}</span>
                       </div>
+                    </div>
+                  )}
+
+                  {/* قسم الإحالة - يظهر إذا كان البلاغ محالاً */}
+                  {selectedTicket.status === 'Escalated' && (
+                    <div className="bg-red-50 border-2 border-red-200 p-5 rounded-xl space-y-2">
+                       <div className="flex items-center gap-2 text-red-800 font-bold justify-end">
+                         <span>تمت إحالة البلاغ إلى جهة مختصة</span>
+                         <AlertCircle className="w-5 h-5" />
+                       </div>
+                       <p className="text-sm text-red-900">أحيل البلاغ للمتابعة الفنية الدقيقة من قبل: {selectedTicket.escalatedBy || 'الإدارة'}</p>
+                       {selectedTicket.escalationNote && (
+                         <div className="bg-white/50 p-2 rounded text-xs mt-2 border border-red-100 italic">
+                            ملاحظة الإحالة: {selectedTicket.escalationNote}
+                         </div>
+                       )}
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-slate-50/50 p-4 rounded-lg border">
                     <div><Label className="text-[10px] text-muted-foreground block">العميل</Label><p className="font-bold">{selectedTicket.customerName}</p></div>
                     <div><Label className="text-[10px] text-muted-foreground block">الحساب (CIF)</Label><p className="font-mono font-bold">{selectedTicket.cif}</p></div>
+                    <div><Label className="text-[10px] text-muted-foreground block">رقم الهاتف</Label><p className="font-bold">{selectedTicket.phoneNumber}</p></div>
                     <div><Label className="text-[10px] text-muted-foreground block">وسيلة الاستلام</Label><p className="font-bold">{getIntakeLabel(selectedTicket.intakeMethod)}</p></div>
                     <div><Label className="text-[10px] text-muted-foreground block">نوع المشكلة</Label><p className="font-bold text-blue-700">{selectedTicket.subIssue}</p></div>
                     <div><Label className="text-[10px] text-muted-foreground block">الموظف الرافع</Label><p className="font-bold">{selectedTicket.createdByAgentName}</p></div>
@@ -428,13 +464,13 @@ export function AgentView() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-bold text-sm block">تفاصيل البلاغ الأصلي</Label>
+                    <Label className="font-bold text-sm block">تفاصيل البلاغ الأصلية</Label>
                     <div className="bg-white border p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</div>
                   </div>
 
                   {/* سجل الحركات */}
                   <div className="space-y-3 border-t pt-4">
-                    <Label className="font-bold text-sm flex items-center gap-2 justify-end">تاريخ الإجراءات على البلاغ <Clock className="w-4 h-4" /></Label>
+                    <Label className="font-bold text-sm flex items-center gap-2 justify-end">تاريخ الإجراءات (Timeline) <Clock className="w-4 h-4" /></Label>
                     <div className="space-y-2">
                       {selectedTicket.logs?.map((log: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded border-r-2 border-primary">
@@ -447,12 +483,15 @@ export function AgentView() {
 
                   {selectedTicket.attachments?.length > 0 && (
                     <div className="space-y-3 border-t pt-4">
-                      <Label className="font-bold text-sm block">المرفقات</Label>
+                      <Label className="font-bold text-sm block">المرفقات والصور</Label>
                       <div className="grid grid-cols-2 gap-4">
                         {selectedTicket.attachments.map((att: any, idx: number) => (
                           <div key={idx} className="border rounded overflow-hidden">
                             <img src={att.url} className="aspect-video object-cover w-full" />
-                            <a href={att.url} target="_blank" rel="noreferrer" className="flex items-center justify-center p-2 bg-slate-100 text-[10px] hover:bg-slate-200"><ExternalLink className="w-3 h-3 ml-1" /> عرض الصورة الأصلية</a>
+                            <div className="p-2 bg-slate-100 flex justify-between items-center">
+                               <span className="text-[10px] text-muted-foreground">{att.description}</span>
+                               <a href={att.url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline flex items-center"><ExternalLink className="w-3 h-3 ml-1" /> تكبير</a>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -462,10 +501,12 @@ export function AgentView() {
               </ScrollArea>
 
               <div className="p-6 border-t bg-slate-50/50 flex justify-between items-center flex-row-reverse">
-                <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="font-bold">
-                  <Trash2 className="w-4 h-4 ml-2" /> إلغاء البلاغ نهائياً
-                </Button>
-                <Button variant="outline" onClick={() => setSelectedTicket(null)}>إغلاق النافذة</Button>
+                <div className="flex gap-2">
+                   <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="font-bold">
+                    <Trash2 className="w-4 h-4 ml-2" /> إلغاء البلاغ
+                  </Button>
+                </div>
+                <Button variant="outline" onClick={() => setSelectedTicket(null)}>إغلاق</Button>
               </div>
             </>
           )}
@@ -476,7 +517,7 @@ export function AgentView() {
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد إلغاء البلاغ</AlertDialogTitle>
-            <AlertDialogDescription>سيتم حذف البلاغ من قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
+            <AlertDialogDescription>سيتم حذف البلاغ نهائياً من قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2 mt-4">
             <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-600">تأكيد الحذف</AlertDialogAction>
