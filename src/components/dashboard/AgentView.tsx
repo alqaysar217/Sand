@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,21 +9,79 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Send, Upload, FileText, Search } from 'lucide-react';
-import { MOCK_TICKETS } from '@/lib/mock-data';
+import { Plus, Send, Upload, FileText, Search, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { Ticket } from '@/lib/types';
 
 export function AgentView() {
-  const [showNewForm, setShowNewForm] = useState(false);
+  const { user } = useAuth();
+  const db = useFirestore();
   const { toast } = useToast();
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreateTicket = (e: React.FormEvent) => {
+  // Form State
+  const [formData, setFormData] = useState({
+    customerName: '',
+    cif: '',
+    phone: '',
+    service: '',
+    issue: ''
+  });
+
+  // Query tickets created by this agent
+  const agentTicketsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, 'tickets'),
+      where('createdByAgentId', '==', user.id),
+      orderBy('createdAt', 'desc')
+    );
+  }, [db, user]);
+
+  const { data: tickets, isLoading: isTicketsLoading } = useCollection(agentTicketsQuery);
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "نجاح",
-      description: "تم إنشاء التذكرة TIC-1004 بنجاح.",
-    });
-    setShowNewForm(false);
+    if (!user || !db) return;
+
+    setIsSubmitting(true);
+    
+    const ticketID = `TIC-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    const newTicket = {
+      ticketID,
+      createdAt: new Date().toISOString(), // Using string for JSON compatibility in backend.json
+      status: 'New',
+      customerName: formData.customerName,
+      cif: formData.cif,
+      phoneNumber: formData.phone,
+      serviceType: formData.service,
+      subIssue: formData.issue,
+      createdByAgentId: user.id,
+      attachments: []
+    };
+
+    try {
+      addDocumentNonBlocking(collection(db, 'tickets'), newTicket);
+      toast({
+        title: "نجاح",
+        description: `تم إنشاء التذكرة ${ticketID} بنجاح.`,
+      });
+      setShowNewForm(false);
+      setFormData({ customerName: '', cif: '', phone: '', service: '', issue: '' });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "فشل في إنشاء التذكرة.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -48,19 +107,45 @@ export function AgentView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 text-right">
                   <Label htmlFor="customerName">اسم العميل</Label>
-                  <Input id="customerName" placeholder="الاسم القانوني الكامل" required className="text-right" />
+                  <Input 
+                    id="customerName" 
+                    placeholder="الاسم القانوني الكامل" 
+                    required 
+                    className="text-right"
+                    value={formData.customerName}
+                    onChange={(e) => setFormData({...formData, customerName: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2 text-right">
                   <Label htmlFor="cif">رقم العميل (CIF)</Label>
-                  <Input id="cif" placeholder="رقم CIF المكون من 8 أرقام" required className="text-right" />
+                  <Input 
+                    id="cif" 
+                    placeholder="رقم CIF المكون من 8 أرقام" 
+                    required 
+                    className="text-right"
+                    value={formData.cif}
+                    onChange={(e) => setFormData({...formData, cif: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2 text-right">
                   <Label htmlFor="phone">رقم الهاتف</Label>
-                  <Input id="phone" placeholder="+966..." required dir="ltr" className="text-right" />
+                  <Input 
+                    id="phone" 
+                    placeholder="+966..." 
+                    required 
+                    dir="ltr" 
+                    className="text-right"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2 text-right">
                   <Label htmlFor="service">نوع الخدمة</Label>
-                  <Select required dir="rtl">
+                  <Select 
+                    required 
+                    dir="rtl"
+                    onValueChange={(val) => setFormData({...formData, service: val})}
+                  >
                     <SelectTrigger className="text-right">
                       <SelectValue placeholder="اختر الخدمة" />
                     </SelectTrigger>
@@ -74,17 +159,20 @@ export function AgentView() {
               </div>
               <div className="space-y-2 text-right">
                 <Label htmlFor="issue">وصف المشكلة</Label>
-                <Input id="issue" placeholder="ملخص بسيط للمشكلة" required className="text-right" />
-              </div>
-              <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-muted-foreground hover:bg-slate-50 transition-colors cursor-pointer">
-                <Upload className="w-8 h-8 mb-2" />
-                <p className="text-sm font-medium">انقر أو اسحب الملفات لرفع المرفقات</p>
-                <p className="text-xs">يدعم: JPG, PNG, PDF (بحد أقصى 5MB)</p>
+                <Input 
+                  id="issue" 
+                  placeholder="ملخص بسيط للمشكلة" 
+                  required 
+                  className="text-right"
+                  value={formData.issue}
+                  onChange={(e) => setFormData({...formData, issue: e.target.value})}
+                />
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t flex-row-reverse">
                 <Button type="button" variant="outline" onClick={() => setShowNewForm(false)}>إلغاء</Button>
-                <Button type="submit" className="bg-primary text-white">
-                  <Send className="w-4 h-4 ml-2 rotate-180" /> إرسال التذكرة
+                <Button type="submit" className="bg-primary text-white" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Send className="w-4 h-4 ml-2 rotate-180" />} 
+                  إرسال التذكرة
                 </Button>
               </div>
             </form>
@@ -100,46 +188,55 @@ export function AgentView() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="text-right">رقم التذكرة</TableHead>
-                  <TableHead className="text-right">تاريخ الإنشاء</TableHead>
-                  <TableHead className="text-right">العميل</TableHead>
-                  <TableHead className="text-right">CIF</TableHead>
-                  <TableHead className="text-right">القسم</TableHead>
-                  <TableHead className="text-right">الحالة</TableHead>
-                  <TableHead className="text-left">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_TICKETS.filter(t => t.createdBy === 'agent-1').map((ticket) => (
-                  <TableRow key={ticket.id}>
-                    <TableCell className="font-mono text-xs font-bold">{ticket.ticketID}</TableCell>
-                    <TableCell className="text-xs">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
-                    <TableCell className="font-medium">{ticket.customerName}</TableCell>
-                    <TableCell className="text-xs">{ticket.CIF}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{ticket.department === 'Cards' ? 'البطاقات' : ticket.department === 'App' ? 'التطبيق' : 'العمليات'}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={
-                        ticket.status === 'Pending' ? 'status-pending' : 
-                        ticket.status === 'Resolved' ? 'status-resolved' : 
-                        ticket.status === 'New' ? 'status-new' : ''
-                      }>
-                        {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد الانتظار' : 'تم الحل'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <Button variant="ghost" size="sm">
-                        <FileText className="w-4 h-4 ml-1" /> التفاصيل
-                      </Button>
-                    </TableCell>
+            {isTicketsLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" /></div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="text-right">رقم التذكرة</TableHead>
+                    <TableHead className="text-right">تاريخ الإنشاء</TableHead>
+                    <TableHead className="text-right">العميل</TableHead>
+                    <TableHead className="text-right">CIF</TableHead>
+                    <TableHead className="text-right">القسم</TableHead>
+                    <TableHead className="text-right">الحالة</TableHead>
+                    <TableHead className="text-left">إجراءات</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {tickets?.map((ticket: any) => (
+                    <TableRow key={ticket.id}>
+                      <TableCell className="font-mono text-xs font-bold">{ticket.ticketID}</TableCell>
+                      <TableCell className="text-xs">{new Date(ticket.createdAt).toLocaleDateString('ar-SA')}</TableCell>
+                      <TableCell className="font-medium">{ticket.customerName}</TableCell>
+                      <TableCell className="text-xs">{ticket.cif}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{ticket.serviceType === 'Cards' ? 'البطاقات' : ticket.serviceType === 'Digital' ? 'التطبيق' : 'الدعم'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={
+                          ticket.status === 'Pending' ? 'status-pending' : 
+                          ticket.status === 'Resolved' ? 'status-resolved' : 
+                          ticket.status === 'New' ? 'status-new' : ''
+                        }>
+                          {ticket.status === 'New' ? 'جديد' : ticket.status === 'Pending' ? 'قيد الانتظار' : 'تم الحل'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <Button variant="ghost" size="sm">
+                          <FileText className="w-4 h-4 ml-1" /> التفاصيل
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {tickets?.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد تذاكر مسجلة حالياً</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       )}

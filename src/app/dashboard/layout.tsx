@@ -3,7 +3,7 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { Navbar } from "@/components/layout/Navbar"
-import { AuthProvider, useAuth } from "@/lib/contexts/AuthContext"
+import { useAuth } from "@/lib/contexts/AuthContext"
 import { Toaster } from "@/components/ui/toaster"
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -44,9 +44,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
+    <>
       <DashboardContent>{children}</DashboardContent>
       <Toaster />
-    </AuthProvider>
+    </>
   );
 }

@@ -1,10 +1,11 @@
+
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
-export type Department = 'Cards' | 'App' | 'Operations';
+export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
-export type ServiceType = 'Cards' | 'Digital' | 'Support';
+export type ServiceType = 'Cards' | 'Digital' | 'Support' | string;
 
 export interface UserProfile {
-  uid: string;
+  id: string;
   name: string;
   email: string;
   role: UserRole;
@@ -12,29 +13,26 @@ export interface UserProfile {
 }
 
 export interface TicketLog {
-  timestamp: number;
-  updatedBy: string;
-  previousStatus: TicketStatus;
+  id: string;
+  ticketId: string;
+  changedByUserId: string;
+  changedAt: string;
+  oldStatus?: TicketStatus;
   newStatus: TicketStatus;
-  comment?: string;
+  response: string;
 }
 
 export interface Ticket {
   id: string;
   ticketID: string;
-  createdAt: number;
+  createdAt: string;
   status: TicketStatus;
   customerName: string;
-  CIF: string;
+  cif: string;
   phoneNumber: string;
   serviceType: ServiceType;
   subIssue: string;
-  createdBy: string;
-  createdByName: string;
-  assignedTo?: string;
-  assignedName?: string;
+  createdByAgentId: string;
+  assignedToSpecialistId?: string;
   attachments: string[];
-  department: Department;
-  history: TicketLog[];
-  specialistResponse?: string;
 }

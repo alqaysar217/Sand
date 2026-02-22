@@ -1,6 +1,7 @@
+
 "use client"
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,34 +12,59 @@ import {
   Download, 
   AlertTriangle, 
   Clock, 
-  CheckCircle,
   FileSpreadsheet,
-  Plus
+  Plus,
+  Loader2
 } from 'lucide-react';
-import { MOCK_TICKETS, MOCK_USERS } from '@/lib/mock-data';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 const COLORS = ['#002D62', '#005EB8', '#ECAC17', '#2ECC71'];
 
 export function AdminView() {
-  const statsData = [
-    { name: 'البطاقات', tickets: 12 },
-    { name: 'الرقمية', tickets: 19 },
-    { name: 'العمليات', tickets: 8 },
-  ];
+  const db = useFirestore();
 
-  const statusData = [
-    { name: 'جديد', value: 4 },
-    { name: 'قيد الانتظار', value: 12 },
-    { name: 'تم الحل', value: 34 },
-    { name: 'مصعد', value: 2 },
-  ];
+  // Query all tickets
+  const allTicketsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
+  }, [db]);
 
-  const overdueTickets = MOCK_TICKETS.filter(t => t.status !== 'Resolved' && (Date.now() - t.createdAt > 86400000));
+  const { data: tickets, isLoading: isTicketsLoading } = useCollection(allTicketsQuery);
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    if (!tickets) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [] };
+    
+    const total = tickets.length;
+    const resolved = tickets.filter(t => t.status === 'Resolved').length;
+    const pending = tickets.filter(t => t.status === 'Pending').length;
+    const isNew = tickets.filter(t => t.status === 'New').length;
+
+    const deptMap: Record<string, number> = {};
+    const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0 };
+
+    tickets.forEach(t => {
+      deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
+      statusMap[t.status] = (statusMap[t.status] || 0) + 1;
+    });
+
+    const deptData = Object.entries(deptMap).map(([name, tickets]) => ({ name, tickets }));
+    const statusData = Object.entries(statusMap).map(([name, value]) => ({ 
+      name: name === 'New' ? 'جديد' : name === 'Pending' ? 'قيد الانتظار' : 'تم الحل', 
+      value 
+    }));
+
+    return { total, resolved, pending, new: isNew, deptData, statusData };
+  }, [tickets]);
+
+  const overdueTickets = tickets?.filter(t => t.status !== 'Resolved' && (Date.now() - new Date(t.createdAt).getTime() > 86400000)) || [];
 
   const exportToCSV = () => {
+    if (!tickets) return;
     const headers = "TicketID,Customer,CIF,Status,Department,CreatedAt\n";
-    const rows = MOCK_TICKETS.map(t => 
-      `${t.ticketID},${t.customerName},${t.CIF},${t.status},${t.department},${new Date(t.createdAt).toISOString()}`
+    const rows = tickets.map(t => 
+      `${t.ticketID},${t.customerName},${t.cif},${t.status},${t.serviceType},${t.createdAt}`
     ).join("\n");
     
     const blob = new Blob([headers + rows], { type: 'text/csv' });
@@ -57,11 +83,8 @@ export function AdminView() {
           <p className="text-muted-foreground">مراقبة وإشراف على مستوى النظام</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={exportToCSV}>
+          <Button variant="outline" onClick={exportToCSV} disabled={isTicketsLoading}>
             <Download className="w-4 h-4 ml-2" /> تصدير CSV
-          </Button>
-          <Button className="bg-primary text-white">
-            <Plus className="w-4 h-4 ml-2" /> مستخدم جديد
           </Button>
         </div>
       </div>
@@ -72,47 +95,43 @@ export function AdminView() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-xs opacity-80 uppercase font-bold tracking-wider text-right">إجمالي التذاكر</p>
-                <h3 className="text-3xl font-bold mt-1 text-right">1,284</h3>
+                <h3 className="text-3xl font-bold mt-1 text-right">{stats.total}</h3>
               </div>
               <FileSpreadsheet className="w-8 h-8 opacity-20" />
             </div>
-            <p className="text-xs mt-4 font-medium text-right">+12% من الشهر الماضي</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-right">متوسط الحل</p>
-                <h3 className="text-3xl font-bold mt-1 text-right">4.2 ساعة</h3>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-right">تم الحل</p>
+                <h3 className="text-3xl font-bold mt-1 text-right text-green-600">{stats.resolved}</h3>
               </div>
               <Clock className="w-8 h-8 text-secondary opacity-20" />
             </div>
-            <p className="text-xs mt-4 text-green-600 font-medium text-right">↓ تحسن بنسبة 15%</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-right">غير المحلولة</p>
-                <h3 className="text-3xl font-bold mt-1 text-right">42</h3>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-right">قيد المعالجة</p>
+                <h3 className="text-3xl font-bold mt-1 text-right text-accent">{stats.pending}</h3>
               </div>
               <AlertTriangle className="w-8 h-8 text-accent opacity-20" />
             </div>
-            <p className="text-xs mt-4 text-accent font-medium text-right">8 تذاكر متأخرة</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-right">موظفين متصلين</p>
-                <h3 className="text-3xl font-bold mt-1 text-right">28</h3>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-right">تذاكر جديدة</p>
+                <h3 className="text-3xl font-bold mt-1 text-right">{stats.new}</h3>
               </div>
               <Users className="w-8 h-8 text-primary opacity-20" />
             </div>
-            <p className="text-xs mt-4 text-muted-foreground font-medium text-right">9 أخصائيين نشطين</p>
           </CardContent>
         </Card>
       </div>
@@ -126,7 +145,7 @@ export function AdminView() {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={statsData}>
+                <BarChart data={stats.deptData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" />
                   <YAxis orientation="right" />
@@ -147,7 +166,7 @@ export function AdminView() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={statusData}
+                    data={stats.statusData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -155,22 +174,13 @@ export function AdminView() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {statusData.map((entry, index) => (
+                    {stats.statusData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-            <div className="w-48 space-y-2 text-right">
-              {statusData.map((s, i) => (
-                <div key={s.name} className="flex items-center gap-2 text-xs flex-row-reverse">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }}></div>
-                  <span className="font-bold">{s.name}:</span>
-                  <span>{s.value}%</span>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
@@ -193,23 +203,24 @@ export function AdminView() {
                 <TableHead className="text-right">القسم</TableHead>
                 <TableHead className="text-right">العميل</TableHead>
                 <TableHead className="text-right">تاريخ الإنشاء</TableHead>
-                <TableHead className="text-right">الوقت المنقضي</TableHead>
-                <TableHead className="text-left">إجراء</TableHead>
+                <TableHead className="text-right">الحالة</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {overdueTickets.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="font-bold text-red-700">{t.ticketID}</TableCell>
-                  <TableCell><Badge variant="outline">{t.department === 'Cards' ? 'بطاقات' : 'تطبيق'}</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{t.serviceType}</Badge></TableCell>
                   <TableCell>{t.customerName}</TableCell>
                   <TableCell className="text-xs">{new Date(t.createdAt).toLocaleString('ar-SA')}</TableCell>
-                  <TableCell className="text-xs text-red-600 font-bold">24 ساعة+</TableCell>
-                  <TableCell className="text-left">
-                    <Button size="sm" variant="destructive">تصعيد</Button>
-                  </TableCell>
+                  <TableCell className="text-xs text-red-600 font-bold">{t.status === 'New' ? 'جديد' : 'قيد الانتظار'}</TableCell>
                 </TableRow>
               ))}
+              {overdueTickets.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-4 text-green-600">لا توجد تذاكر متأخرة حالياً</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
