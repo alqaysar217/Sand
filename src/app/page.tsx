@@ -131,17 +131,17 @@ export default function Home() {
                 <div className="bg-red-600 p-4 -mx-4 -mt-4 mb-4 text-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-6 w-6" />
-                    <AlertTitle className="text-right font-bold text-lg m-0">دليل ربط قاعدة البيانات (الخطوة 5)</AlertTitle>
+                    <AlertTitle className="text-right font-bold text-lg m-0">دليل ربط قاعدة البيانات (أنت في المسار الصحيح!)</AlertTitle>
                   </div>
                 </div>
                 <AlertDescription className="text-right space-y-6">
                   <div className="bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-800">
-                    تم تسجيل دخولك بنجاح! الآن نحتاج لإنشاء ملفك في <strong>Firestore</strong> ليعرف النظام صلاحياتك.
+                    رائع! صورتك تؤكد أنك في المكان الصحيح. أكمل تعبئة الجدول التالي في واجهة Firestore بنفس الترتيب:
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs text-slate-500 font-bold">1. في مجموعة (Collection) "users"، أنشئ مستنداً جديداً بـ ID التالي:</Label>
+                      <Label className="text-xs text-slate-500 font-bold">1. تأكد من أن الـ Document ID مطابق لهذا الكود:</Label>
                       <div className="flex items-center justify-between gap-2 border-2 border-primary/20 p-2 rounded bg-slate-50 shadow-inner">
                         <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={() => copyText(firebaseUser.uid)}>
                           {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-primary" />}
@@ -151,14 +151,14 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-slate-500 font-bold">2. أضف الحقول (Fields) التالية داخل المستند:</Label>
+                      <Label className="text-xs text-slate-500 font-bold">2. انقل هذه الحقول بدقة (اكتب القيمة في خانة String):</Label>
                       <div className="border rounded-lg overflow-hidden text-xs shadow-sm">
                         <table className="w-full text-right bg-white border-collapse">
                           <thead className="bg-slate-100 border-b">
                             <tr>
-                              <th className="p-2 border-l">قيمة الحقل (Value)</th>
+                              <th className="p-2 border-l">النص المطلوب (String)</th>
                               <th className="p-2 border-l w-20 text-center">النوع (Type)</th>
-                              <th className="p-2">اسم الحقل (Field)</th>
+                              <th className="p-2">الحقل (Field)</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y">
@@ -188,9 +188,9 @@ export default function Home() {
                     </div>
 
                     {suggestions.isAdmin && (
-                      <div className="bg-red-50 p-3 rounded-md border border-red-200 text-xs">
-                        <p className="font-bold text-red-700 mb-1">الخطوة رقم 6 (للمدير فقط):</p>
-                        <p className="text-red-600">أنشئ مجموعة جديدة باسم <code className="bg-white px-1">admins</code> وضع فيها مستنداً يحمل نفس الـ ID الطويل أعلاه، واتركه فارغاً.</p>
+                      <div className="bg-amber-50 p-3 rounded-md border border-amber-200 text-xs">
+                        <p className="font-bold text-amber-700 mb-1">الخطوة الأخيرة للمدير (بعد حفظ ما سبق):</p>
+                        <p className="text-amber-600">أنشئ مجموعة جديدة باسم <code className="bg-white px-1">admins</code> وضع فيها مستنداً يحمل نفس الـ ID أعلاه، واضغط Save (اتركه فارغاً).</p>
                       </div>
                     )}
                   </div>
