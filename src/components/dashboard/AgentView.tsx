@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,11 @@ import {
   Plus, Send, Search, Loader2, FileText, 
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
-  Upload, User, X, CheckCircle2, AlertCircle, Trash2
+  Upload, User, X, Trash2
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
-  DialogDescription, DialogFooter
+  DialogDescription
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -76,7 +76,7 @@ export function AgentView() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // State for the single Detail Dialog
+  // State management for dialogs
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -149,16 +149,20 @@ export function AgentView() {
     if (!db || !selectedTicket) return;
     const ticketId = selectedTicket.id;
     
-    // Close dialogs first for "Instant" feel
-    setSelectedTicket(null);
+    // 1. Close the alert first
     setIsDeleteDialogOpen(false);
-
-    deleteDocumentNonBlocking(doc(db, 'tickets', ticketId));
     
-    toast({
-      title: "تم إلغاء البلاغ",
-      description: "تم حذف البلاغ من النظام بنجاح.",
-    });
+    // 2. Clear selected ticket after a tiny delay to prevent Radix body lock
+    setTimeout(() => {
+      setSelectedTicket(null);
+      // 3. Perform the actual deletion
+      deleteDocumentNonBlocking(doc(db, 'tickets', ticketId));
+      
+      toast({
+        title: "تم إلغاء البلاغ",
+        description: "تم حذف البلاغ من النظام بنجاح.",
+      });
+    }, 100);
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -441,92 +445,96 @@ export function AgentView() {
       )}
 
       {/* Single Details Dialog - Much Faster UI */}
-      <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className="max-w-3xl text-right p-0" dir="rtl">
+      <Dialog open={!!selectedTicket} onOpenChange={(open) => {
+        if (!open) setSelectedTicket(null);
+      }}>
+        <DialogContent className="max-w-3xl text-right p-0 overflow-hidden" dir="rtl">
           {selectedTicket && (
-            <ScrollArea className="max-h-[85vh]">
-              <div className="p-6">
-                <DialogHeader className="mb-6">
-                  <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
-                    تفاصيل البلاغ {selectedTicket.ticketID}
-                  </DialogTitle>
-                  <DialogDescription className="text-right font-bold text-secondary">بواسطة الموظف: {selectedTicket.createdByAgentName}</DialogDescription>
-                </DialogHeader>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4 border-t border-b bg-slate-50/50 rounded-lg p-4">
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-[10px] uppercase">اسم العميل</Label>
-                    <p className="font-bold">{selectedTicket.customerName}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-[10px] uppercase">رقم الحساب (CIF)</Label>
-                    <p className="font-mono font-bold text-blue-700">{selectedTicket.cif}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-[10px] uppercase">رقم الهاتف</Label>
-                    <p className="font-mono" dir="ltr">{selectedTicket.phoneNumber}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-[10px] uppercase">وسيلة الاستلام</Label>
-                    <p className="font-bold">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-[10px] uppercase">الجهة المعنية</Label>
-                    <p className="font-bold text-blue-700">{getEntityLabel(selectedTicket.serviceType)}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-[10px] uppercase">نوع الخدمة</Label>
-                    <p className="font-bold">{selectedTicket.subIssue}</p>
-                  </div>
-                </div>
-
-                <div className="py-6">
-                  <Label className="text-muted-foreground text-[10px] uppercase block mb-2 font-bold">تفاصيل المشكلة المشروحة</Label>
-                  <div className="bg-white border-2 border-slate-100 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap shadow-inner">
-                    {selectedTicket.description}
-                  </div>
-                </div>
-
-                {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
-                  <div className="py-4 border-t">
-                    <Label className="text-muted-foreground text-[10px] uppercase block mb-3 font-bold">المرفقات التوضيحية</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedTicket.attachments.map((att: any, idx: number) => (
-                        <div key={idx} className="space-y-2 border-2 border-slate-100 rounded-lg p-2 bg-white group shadow-sm">
-                          <div className="relative aspect-video rounded-md overflow-hidden bg-black flex items-center justify-center">
-                            <img src={att.url} alt="مرفق" className="max-w-full max-h-full object-contain" />
-                            <a 
-                              href={att.url} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2"
-                            >
-                              <ExternalLink className="w-5 h-5" /> تكبير الصورة
-                            </a>
-                          </div>
-                          <p className="text-[10px] text-center text-muted-foreground font-bold">{att.description}</p>
-                        </div>
-                      ))}
+            <>
+              <DialogHeader className="p-6 border-b bg-slate-50/50">
+                <DialogTitle className="text-2xl text-primary flex items-center gap-2 justify-end">
+                  تفاصيل البلاغ {selectedTicket.ticketID}
+                </DialogTitle>
+                <DialogDescription className="text-right font-bold text-secondary">بواسطة الموظف: {selectedTicket.createdByAgentName}</DialogDescription>
+              </DialogHeader>
+              
+              <ScrollArea className="max-h-[60vh]">
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 rounded-lg p-4 border border-slate-100">
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-[10px] uppercase">اسم العميل</Label>
+                      <p className="font-bold">{selectedTicket.customerName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-[10px] uppercase">رقم الحساب (CIF)</Label>
+                      <p className="font-mono font-bold text-blue-700">{selectedTicket.cif}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-[10px] uppercase">رقم الهاتف</Label>
+                      <p className="font-mono" dir="ltr">{selectedTicket.phoneNumber}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-[10px] uppercase">وسيلة الاستلام</Label>
+                      <p className="font-bold">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-[10px] uppercase">الجهة المعنية</Label>
+                      <p className="font-bold text-blue-700">{getEntityLabel(selectedTicket.serviceType)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-[10px] uppercase">نوع الخدمة</Label>
+                      <p className="font-bold">{selectedTicket.subIssue}</p>
                     </div>
                   </div>
-                )}
 
-                <div className="mt-8 pt-4 border-t flex justify-between items-center flex-row-reverse">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-slate-100">{new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</Badge>
-                    <Label className="text-[10px] text-muted-foreground">تاريخ الإنشاء:</Label>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-[10px] uppercase block font-bold">تفاصيل المشكلة المشروحة</Label>
+                    <div className="bg-white border-2 border-slate-100 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap shadow-inner">
+                      {selectedTicket.description}
+                    </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => setIsDeleteDialogOpen(true)}>
-                    <Trash2 className="w-4 h-4 ml-2" /> إلغاء (حذف) البلاغ
-                  </Button>
+
+                  {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                    <div className="space-y-3 border-t pt-4">
+                      <Label className="text-muted-foreground text-[10px] uppercase block font-bold">المرفقات التوضيحية</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedTicket.attachments.map((att: any, idx: number) => (
+                          <div key={idx} className="space-y-2 border-2 border-slate-100 rounded-lg p-2 bg-white group shadow-sm">
+                            <div className="relative aspect-video rounded-md overflow-hidden bg-black flex items-center justify-center">
+                              <img src={att.url} alt="مرفق" className="max-w-full max-h-full object-contain" />
+                              <a 
+                                href={att.url} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2"
+                              >
+                                <ExternalLink className="w-5 h-5" /> تكبير الصورة
+                              </a>
+                            </div>
+                            <p className="text-[10px] text-center text-muted-foreground font-bold">{att.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+
+              <div className="p-6 border-t bg-slate-50/50 flex justify-between items-center flex-row-reverse">
+                <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="font-bold">
+                  <Trash2 className="w-4 h-4 ml-2" /> إلغاء (حذف) البلاغ
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-white">{new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</Badge>
+                  <Label className="text-[10px] text-muted-foreground">تاريخ الإنشاء:</Label>
                 </div>
               </div>
-            </ScrollArea>
+            </>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Alert */}
+      {/* Delete Confirmation Alert - Outside main dialog to prevent locks */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
@@ -544,3 +552,4 @@ export function AgentView() {
     </div>
   );
 }
+
