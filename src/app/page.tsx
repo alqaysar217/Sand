@@ -78,10 +78,10 @@ export default function Home() {
   const getSuggestedFields = () => {
     if (!firebaseUser?.email) return null;
     const email = firebaseUser.email;
-    if (email.includes('admin')) return { name: 'بلخرم (المدير العام)', role: 'Admin', dept: 'Operations', isAdmin: true };
-    if (email.includes('cards')) return { name: 'الأخصائي الفني', role: 'Specialist', dept: 'Cards', isAdmin: false };
-    if (email.includes('callcenter')) return { name: 'موظف الاتصال', role: 'Agent', dept: 'Support', isAdmin: false };
-    if (email.includes('cs.')) return { name: 'موظف الميدان', role: 'Agent', dept: 'Digital', isAdmin: false };
+    if (email === 'balkharam.admin@bank.com') return { name: 'بلخرم (المدير العام)', role: 'Admin', dept: 'Operations', isAdmin: true };
+    if (email === 'cards.ops@bank.com') return { name: 'الأخصائي الفني', role: 'Specialist', dept: 'Cards', isAdmin: false };
+    if (email === 'callcenter.agent@bank.com') return { name: 'موظف الاتصال', role: 'Agent', dept: 'Support', isAdmin: false };
+    if (email === 'cs.frontline@bank.com') return { name: 'موظف الميدان', role: 'Agent', dept: 'Digital', isAdmin: false };
     return { name: 'موظف جديد', role: 'Agent', dept: 'Support', isAdmin: false };
   };
 
