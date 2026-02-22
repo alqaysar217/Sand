@@ -1,7 +1,6 @@
-
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,15 +15,29 @@ export default function Home() {
   const { login, user } = useAuth();
   const router = useRouter();
 
-  if (user) {
-    router.push('/dashboard');
-    return null;
-  }
+  // Fix: Move router.push to useEffect to avoid "Cannot update a component while rendering" error
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     login(email);
   };
+
+  // Prevent rendering login page if user is already authenticated
+  if (user) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-primary rounded-lg"></div>
+          <div className="h-4 w-32 bg-slate-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F6F9FA] flex flex-col">
