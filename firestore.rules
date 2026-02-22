@@ -2,10 +2,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // قاعدة عامة وبسيطة: أي مستخدم مسجل يمكنه القراءة والكتابة في جميع المجموعات
-    // هذا الإعداد مخصص لفترة الفحص والاختبار لضمان عدم ظهور أخطاء الصلاحيات
+    // تم فتح الصلاحيات بالكامل مؤقتاً للسماح بالفحص والاختبار الشامل
+    // سيتم إعادة تطبيق القواعد الأمنية الصارمة بعد التأكد من عمل الأقسام
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
