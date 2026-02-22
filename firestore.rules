@@ -8,15 +8,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق من صلاحيات المدير عبر مجموعة admins (طريقة سريعة وفعالة)
+    // التحقق من صلاحيات المدير عبر مجموعة admins
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // جلب بيانات المستخدم لمرة واحدة بكفاءة
+    // جلب بيانات المستخدم بأمان مع قيم افتراضية
     function getUserData() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return get(path).data;
+      return exists(path) ? get(path).data : {};
     }
 
     // --- القواعد ---
@@ -38,22 +38,23 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       
       // السماح بالقراءة (تغطي get و list)
+      // تم تبسيط الشرط لضمان نجاح الاستعلامات المفلترة (Queries)
       allow read: if isSignedIn() && (
         isAdmin() || 
         (resource.data.createdByAgentId == request.auth.uid) || 
         (resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (getUserData().department == resource.data.serviceType)
+        (getUserData().get('department', 'None') == resource.data.serviceType)
       );
 
-      // إنشاء بلاغ جديد (يجب أن يكون المنشئ هو نفسه المستخدم المسجل)
+      // إنشاء بلاغ جديد
       allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
       
-      // التحديث (للمدير، أو المنشئ، أو الأخصائي المسند إليه، أو أخصائي نفس القسم)
+      // التحديث
       allow update: if isSignedIn() && (
         isAdmin() || 
         (resource.data.createdByAgentId == request.auth.uid) || 
         (resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (getUserData().department == resource.data.serviceType)
+        (getUserData().get('department', 'None') == resource.data.serviceType)
       );
 
       // الحذف للمدير فقط
@@ -65,7 +66,7 @@ service cloud.firestore {
           isAdmin() || 
           (resource.data.ticketCreatedByAgentId == request.auth.uid) || 
           (resource.data.ticketAssignedToSpecialistId == request.auth.uid) ||
-          (getUserData().department == resource.data.ticketServiceType)
+          (getUserData().get('department', 'None') == resource.data.ticketServiceType)
         );
         allow create: if isSignedIn();
         allow update, delete: if isAdmin();
