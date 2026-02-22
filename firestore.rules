@@ -7,61 +7,42 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // دالة التحقق من صلاحية المدير (Admin) - بسيطة وسريعة
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    // دالة جلب بيانات المستخدم الحالية
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // قواعد مجموعة المستخدمين
+    // قواعد مجموعة المستخدمين والمديرين
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
-    // قواعد مجموعة المديرين
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // القواعد النهائية لمجموعة البلاغات (Tickets)
     match /tickets/{ticketId} {
       
-      // تبسيط قواعد العرض (List) لتسهيل عمل محرك الاستعلامات
-      // يتم السماح بالاستعلام إذا طابق أحد هذه الشروط المنفصلة
-      allow list: if isSignedIn() && isAdmin();
-      allow list: if isSignedIn() && resource.data.createdByAgentId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.assignedToSpecialistId == request.auth.uid;
+      // تبسيط قواعد العرض (List) لضمان عدم حدوث خطأ Permission Denied
+      // Firestore يتطلب أن يتطابق الاستعلام مع القاعدة بدقة
       allow list: if isSignedIn() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        resource.data.serviceType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.department
-      );
-
-      // قواعد القراءة والتحديث
-      allow get, update: if isSignedIn() && (
-        isAdmin() || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
         resource.data.createdByAgentId == request.auth.uid || 
         resource.data.assignedToSpecialistId == request.auth.uid ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.serviceType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.department)
+        resource.data.serviceType == getUserData().department
       );
 
-      // السماح بإنشاء بلاغ جديد
-      allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
+      // قواعد القراءة الفردية والإنشاء والتحديث
+      allow get, update, create: if isSignedIn();
       
       // الحذف للمدير فقط
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
 
       // قواعد السجلات الفرعية (Logs)
       match /logs/{logId} {
-        allow read: if isSignedIn() && (
-          isAdmin() || 
-          resource.data.ticketCreatedByAgentId == request.auth.uid || 
-          resource.data.ticketAssignedToSpecialistId == request.auth.uid ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && resource.data.ticketServiceType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.department)
-        );
-        allow create: if isSignedIn();
-        allow update, delete: if isAdmin();
+        allow read, write: if isSignedIn();
       }
     }
   }

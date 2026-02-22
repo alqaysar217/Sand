@@ -30,7 +30,7 @@ export function AgentView() {
     issue: ''
   });
 
-  // استعلام مفلتر بدقة ليتوافق مع القواعد الأمنية المبسطة
+  // الاستعلام المفلتر الخاص بالموظف
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
