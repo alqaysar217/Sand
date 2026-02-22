@@ -1,13 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // قاعدة ذهبية: أي مستخدم سجل دخوله يمكنه القراءة والكتابة حالياً لغرض الفحص
-    // سنقوم بتشديدها لاحقاً بعد التأكد من عمل الواجهات
+    // قاعدة ذهبية مؤقتة: أي مستخدم سجل دخوله يمكنه القراءة والكتابة لجميع المجموعات
+    // هذا سيضمن اختفاء خطأ Permission Denied فوراً لتتمكن من فحص الواجهات
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
 
-    // السماح بالاستعلامات الجماعية على التذاكر لجميع الموظفين المسجلين
+    // السماح بالاستعلامات الجماعية على التذاكر لجميع الموظفين
     match /tickets/{ticketId} {
       allow list: if request.auth != null;
       allow get: if request.auth != null;
@@ -17,6 +17,11 @@ service cloud.firestore {
       match /logs/{logId} {
         allow read, write: if request.auth != null;
       }
+    }
+    
+    // قواعد المستخدمين
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
