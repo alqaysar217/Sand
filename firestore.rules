@@ -1,29 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // قاعدة ذهبية للفحص: السماح بالقراءة والكتابة لأي مستخدم سجل دخوله
-    // هذا سيضمن اختفاء خطأ Permission Denied فوراً لتتمكن من فحص الواجهات
+    // القاعدة الذهبية للفحص: السماح بالقراءة والكتابة لأي مستخدم سجل دخوله
+    // هذا سيعالج خطأ Permission Denied بشكل نهائي لغرض الفحص
     match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-
-    // القواعد المفصلة (ستفعل لاحقاً بعد استقرار الواجهات)
-    match /tickets/{ticketId} {
-      allow list: if request.auth != null;
-      allow get: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      
-      match /logs/{logId} {
-        allow read, write: if request.auth != null;
-      }
-    }
-    
-    match /users/{userId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /admins/{adminId} {
       allow read, write: if request.auth != null;
     }
   }

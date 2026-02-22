@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Send, Copy, Search, Loader2, FileText, Check, ArrowRight, AlertCircle } from 'lucide-react';
+import { Plus, Send, Copy, Search, Loader2, FileText, Check, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 
 export function AgentView() {
   const { user } = useAuth();
@@ -30,17 +30,25 @@ export function AgentView() {
     issue: ''
   });
 
-  // استعلام مفلتر بـ UID الموظف
+  // تم إزالة orderBy من هنا لتجنب طلب إنشاء "فهرس" (Index) يدوي
+  // سيتم الترتيب برمجياً في الأسفل لضمان عمل التطبيق فوراً
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
     return query(
       collection(db, 'tickets'),
-      where('createdByAgentId', '==', user.id),
-      orderBy('createdAt', 'desc')
+      where('createdByAgentId', '==', user.id)
     );
   }, [db, user?.id]);
 
-  const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
+  const { data: rawTickets, isLoading: isTicketsLoading, error: queryError } = useCollection(agentTicketsQuery);
+
+  // ترتيب التذاكر برمجياً حسب التاريخ (من الأحدث للأقدم) لضمان عدم الحاجة لفهرس يدوي
+  const tickets = useMemo(() => {
+    if (!rawTickets) return [];
+    return [...rawTickets].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [rawTickets]);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +83,7 @@ export function AgentView() {
         toast({ 
           variant: "destructive",
           title: "خطأ في الإرسال", 
-          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. تأكد من إعدادات Firestore." 
+          description: "حدث خطأ أثناء محاولة إنشاء البلاغ. يرجى مراجعة إعدادات قاعدة البيانات." 
         });
       })
       .finally(() => {
@@ -210,18 +218,16 @@ export function AgentView() {
                 <p className="text-sm text-muted-foreground">جاري تحميل السجل...</p>
               </div>
             ) : queryError ? (
-               <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-amber-50 rounded-xl border border-amber-200">
-                <AlertCircle className="w-12 h-12 text-amber-600" />
+               <div className="flex flex-col items-center justify-center py-12 gap-4 text-center bg-red-50 rounded-xl border border-red-200">
+                <AlertCircle className="w-12 h-12 text-red-600" />
                 <div className="space-y-2">
-                  <h3 className="font-bold text-amber-900">مطلوب تفعيل الفهرس (Index)</h3>
-                  <p className="text-sm text-amber-800 max-w-md mx-auto">
-                    بما أنك أنشأت مستند المستخدم بنجاح، يتبقى فقط إنشاء "الفهرس" في كونسول Firebase لكي يتمكن التطبيق من ترتيب البلاغات حسب التاريخ.
+                  <h3 className="font-bold text-red-900">حدث خطأ في جلب البيانات</h3>
+                  <p className="text-sm text-red-800 max-w-md mx-auto">
+                    يرجى التأكد من تسجيل الدخول بشكل صحيح أو مراجعة إعدادات قاعدة البيانات.
                   </p>
-                  <div className="bg-white p-3 rounded-lg border border-amber-300 text-[11px] font-mono text-left inline-block mt-2">
-                    Collection: tickets<br/>
-                    Field 1: createdByAgentId (Ascending)<br/>
-                    Field 2: createdAt (Descending)
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                    <RefreshCw className="w-3 h-3 ml-2" /> إعادة محاولة
+                  </Button>
                 </div>
               </div>
             ) : (
