@@ -61,6 +61,11 @@ export default function Home() {
     }
   };
 
+  const setDemoLogin = (email: string, pass: string) => {
+    setEmail(email);
+    setPassword(pass);
+  };
+
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
@@ -87,17 +92,17 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl w-full items-center">
           <div className="hidden lg:block space-y-8">
             <h1 className="text-5xl font-bold text-primary leading-tight">
-              ذكاء <span className="text-secondary">الحلول</span> المصرفية.
+              نظام <span className="text-secondary">بلاغات</span> المصرفي.
             </h1>
             <p className="text-xl text-muted-foreground">
-              تمكين فرق الدعم الخاصة بك من خلال التوجيه الآلي، الردود المدعومة بالذكاء الاصطناعي، والتحليلات الفورية.
+              تمكين فرق الدعم والمديرين من متابعة الشكاوى وحلها بأعلى معايير الجودة والأمان.
             </p>
             <div className="space-y-4">
               {[
-                "وصول وصلاحيات مبنية على الأدوار",
-                "توجيه آلي للأقسام المعنية",
-                "مساعد استجابة مدعوم بالذكاء الاصطناعي",
-                "تحليلات تشغيلية متقدمة"
+                "تحليلات غرفة القيادة والرقابة (للمدير)",
+                "معالجة فنية متقدمة (لقسم البطائق)",
+                "رفع سريع للبلاغات (للكول سنتر)",
+                "واجهة فروع مدعومة بالمرفقات (لخدمة العملاء)"
               ].map((text) => (
                 <div key={text} className="flex items-center gap-3">
                   <div className="bg-green-100 p-1 rounded-full">
@@ -113,9 +118,9 @@ export default function Home() {
             {error === "MISSING_PROFILE" && firebaseUser && (
               <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2">
                 <Info className="h-4 w-4" />
-                <AlertTitle className="text-right font-bold">خطوة أخيرة مطلوبة لإكمال الإعداد</AlertTitle>
+                <AlertTitle className="text-right font-bold">خطوة أخيرة مطلوبة لإتمام الإعداد الحقيقي</AlertTitle>
                 <AlertDescription className="text-right space-y-3">
-                  <p>تم تسجيل دخولك بنجاح، ولكن نحتاج لربط حسابك بملف تعريفي في قاعدة البيانات Firestore.</p>
+                  <p>تم تسجيل دخولك، ولكن نحتاج لربط حسابك بملف تعريفي في قاعدة البيانات Firestore.</p>
                   <div className="bg-white/50 p-3 rounded-md space-y-2 text-xs">
                     <p className="font-bold">يرجى إنشاء مستند في Firestore بالتفاصيل التالية:</p>
                     <div className="flex items-center justify-between gap-2 border p-2 rounded bg-white">
@@ -127,9 +132,9 @@ export default function Home() {
                     </div>
                     <ul className="list-disc list-inside space-y-1">
                       <li>المجموعة: <span className="font-bold">users</span></li>
-                      <li>حقل <span className="font-bold">name</span>: (اسمك)</li>
-                      <li>حقل <span className="font-bold">role</span>: <code className="bg-slate-200 px-1">Agent</code> أو <code className="bg-slate-200 px-1">Specialist</code> أو <code className="bg-slate-200 px-1">Admin</code></li>
-                      <li>حقل <span className="font-bold">department</span>: <code className="bg-slate-200 px-1">Operations</code> أو <code className="bg-slate-200 px-1">Cards</code></li>
+                      <li>حقل <span className="font-bold">name</span>: (اسم المستخدم)</li>
+                      <li>حقل <span className="font-bold">role</span>: <code className="bg-slate-200 px-1">Admin</code> أو <code className="bg-slate-200 px-1">Specialist</code> أو <code className="bg-slate-200 px-1">Agent</code></li>
+                      <li>حقل <span className="font-bold">department</span>: <code className="bg-slate-200 px-1">Operations</code> أو <code className="bg-slate-200 px-1">Cards</code> أو <code className="bg-slate-200 px-1">Support</code> أو <code className="bg-slate-200 px-1">Digital</code></li>
                     </ul>
                   </div>
                   <Button variant="outline" size="sm" className="w-full mt-2" onClick={logout}>تسجيل الخروج والعودة</Button>
@@ -140,8 +145,8 @@ export default function Home() {
             {!firebaseUser && (
               <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
                 <CardHeader className="space-y-1 text-right">
-                  <CardTitle className="text-2xl font-bold">دخول الموظفين</CardTitle>
-                  <CardDescription>أدخل بيانات الاعتماد الخاصة بك للمتابعة</CardDescription>
+                  <CardTitle className="text-2xl font-bold">دخول الموظفين والمسؤولين</CardTitle>
+                  <CardDescription>أدخل البريد الرسمي وكلمة السر</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleLogin} className="space-y-4">
@@ -152,7 +157,7 @@ export default function Home() {
                         <Input 
                           id="email" 
                           type="email" 
-                          placeholder="name@bank.com" 
+                          placeholder="balkharam.admin@bank.com" 
                           className="pr-10 text-right"
                           dir="ltr"
                           value={email}
@@ -184,11 +189,23 @@ export default function Home() {
                   </form>
 
                   <div className="mt-8 pt-6 border-t">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">حسابات تجريبية للإعداد:</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">بيانات الدخول السريع (للاختبار):</p>
                     <div className="grid grid-cols-1 gap-2">
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-xs" onClick={() => { setEmail('ahmed@bank.com'); setPassword('password123'); }}>
-                        <span>أحمد العميل (موظف)</span>
-                        <code className="text-[10px] opacity-60">ahmed@bank.com</code>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
+                        <span>المدير العام (بلخرم)</span>
+                        <code className="opacity-60">balkharam.admin@bank.com</code>
+                      </Button>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SECURE_2024')}>
+                        <span>قسم البطائق</span>
+                        <code className="opacity-60">cards.ops@bank.com</code>
+                      </Button>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'CALL7788_CC')}>
+                        <span>الكول سنتر</span>
+                        <code className="opacity-60">callcenter.agent@bank.com</code>
+                      </Button>
+                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px]" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
+                        <span>خدمة العملاء</span>
+                        <code className="opacity-60">cs.frontline@bank.com</code>
                       </Button>
                     </div>
                   </div>
@@ -200,7 +217,7 @@ export default function Home() {
       </main>
 
       <footer className="p-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} أنظمة كونكت-ريزولف المصرفية. جميع الحقوق محفوظة.
+        © {new Date().getFullYear()} أنظمة كونكت-ريزولف المصرفية | جميع الحقوق محفوظة
       </footer>
     </div>
   );

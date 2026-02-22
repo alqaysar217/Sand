@@ -1,8 +1,9 @@
+
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Shield } from 'lucide-react';
+import { LogOut, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export function Navbar() {
@@ -11,15 +12,16 @@ export function Navbar() {
   if (!user) return null;
 
   const roleMap: Record<string, string> = {
-    'Agent': 'موظف',
-    'Specialist': 'أخصائي',
-    'Admin': 'مدير النظام'
+    'Agent': 'موظف رفع بلاغات',
+    'Specialist': 'أخصائي معالجة',
+    'Admin': 'المدير العام (بلخرم)'
   };
 
   const deptMap: Record<string, string> = {
-    'Cards': 'البطاقات',
-    'App': 'التطبيق الرقمي',
-    'Operations': 'العمليات'
+    'Cards': 'قسم البطائق',
+    'Digital': 'خدمة العملاء',
+    'Support': 'الكول سنتر',
+    'Operations': 'غرفة القيادة والرقابة'
   };
 
   return (
@@ -34,7 +36,7 @@ export function Navbar() {
       <div className="flex items-center gap-4">
         <div className="text-left hidden sm:block text-right">
           <p className="text-sm font-semibold">{user.name}</p>
-          <p className="text-xs text-muted-foreground">قسم {deptMap[user.department] || user.department}</p>
+          <p className="text-xs text-muted-foreground">{deptMap[user.department] || user.department}</p>
         </div>
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
           {roleMap[user.role] || user.role}
