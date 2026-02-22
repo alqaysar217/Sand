@@ -2,28 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * CONNECTRESOLVE SECURITY RULES
-     * 
-     * نظام أمني يعتمد على الأدوار (Role-Based) والتبعية الإدارية (Department-Based).
-     * تم تحسين القواعد لتدعم الاستعلامات المفلترة (Queries) بشكل تلقائي.
-     */
-
-    // --- دالات المساعدة العالمية ---
+    // --- دالات المساعدة ---
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** التحقق من وجود المستخدم في مجموعة المديرين */
+    // التحقق من صلاحيات المدير عبر مجموعة admins
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    /** جلب بيانات المستخدم بأمان مع قيم افتراضية لتجنب الأخطاء */
-    function getUserData() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) ? get(userPath).data : {"department": "none", "role": "none"};
+    // جلب بيانات القسم للمستخدم بأمان
+    function getUserDepartment() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data.department : 'none';
     }
 
     // --- القواعد ---
@@ -31,52 +24,49 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow delete: if isAdmin();
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
     match /admins/{adminId} {
       allow get: if isSignedIn();
-      allow list, write: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /tickets/{ticketId} {
-      /**
-       * منطق الوصول للبلاغات:
-       * 1. المدير العام يرى كل شيء.
-       * 2. الموظف يرى البلاغات التي أنشأها (يجب فلترة الاستعلام بـ createdByAgentId).
-       * 3. الأخصائي يرى البلاغات المسندة إليه أو التابعة لقسمه (يجب فلترة الاستعلام بـ serviceType).
-       */
+      // السماح بالقراءة إذا كان:
+      // 1. مديراً.
+      // 2. هو من أنشأ البلاغ (للعملاء والموظفين).
+      // 3. البلاغ مسند إليه كأخصائي.
+      // 4. البلاغ يتبع لقسمه (للأخصائيين).
       allow read: if isSignedIn() && (
         isAdmin() || 
-        (resource != null && resource.data.createdByAgentId == request.auth.uid) || 
-        (resource != null && resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (resource != null && getUserData().department == resource.data.serviceType)
+        (resource.data.createdByAgentId == request.auth.uid) || 
+        (resource.data.assignedToSpecialistId == request.auth.uid) ||
+        (getUserDepartment() == resource.data.serviceType)
       );
 
       allow create: if isSignedIn() && request.resource.data.createdByAgentId == request.auth.uid;
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        (resource != null && resource.data.createdByAgentId == request.auth.uid) || 
-        (resource != null && resource.data.assignedToSpecialistId == request.auth.uid) ||
-        (resource != null && getUserData().department == resource.data.serviceType)
+        (resource.data.createdByAgentId == request.auth.uid) || 
+        (resource.data.assignedToSpecialistId == request.auth.uid) ||
+        (getUserDepartment() == resource.data.serviceType)
       );
 
       allow delete: if isAdmin();
-    }
 
-    match /tickets/{ticketId}/logs/{logId} {
-      allow read: if isSignedIn() && (
-        isAdmin() || 
-        (resource != null && resource.data.ticketCreatedByAgentId == request.auth.uid) || 
-        (resource != null && resource.data.ticketAssignedToSpecialistId == request.auth.uid) ||
-        (resource != null && getUserData().department == resource.data.ticketServiceType)
-      );
-
-      allow create: if isSignedIn() && request.resource.data.changedByUserId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      // قواعد السجلات (Logs)
+      match /logs/{logId} {
+        allow read: if isSignedIn() && (
+          isAdmin() || 
+          (resource.data.ticketCreatedByAgentId == request.auth.uid) || 
+          (resource.data.ticketAssignedToSpecialistId == request.auth.uid) ||
+          (getUserDepartment() == resource.data.ticketServiceType)
+        );
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin();
+      }
     }
   }
 }
