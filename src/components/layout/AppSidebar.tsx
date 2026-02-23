@@ -70,18 +70,18 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-l border-r-0" side="right">
       <SidebarHeader className="p-6 border-b bg-primary/5">
-        <div className="flex items-center gap-3 justify-end">
-          <span className="font-bold text-2xl text-primary">سند</span>
+        <div className="flex items-center gap-3">
           {logo && (
             <Image 
               src={logo.imageUrl} 
               alt="Sanad Logo" 
               width={32} 
               height={32} 
-              className="rounded-lg"
+              className="rounded-lg shadow-sm"
               data-ai-hint={logo.imageHint}
             />
           )}
+          <span className="font-bold text-2xl text-primary">سند</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="bg-white">
