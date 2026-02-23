@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { AgentView } from '@/components/dashboard/AgentView';
 import { SpecialistView } from '@/components/dashboard/SpecialistView';
 import { AdminView } from '@/components/dashboard/AdminView';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -27,7 +26,6 @@ export default function DashboardPage() {
     if (email === 'cards.ops@bank.com') return { role: 'Specialist' as UserRole, dept: 'Cards' as Department, name: 'الأخصائي الفني' };
     if (email === 'cs.digital@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
     
-    // قيمة افتراضية في حال وجود إيميل غير مسجل
     return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك جديد' };
   }, [firebaseUser?.email]);
 
@@ -41,7 +39,6 @@ export default function DashboardPage() {
           toast({ title: "تم تفعيل الهوية المصرفية", description: `مرحباً بك: ${autoValues.name}` });
         } catch (err) {
           console.error("Auto activation failed", err);
-          toast({ variant: "destructive", title: "خطأ في التهيئة", description: "فشل تفعيل الصلاحيات تلقائياً." });
         } finally {
           setIsActivating(false);
         }
@@ -67,7 +64,6 @@ export default function DashboardPage() {
     );
   }
 
-  // السماح بالعرض فقط إذا وجد المستخدم والملف الشخصي
   if (!user && !isActivating) return (
      <div className="flex flex-col items-center justify-center p-20 gap-4">
         <Loader2 className="animate-spin h-10 w-10 text-primary" />

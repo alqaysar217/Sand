@@ -17,14 +17,13 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('password123');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const { login, user, loading, firebaseUser } = useAuth();
+  const { login, loading, firebaseUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   useEffect(() => {
-    // التوجه فوراً للوحة القيادة بمجرد نجاح تسجيل الدخول فيربيس
     if (firebaseUser && !loading) {
       router.push('/dashboard');
     }

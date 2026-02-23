@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         snapshotUnsubscribe.current();
       }
 
-      // مراقبة حية لملف المستخدم لضمان استجابة الواجهة فور الإنشاء
       snapshotUnsubscribe.current = onSnapshot(
         doc(db, 'users', firebaseUser.uid),
         (docSnap) => {
@@ -77,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // إنشاء حساب تجريبي فوراً إذا لم يكن موجوداً لضمان عدم تعليق المستخدم
+      // Create demo account if not exists
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
@@ -100,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: firebaseUser.email,
         role: role,
         department: dept
-      });
+      }, { merge: true });
     } catch (err) {
       console.error("Setup profile error:", err);
       throw err;

@@ -14,7 +14,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // التوجه لصفحة الدخول فقط في حال انقطاع الجلسة تماماً
+    // We only redirect if there is no firebase session at all
     if (!loading && !firebaseUser && !error) {
       router.push('/');
     }
@@ -31,8 +31,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // نسمح بعرض المحتوى إذا كان هناك مستخدم فيربيس، حتى لو الملف في طور الإنشاء
-  if (!firebaseUser && !error) return null;
+  // Allow rendering if we have a firebase user, even if profile is missing (page.tsx will handle activation)
+  if (!firebaseUser) return null;
 
   return (
     <SidebarProvider>
