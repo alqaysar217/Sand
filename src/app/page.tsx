@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from 'react';
@@ -19,9 +20,9 @@ export default function Home() {
 
   const employees = [
     { name: 'المدير العام', email: 'admin.bank@bank.com', role: 'Admin', dept: 'Operations', icon: UserCog },
-    { name: 'الأخصائي الفني', email: 'cards.ops@bank.com', role: 'Specialist', dept: 'Cards', icon: CreditCard },
-    { name: 'موظف الاتصال', email: 'callcenter.agent@bank.com', role: 'Agent', dept: 'Support', icon: Headset },
-    { name: 'خدمة العملاء الرقمية', email: 'cs.digital@bank.com', role: 'Agent', dept: 'Digital', icon: MonitorSmartphone },
+    { name: 'أخصائي البطائق', email: 'cards.ops@bank.com', role: 'Specialist', dept: 'Cards', icon: CreditCard },
+    { name: 'موظف الاتصال (الكول سنتر)', email: 'callcenter.agent@bank.com', role: 'Agent', dept: 'Support', icon: Headset },
+    { name: 'أخصائي خدمة العملاء الرقمية', email: 'cs.digital@bank.com', role: 'Specialist', dept: 'Digital', icon: MonitorSmartphone },
   ];
 
   const handleQuickLogin = async (emp: any) => {
@@ -35,7 +36,7 @@ export default function Home() {
       console.warn("Firebase Auth bypassed for demo stability:", error);
       // في حال فشل Firebase، نستخدم نظام العبور المباشر لضمان عمل النظام
       bypassLogin({
-        id: 'dev-' + emp.role.toLowerCase(),
+        id: 'dev-' + emp.role.toLowerCase() + '-' + emp.dept.toLowerCase(),
         name: emp.name,
         email: emp.email,
         role: emp.role,

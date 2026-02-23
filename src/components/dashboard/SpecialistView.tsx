@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   CheckCircle2, UserPlus, MessageSquare, Sparkles, ArrowRight, Loader2, Clock, History, UserCircle, Fingerprint, Inbox, XCircle, Send
 } from 'lucide-react';
@@ -95,6 +96,8 @@ export function SpecialistView() {
     switch (status) {
       case 'Pending': return <Badge className="bg-amber-500 rounded-full font-black">قيد المعالجة</Badge>;
       case 'Resolved': return <Badge className="bg-green-600 rounded-full font-black">تم الحل</Badge>;
+      case 'Rejected': return <Badge className="bg-slate-700 rounded-full font-black">مرفوض</Badge>;
+      case 'Escalated': return <Badge className="bg-red-600 rounded-full font-black">محال</Badge>;
       default: return <Badge className="bg-blue-600 rounded-full font-black">جديد</Badge>;
     }
   };
