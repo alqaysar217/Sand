@@ -5,21 +5,25 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore'
 
-// تهيئة خدمات فيربيس مع إعدادات تضمن استقرار الاتصال في البيئة السحابية
+/**
+ * تهيئة خدمات فيربيس مع إعدادات تضمن استقرار الاتصال في البيئة السحابية.
+ * نستخدم Long Polling لتجنب مشاكل انقطاع الـ WebSocket الشائعة في بيئات الحاويات.
+ */
 export function initializeFirebase() {
   const apps = getApps();
-  let app: FirebaseApp;
-  
-  if (!apps.length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
+  const app = !apps.length ? initializeApp(firebaseConfig) : getApp();
 
-  // استخدام Long Polling لتجنب مشاكل انقطاع الـ WebSocket في المتصفح السحابي
-  const firestore = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-  });
+  let firestore;
+  try {
+    // محاولة تهيئة Firestore مع إعدادات Long Polling الإجبارية
+    firestore = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
+    });
+  } catch (err) {
+    // في حال تم تهيئة Firestore مسبقاً، نقوم بجلب المثيل الحالي
+    firestore = getFirestore(app);
+  }
 
   return {
     firebaseApp: app,
