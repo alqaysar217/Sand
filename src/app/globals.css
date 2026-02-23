@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 225 33% 97%; /* #F4F6FA */
+    --background: 225 33% 97%; /* #F4F6FA - أغمق قليلاً للتباين */
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -59,17 +59,17 @@
 }
 
 .banking-card {
-  @apply rounded-[24px] border-none bg-white;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  @apply rounded-[24px] border border-slate-100 bg-white;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
 
 .banking-button {
-  @apply rounded-[28px] font-bold transition-all duration-300;
-  box-shadow: 0 6px 18px rgba(20,20,184,0.25);
+  @apply rounded-[28px] font-bold transition-all duration-300 active:scale-95;
+  box-shadow: 0 6px 18px rgba(20,20,184,0.2);
 }
 
 .banking-input {
-  @apply rounded-[20px] border-slate-100 bg-slate-50/50 focus:bg-white transition-colors;
+  @apply rounded-[20px] border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200;
 }
 
 .status-pending { background-color: #F59E0B; color: white; }
