@@ -52,21 +52,26 @@ export function SpecialistView() {
     if (!db || !user?.department) return null;
     
     // ربط مسميات الأقسام بالقيم المستخدمة في خدمة العملاء
-    const deptName = user.department === 'Cards' ? 'إدارة البطائق' : 
-                   user.department === 'Support' ? 'كول سنتر' : 
-                   user.department === 'App' ? 'مشاكل التطبيق' : 
-                   user.department === 'Digital' ? 'خدمة العملاء' : user.department;
+    // أخصائي البطائق يجب أن يرى البلاغات التي serviceType لها هو "إدارة البطائق"
+    const deptNameMap: Record<string, string> = {
+      'Cards': 'إدارة البطائق',
+      'Support': 'كول سنتر',
+      'App': 'مشاكل التطبيق',
+      'Digital': 'خدمة العملاء',
+      'Operations': 'العمليات المصرفية'
+    };
+    
+    const targetServiceType = deptNameMap[user.department] || user.department;
     
     return query(
       collection(db, 'tickets'),
-      where('serviceType', '==', deptName),
+      where('serviceType', '==', targetServiceType),
       orderBy('createdAt', 'desc')
     );
   }, [db, user?.department]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection(deptTicketsQuery);
 
-  // استلام البلاغ للعمل عليه
   const handleClaim = (ticket: any) => {
     if (!db || !user) return;
     const ticketRef = doc(db, 'tickets', ticket.id);
@@ -83,7 +88,6 @@ export function SpecialistView() {
     toast({ title: "تم الاستلام", description: "البلاغ الآن في قائمة مهامك." });
   };
 
-  // معالجة البلاغ (حل، رفض، إحالة)
   const handleAction = async (actionType: 'Resolved' | 'Rejected' | 'Escalated') => {
     if (!db || !user || !selectedTicket) return;
     if (!response.trim()) {
@@ -201,7 +205,7 @@ export function SpecialistView() {
                   </div>
                 </div>
 
-                {/* تفاصيل المشكلة */}
+                {/* وصف المشكلة */}
                 <div className="space-y-4">
                    <div className="flex items-center gap-3 px-2 justify-end">
                       <h3 className="font-black text-xl text-slate-900">وصف المشكلة الفنية</h3>
@@ -242,7 +246,7 @@ export function SpecialistView() {
                   </div>
                 )}
 
-                {/* اتخاذ إجراء */}
+                {/* الرد والتعليق */}
                 <div className="space-y-4 pt-10 border-t">
                    <div className="flex items-center justify-between px-2 flex-row-reverse">
                       <div className="flex items-center gap-3 flex-row-reverse">

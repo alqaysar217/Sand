@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole, Department } from '@/lib/types';
 
@@ -32,6 +32,24 @@ export default function DashboardPage() {
   };
 
   const autoValues = getAutoValues();
+
+  // تفعيل تلقائي للحسابات التجريبية لتقليل الخطوات على المستخدم
+  useEffect(() => {
+    if (error === "MISSING_PROFILE" && firebaseUser && !isActivating) {
+      const autoActivate = async () => {
+        setIsActivating(true);
+        try {
+          await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
+          toast({ title: "تم التفعيل التلقائي", description: "مرحباً بك في نظام سند." });
+        } catch (err) {
+          console.error("Auto activation failed", err);
+        } finally {
+          setIsActivating(false);
+        }
+      };
+      autoActivate();
+    }
+  }, [error, firebaseUser, autoValues, setupDemoProfile, toast, isActivating]);
 
   const handleCopyUid = () => {
     if (firebaseUser?.uid) {
@@ -54,6 +72,17 @@ export default function DashboardPage() {
     }
   };
 
+  if (isActivating) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 text-primary animate-spin" />
+          <div className="h-4 w-48 bg-slate-200 rounded text-center font-black">جاري تهيئة صلاحياتك المصرفية...</div>
+        </div>
+      </div>
+    );
+  }
+
   if (error === "MISSING_PROFILE" && firebaseUser) {
     return (
       <div className="max-w-4xl mx-auto mt-6 space-y-8 text-right pb-20" dir="rtl">
@@ -74,7 +103,7 @@ export default function DashboardPage() {
               <div className="space-y-6 text-right">
                 <div className="flex items-center gap-3 text-primary font-black text-xl mb-4 justify-end">
                   <Rocket className="w-6 h-6" />
-                  <h3>التفعيل التلقائي (بلمسة واحدة)</h3>
+                  <h3>التفعيل اليدوي</h3>
                 </div>
                 <p className="text-slate-600 leading-relaxed font-bold">
                   سيقوم النظام بربط حسابك كـ <span className="text-primary">{autoValues.name}</span> في قسم <span className="text-secondary">{autoValues.dept}</span> فوراً.
@@ -82,9 +111,8 @@ export default function DashboardPage() {
                 <Button 
                   onClick={handleQuickActivate} 
                   className="w-full h-20 rounded-[24px] bg-primary hover:bg-primary/90 text-white font-black text-xl shadow-xl shadow-primary/20 flex items-center justify-center gap-4"
-                  disabled={isActivating}
                 >
-                  {isActivating ? <Loader2 className="animate-spin h-6 w-6" /> : <ShieldCheck className="w-8 h-8" />}
+                  <ShieldCheck className="w-8 h-8" />
                   تفعيل صلاحياتي الآن
                 </Button>
               </div>
@@ -102,24 +130,8 @@ export default function DashboardPage() {
                       {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white p-3 rounded-[14px] border border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 block text-right">role</span>
-                      <p className="font-black text-xs text-right">{autoValues.role}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-[14px] border border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 block text-right">department</span>
-                      <p className="font-black text-xs text-right">{autoValues.dept}</p>
-                    </div>
-                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="pt-6 flex gap-4 border-t justify-end">
-              <Button variant="ghost" className="h-12 rounded-full font-black text-slate-400 hover:text-red-500" onClick={logout}>
-                <LogOut className="w-4 h-4 ml-2" /> خروج وإلغاء
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -129,7 +141,10 @@ export default function DashboardPage() {
 
   if (error) return (
     <div className="max-w-md mx-auto mt-20 text-right" dir="rtl">
-      <Alert variant="destructive" className="rounded-[24px] shadow-xl"><AlertTitle className="font-black text-right">خطأ في النظام</AlertTitle><AlertDescription className="font-bold text-right">{error}</AlertDescription></Alert>
+      <Alert variant="destructive" className="rounded-[24px] shadow-xl">
+        <AlertTitle className="font-black text-right">خطأ في النظام</AlertTitle>
+        <AlertDescription className="font-bold text-right">{error}</AlertDescription>
+      </Alert>
       <Button className="w-full h-12 rounded-full mt-4 font-black" onClick={logout}>خروج</Button>
     </div>
   );
