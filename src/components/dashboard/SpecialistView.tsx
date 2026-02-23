@@ -337,6 +337,19 @@ export function SpecialistView() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {(!tickets || tickets.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-32 bg-white">
+                         <div className="flex flex-col items-center gap-6 text-slate-300">
+                           <div className="p-8 bg-slate-50 rounded-full border border-slate-100"><Inbox className="w-20 h-20 opacity-30" /></div>
+                           <div className="space-y-1">
+                             <p className="font-black text-2xl text-slate-400">لا توجد مهام حالياً</p>
+                             <p className="text-sm text-slate-300">صندوق الوارد نظيف، استمتع ببعض الراحة!</p>
+                           </div>
+                         </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>

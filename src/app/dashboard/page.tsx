@@ -61,7 +61,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <CardTitle className="text-4xl font-black tracking-tight">تفعيل الصلاحيات المصرفية</CardTitle>
-                <p className="text-white/80 text-lg mt-2 font-medium">خطوة أخيرة للوصول إلى محطة عمل الأخصائي</p>
+                <p className="text-white/80 text-lg mt-2 font-medium">يجب ربط هويتك بملف وظيفي في قاعدة البيانات</p>
               </div>
             </div>
           </CardHeader>
@@ -92,12 +92,12 @@ export default function DashboardPage() {
                   <h3>الخيار 2: التفعيل اليدوي (عبر Firestore)</h3>
                 </div>
                 <div className="space-y-4">
-                  <p className="text-sm text-slate-500 font-medium">إذا لم ينجح الزر أعلاه، اتبع الخطوات التالية في Firebase Console:</p>
+                  <p className="text-sm text-slate-500 font-medium italic">بناءً على لقطة الشاشة، يرجى التأكد من أن الـ Document ID يطابق تماماً الرقم التالي:</p>
                   <ol className="text-xs text-slate-600 space-y-3 list-decimal pr-5">
                     <li>افتح رابط <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline font-bold inline-flex items-center gap-1">Firebase Console <ExternalLink className="w-3 h-3" /></a>.</li>
-                    <li>اذهب لـ <b>Authentication</b> وانسخ الـ <b>UID</b> الخاص بك (الموجود في المربع الأزرق أدناه).</li>
                     <li>اذهب لـ <b>Firestore Database</b> ثم مجموعة <b>users</b>.</li>
-                    <li>اضغط <b>Add document</b> وضع الرقم في خانة <b>Document ID</b>.</li>
+                    <li>اضغط <b>Add document</b> وضع الرقم (الموجود بالأسفل) في خانة <b>Document ID</b>.</li>
+                    <li>أضف الحقول المذكورة في الجدول أدناه.</li>
                   </ol>
                 </div>
               </div>
@@ -106,23 +106,24 @@ export default function DashboardPage() {
             <div className="pt-10 border-t border-slate-100 space-y-8">
               <div className="flex items-center gap-3">
                  <div className="p-2 bg-secondary/10 rounded-full"><Info className="w-5 h-5 text-secondary" /></div>
-                 <h4 className="text-xl font-black text-slate-800">بيانات الربط الدقيقة</h4>
+                 <h4 className="text-xl font-black text-slate-800">بيانات الربط الدقيقة لحسابك الحالي</h4>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="rounded-[32px] border-2 border-primary/20 bg-primary/[0.02] p-8 relative overflow-hidden group">
-                  <div className="relative z-10 space-y-4">
-                    <Label className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mb-2 block">Document ID (الرقم المطلوب)</Label>
+                  <div className="relative z-10 space-y-4 text-right">
+                    <Label className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mb-2 block">Document ID (الرقم المطلوب نسخه)</Label>
                     <div className="flex items-center justify-between gap-4 bg-white p-5 rounded-[20px] border border-primary/10 shadow-sm">
                       <p className="font-mono font-black text-primary text-sm break-all">{firebaseUser.uid}</p>
                       <Button size="icon" variant="ghost" className="h-12 w-12 rounded-full shrink-0 bg-primary/5 hover:bg-primary/10" onClick={handleCopyUid}>
                         {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-primary" />}
                       </Button>
                     </div>
+                    <p className="text-[10px] text-slate-400 font-bold">هذا هو المعرف الفريد الخاص بك حالياً. يرجى استخدامه عند إضافة الوثيقة في Firestore.</p>
                   </div>
                 </Card>
 
-                <div className="space-y-4">
+                <div className="space-y-4 text-right">
                   <Label className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] pr-2 block">الحقول المطلوبة (Add Fields)</Label>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border border-slate-100 p-4 rounded-[20px] shadow-sm">
@@ -132,6 +133,10 @@ export default function DashboardPage() {
                     <div className="bg-white border border-slate-100 p-4 rounded-[20px] shadow-sm">
                       <span className="text-[10px] font-black text-slate-400 block mb-1">department</span>
                       <p className="font-black text-slate-800">Cards</p>
+                    </div>
+                    <div className="bg-white border border-slate-100 p-4 rounded-[20px] shadow-sm col-span-2">
+                      <span className="text-[10px] font-black text-slate-400 block mb-1">name</span>
+                      <p className="font-black text-slate-800">أخصائي البطائق</p>
                     </div>
                   </div>
                 </div>
