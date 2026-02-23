@@ -24,6 +24,7 @@ export default function Home() {
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   useEffect(() => {
+    // التوجه للوحة القيادة إذا كان هناك مستخدم أو إذا كان الحساب بحاجة لتفعيل الملف الشخصي
     if ((user || error === "MISSING_PROFILE") && !loading) {
       router.push('/dashboard');
     }
@@ -49,9 +50,9 @@ export default function Home() {
     }
   };
 
-  const setDemoLogin = (email: string, pass: string) => {
+  const setDemoLogin = (email: string) => {
     setEmail(email);
-    setPassword(pass);
+    setPassword('password123'); // توحيد كلمة المرور للتجربة
   };
 
   if (loading) {
@@ -142,19 +143,19 @@ export default function Home() {
             <div className="mt-8 pt-6 border-t border-slate-50">
               <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">بوابات الدخول التجريبي</p>
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com', 'PASS_DIGITAL_11')}>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com')}>
                   <MonitorSmartphone className="h-5 w-5 text-accent" />
                   <span className="font-bold text-xs text-slate-800">الخدمات الرقمية</span>
                 </Button>
-                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'PASS_CALL_99')}>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('callcenter.agent@bank.com')}>
                   <Headset className="h-5 w-5 text-secondary" />
                   <span className="font-bold text-xs text-slate-800">الكول سنتر</span>
                 </Button>
-                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cards.ops@bank.com', 'PASS_CARDS_22')}>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cards.ops@bank.com')}>
                   <CreditCard className="h-5 w-5 text-primary" />
                   <span className="font-bold text-xs text-slate-800">قسم البطائق</span>
                 </Button>
-                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('admin.bank@bank.com', 'PASS_ADMIN_88')}>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('admin.bank@bank.com')}>
                   <UserCog className="h-5 w-5 text-red-600" />
                   <span className="font-bold text-xs text-slate-800">المدير العام</span>
                 </Button>

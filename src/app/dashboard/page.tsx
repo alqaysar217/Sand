@@ -19,7 +19,6 @@ export default function DashboardPage() {
 
   const autoValues = useMemo(() => {
     const email = firebaseUser?.email || '';
-    // مطابقة دقيقة بناءً على قائمة المستخدم المرسلة
     if (email === 'admin.bank@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
     if (email === 'balkharam.admin@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'بلخرم (المدير العام)' };
     if (email === 'callcenter.agent@bank.com') return { role: 'Agent' as UserRole, dept: 'Support' as Department, name: 'موظف الاتصال' };
@@ -27,7 +26,6 @@ export default function DashboardPage() {
     if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
     if (email === 'cs.digital@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
     
-    // افتراضي في حال لم يتطابق شيء
     return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك' };
   }, [firebaseUser?.email]);
 

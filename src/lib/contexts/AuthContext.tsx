@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr: any) {
+          // إذا كان البريد مستخدماً بالفعل بكلمة مرور مختلفة، نعيد الخطأ الأصلي
           throw err;
         }
       } else {
