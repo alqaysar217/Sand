@@ -15,7 +15,7 @@ import {
   Plus, Search, Loader2, ArrowRight, MessageSquare, Inbox, Headset, MonitorSmartphone,
   UserCircle, Fingerprint, History, Calendar, CheckCircle2, Paperclip, XCircle, Send, Archive, Upload, FileText, Trash2, Eye
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
@@ -124,7 +124,7 @@ export function AgentView() {
       .then(() => {
         toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}.` });
         setShowNewForm(false);
-        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
+        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', createdByAgentName: '' });
         setAttachments([]);
       })
       .finally(() => setIsSubmitting(false));
@@ -363,6 +363,10 @@ export function AgentView() {
       {/* Detail Dialog */}
       <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
         <DialogContent className="max-w-4xl text-right border-none rounded-[32px] p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>تفاصيل البلاغ</DialogTitle>
+            <DialogDescription>عرض تفاصيل ومرفقات البلاغ رقم {selectedTicket?.ticketID}</DialogDescription>
+          </DialogHeader>
           {selectedTicket && (
             <div className="flex flex-col h-[80vh] overflow-y-auto no-scrollbar">
               <div className="premium-gradient p-8 text-white sticky top-0 z-10">
