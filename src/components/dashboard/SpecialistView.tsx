@@ -137,7 +137,7 @@ export function SpecialistView() {
           <div className="lg:col-span-2 space-y-8 text-right">
             <Card className="banking-card border-r-4 border-r-primary overflow-hidden shadow-xl">
               <CardHeader className="bg-slate-50/50 p-8 border-b">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 justify-start">
                   <div className="p-4 bg-primary/5 rounded-[20px] border border-primary/10">
                     <Inbox className="w-8 h-8 text-primary" />
                   </div>
@@ -145,7 +145,7 @@ export function SpecialistView() {
                     <CardTitle className="text-2xl font-black text-primary">
                       معالجة بلاغ رقم: {selectedTicket.ticketID}
                     </CardTitle>
-                    <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold">
+                    <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold justify-start">
                       <Calendar className="w-4 h-4" />
                       <span>تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</span>
                     </div>
@@ -155,7 +155,7 @@ export function SpecialistView() {
               <CardContent className="p-8 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
-                    <CardContent className="p-6 flex items-center gap-4">
+                    <CardContent className="p-6 flex items-center gap-4 justify-start">
                       <div className="p-3 bg-white rounded-full shadow-sm"><UserCircle className="w-6 h-6 text-primary/40" /></div>
                       <div className="text-right">
                         <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">اسم العميل</Label>
@@ -164,7 +164,7 @@ export function SpecialistView() {
                     </CardContent>
                   </Card>
                   <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
-                    <CardContent className="p-6 flex items-center gap-4">
+                    <CardContent className="p-6 flex items-center gap-4 justify-start">
                       <div className="p-3 bg-white rounded-full shadow-sm"><Fingerprint className="w-6 h-6 text-primary/40" /></div>
                       <div className="text-right">
                         <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">رقم الحساب (CIF)</Label>
@@ -175,7 +175,7 @@ export function SpecialistView() {
                 </div>
 
                 <div className="space-y-4">
-                   <div className="flex items-center gap-3 px-2">
+                   <div className="flex items-center gap-3 px-2 justify-start">
                       <MessageSquare className="w-6 h-6 text-primary" />
                       <h3 className="font-black text-xl text-slate-900">وصف المشكلة الفنية</h3>
                    </div>
@@ -186,15 +186,15 @@ export function SpecialistView() {
                 </div>
 
                 <div className="space-y-4 pt-6">
-                   <div className="flex items-center justify-between px-2">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المتخذ</h3>
-                      </div>
+                   <div className="flex items-center justify-between px-2 flex-row-reverse">
                       <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full border-accent/20 hover:bg-accent/5 text-accent font-black px-6 h-11 shadow-sm transition-all hover:scale-105">
                          {isGenerating ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2" />}
                          مساعد الرد الذكي (AI)
                       </Button>
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-green-600" />
+                        <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المتخذ</h3>
+                      </div>
                    </div>
                    <Textarea 
                       value={response} 
@@ -214,7 +214,7 @@ export function SpecialistView() {
 
           <div className="space-y-8 text-right">
              <Card className="banking-card shadow-lg border-none overflow-hidden">
-                <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3">
+                <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start">
                    <History className="w-5 h-5 text-primary" />
                    <CardTitle className="text-lg font-black text-slate-800">سجل البلاغ</CardTitle>
                 </CardHeader>
@@ -235,7 +235,7 @@ export function SpecialistView() {
 
              {selectedTicket.attachments?.length > 0 && (
                <Card className="banking-card shadow-lg border-none overflow-hidden">
-                  <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3">
+                  <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start">
                     <Paperclip className="w-5 h-5 text-primary" />
                     <CardTitle className="text-lg font-black text-slate-800">المرفقات</CardTitle>
                   </CardHeader>
@@ -269,7 +269,7 @@ export function SpecialistView() {
 
       <Card className="banking-card overflow-hidden shadow-2xl border-none">
         <CardHeader className="p-10 border-b border-slate-50 bg-white">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 justify-start">
             <div className="p-4 bg-primary/5 rounded-[22px]"><Clock className="w-8 h-8 text-primary" /></div>
             <div className="text-right">
               <CardTitle className="text-2xl text-primary font-black">المهام والعمليات الواردة</CardTitle>
@@ -280,12 +280,6 @@ export function SpecialistView() {
         <CardContent className="p-0">
           {isTicketsLoading ? (
             <div className="flex justify-center py-24"><Loader2 className="animate-spin text-primary h-14 w-14" /></div>
-          ) : queryError ? (
-            <div className="text-center py-24 bg-blue-50/30">
-               <AlertCircle className="w-20 h-20 text-blue-400 mx-auto mb-8" />
-               <h3 className="font-black text-2xl text-blue-900">تنبيه تقني</h3>
-               <p className="text-blue-700 mt-3 text-lg">جاري مزامنة قواعد البيانات، يرجى تحديث الصفحة بعد قليل.</p>
-            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table className="border-collapse">

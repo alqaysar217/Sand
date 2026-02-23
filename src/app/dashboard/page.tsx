@@ -39,7 +39,7 @@ export default function DashboardPage() {
       toast({ title: "تم التفعيل", description: "تم إنشاء ملفك الشخصي بنجاح، جاري تحويلك..." });
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "خطأ في التفعيل", description: "فشل إنشاء الملف في قاعدة البيانات. يرجى التأكد من اتصال الإنترنت." });
+      toast({ variant: "destructive", title: "خطأ في التفعيل", description: "فشل إنشاء الملف في قاعدة البيانات." });
     } finally {
       setIsActivating(false);
     }
@@ -89,7 +89,7 @@ export default function DashboardPage() {
                   <ul className="text-xs text-slate-600 space-y-2 list-disc pr-4">
                     <li>افتح رابط <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 inline-flex">Firebase Console <ExternalLink className="w-3 h-3" /></a></li>
                     <li>اذهب إلى <b>Firestore Database</b> ثم مجموعة <b>users</b>.</li>
-                    <li>أنشئ وثيقة جديدة بمعرف الـ <b>UID</b> الموضح أدناه.</li>
+                    <li>أنشئ وثيقة جديدة واستخدم الـ <b>UID</b> الموضح أدناه كمعرف للوثيقة (Document ID).</li>
                     <li>أضف الحقول: name, email, role (Specialist), department (Cards).</li>
                   </ul>
                </Card>
@@ -97,27 +97,27 @@ export default function DashboardPage() {
 
             <div className="pt-10 border-t border-slate-100">
               <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2">
-                <Info className="w-4 h-4 text-primary" /> بيانات الربط التقنية
+                <Info className="w-4 h-4 text-primary" /> بيانات الربط التقنية (للمطورين)
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-5 bg-white rounded-[20px] border border-slate-200 relative group flex flex-col justify-center">
-                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">User ID (UID) - "انسخ هذا للمعرف"</p>
+                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">User ID (الذي يوضع في Document ID)</p>
                   <p className="font-mono font-black text-primary text-xs break-all pr-12">{firebaseUser.uid}</p>
                   <Button size="icon" variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 bg-slate-50 rounded-full" onClick={handleCopyUid}>
                     {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
                   </Button>
                 </div>
                 <div className="p-5 bg-white rounded-[20px] border border-slate-200">
-                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">Required Role - "قيمة الدور"</p>
+                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">Required Role (حقل الدور الوظيفي)</p>
                   <p className="font-black text-slate-800 text-sm">Specialist</p>
                 </div>
                 <div className="p-5 bg-white rounded-[20px] border border-slate-200">
-                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">Department - "قيمة القسم"</p>
+                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">Department (حقل القسم)</p>
                   <p className="font-black text-slate-800 text-sm">Cards</p>
                 </div>
                 <div className="p-5 bg-white rounded-[20px] border border-slate-200">
-                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">Collection Path</p>
-                  <p className="font-mono font-black text-slate-400 text-xs">/users/{firebaseUser.uid}</p>
+                  <p className="text-[10px] text-slate-400 font-black mb-1 uppercase tracking-widest">Collection Path (المجموعة)</p>
+                  <p className="font-mono font-black text-slate-400 text-xs">/users</p>
                 </div>
               </div>
             </div>
