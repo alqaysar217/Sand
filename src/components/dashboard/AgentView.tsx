@@ -14,7 +14,8 @@ import {
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
   Upload, User, X, Trash2, CheckCircle2, AlertCircle, Clock,
-  BellRing, FileText, Reply, History, Building2, UserCircle, Fingerprint, Share2, Settings2, Paperclip
+  BellRing, FileText, Reply, History, Building2, UserCircle, Fingerprint, Share2, Settings2, Paperclip,
+  Inbox
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle
