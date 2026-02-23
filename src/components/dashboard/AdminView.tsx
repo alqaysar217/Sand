@@ -12,27 +12,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, Save, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, MessageSquare, X, Smartphone, UserPlus, Key, Loader2
+  Share2, MessageSquare, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { UserRole, Department } from '@/lib/types';
+import { Department } from '@/lib/types';
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
 export function AdminView() {
   const db = useFirestore();
   const { toast } = useToast();
-  const { createEmployeeAccount, updateAdminPassword } = useAuth();
+  const { createEmployeeAccount, updateAdminPassword, checkUsernameExists } = useAuth();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showChangePassDialog, setShowChangePassDialog] = useState(false);
   const [newPass, setNewPass] = useState('');
@@ -40,7 +41,6 @@ export function AdminView() {
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
-    role: 'Specialist' as UserRole,
     dept: 'Cards' as Department,
     password: ''
   });
@@ -56,13 +56,29 @@ export function AdminView() {
     return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
   }, []);
 
-  const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
-  const { data: config } = useDoc(configRef);
+  // فحص توفر اسم المستخدم فور الكتابة
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (newUser.username.length >= 4) {
+        setIsCheckingUsername(true);
+        const exists = await checkUsernameExists(newUser.username);
+        if (exists) {
+          setUsernameError('اسم المستخدم هذا محجوز بالفعل');
+        } else {
+          setUsernameError('');
+        }
+        setIsCheckingUsername(false);
+      } else {
+        setUsernameError('');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [newUser.username, checkUsernameExists]);
 
   const allTicketsQuery = useMemoFirebase(() => db ? query(collection(db, 'tickets'), orderBy('createdAt', 'desc')) : null, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
-  const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
+  const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users'), orderBy('createdAt', 'desc')) : null, [db]);
   const { data: appUsers } = useCollection(usersQuery);
 
   const stats = useMemo(() => {
@@ -94,14 +110,15 @@ export function AdminView() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (usernameError) return;
     setIsCreatingUser(true);
     try {
       await createEmployeeAccount(newUser);
-      toast({ title: "تم إنشاء الحساب", description: `الموظف ${newUser.name} يمكنه الدخول الآن.` });
+      toast({ title: "تم إنشاء الحساب بنجاح", description: `الموظف ${newUser.name} (BIM ID: ${newUser.username}) جاهز للعمل.` });
       setShowAddUserDialog(false);
-      setNewUser({ name: '', username: '', role: 'Specialist', dept: 'Cards', password: '' });
+      setNewUser({ name: '', username: '', dept: 'Cards', password: '' });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "فشل الإنشاء", description: err.message || "تأكد من عدم تكرار اسم المستخدم" });
+      toast({ variant: "destructive", title: "فشل الإنشاء", description: err.message });
     } finally {
       setIsCreatingUser(false);
     }
@@ -137,9 +154,9 @@ export function AdminView() {
                 <Key className="w-4 h-4 ml-2" /> تغيير كلمة السر
              </Button>
              <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
-               <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
-               <TabsTrigger value="staff" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة الكادر</TabsTrigger>
-               <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">حسابات النظام</TabsTrigger>
+               <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">الإحصائيات</TabsTrigger>
+               <TabsTrigger value="staff" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">إدارة الكادر</TabsTrigger>
+               <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">حسابات النظام</TabsTrigger>
              </TabsList>
           </div>
         </div>
@@ -193,41 +210,29 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="staff" className="space-y-6 animate-in fade-in duration-500 mt-0">
-           <div className="flex justify-end">
+           <div className="flex justify-between items-center flex-row-reverse">
               <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-14 px-8 shadow-xl">
                  <UserPlus className="w-5 h-5 ml-2" /> إضافة موظف جديد للنظام
               </Button>
+              <div className="flex items-center gap-2 text-slate-400 font-bold bg-white px-6 py-3 rounded-full border">
+                 <Info className="w-4 h-4 text-primary" />
+                 <span>يمكن للمدير تحديد BIM ID المخصص وكلمة المرور لكل موظف</span>
+              </div>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="banking-card p-6 border-none shadow-md text-center space-y-4">
-                 <CreditCard className="w-10 h-10 text-primary mx-auto" />
-                 <h3 className="font-black">قسم البطائق</h3>
-                 <p className="text-xs text-slate-500">أخصائيي معالجة بطائق الصراف والائتمان</p>
-              </Card>
-              <Card className="banking-card p-6 border-none shadow-md text-center space-y-4">
-                 <MonitorSmartphone className="w-10 h-10 text-primary mx-auto" />
-                 <h3 className="font-black">خدمة العملاء</h3>
-                 <p className="text-xs text-slate-500">أخصائيي القنوات الرقمية والخدمات المباشرة</p>
-              </Card>
-              <Card className="banking-card p-6 border-none shadow-md text-center space-y-4">
-                 <Smartphone className="w-10 h-10 text-primary mx-auto" />
-                 <h3 className="font-black">مشاكل التطبيق</h3>
-                 <p className="text-xs text-slate-500">الدعم الفني المباشر لمشاكل تطبيق بنك سند</p>
-              </Card>
-              <Card className="banking-card p-6 border-none shadow-md text-center space-y-4">
-                 <Headset className="w-10 h-10 text-primary mx-auto" />
-                 <h3 className="font-black">الكول سنتر</h3>
-                 <p className="text-xs text-slate-500">موظفي استلام ورفع البلاغات من العملاء</p>
-              </Card>
+              <StaffCategoryCard icon={CreditCard} title="قسم البطائق" desc="أخصائيي معالجة البطائق" count={appUsers?.filter(u => u.department === 'Cards').length || 0} />
+              <StaffCategoryCard icon={MonitorSmartphone} title="خدمة العملاء" desc="أخصائيي القنوات الرقمية" count={appUsers?.filter(u => u.department === 'Digital').length || 0} />
+              <StaffCategoryCard icon={Smartphone} title="مشاكل التطبيق" desc="الدعم الفني المباشر للتطبيق" count={appUsers?.filter(u => u.department === 'App').length || 0} />
+              <StaffCategoryCard icon={Headset} title="الكول سنتر" desc="موظفي استلام ورفع البلاغات" count={appUsers?.filter(u => u.department === 'Support').length || 0} />
            </div>
         </TabsContent>
 
         <TabsContent value="users" className="animate-in fade-in duration-500 mt-0">
            <Card className="banking-card border-none shadow-xl overflow-hidden">
-              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between">
+              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between bg-white">
                  <CardTitle className="text-2xl font-black text-primary">حسابات الهوية المصرفية المسجلة</CardTitle>
-                 <Badge variant="outline" className="font-black h-8 px-4">{appUsers?.length} مستخدم</Badge>
+                 <Badge variant="outline" className="font-black h-8 px-4 border-primary text-primary">{appUsers?.length} مستخدم نشط</Badge>
               </CardHeader>
               <CardContent className="p-0">
                  <Table>
@@ -235,23 +240,29 @@ export function AdminView() {
                        <TableRow className="hover:bg-primary border-none">
                           <TableHead className="text-right font-black text-white h-14 pr-8">الاسم الكامل</TableHead>
                           <TableHead className="text-right font-black text-white h-14">BIM ID (اسم المستخدم)</TableHead>
-                          <TableHead className="text-right font-black text-white h-14">الدور</TableHead>
-                          <TableHead className="text-right font-black text-white h-14 pl-8">القسم المعين</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">الدور الوظيفي</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">القسم</TableHead>
+                          <TableHead className="text-center font-black text-white h-14 pl-8">الإجراء</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
                        {appUsers?.map((u, idx) => (
-                          <TableRow key={u.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                          <TableRow key={u.id} className={`border-b transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
                              <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
                              <TableCell className="text-right font-mono font-bold text-primary">{u.username || 'N/A'}</TableCell>
                              <TableCell className="text-right">
                                 <Badge className={`rounded-full px-4 font-black ${
                                    u.role === 'Admin' ? 'bg-red-500' : u.role === 'Specialist' ? 'bg-primary' : 'bg-secondary'
                                 }`}>
-                                   {u.role}
+                                   {u.role === 'Admin' ? 'مدير نظام' : u.role === 'Specialist' ? 'أخصائي معالجة' : 'موظف رفع'}
                                 </Badge>
                              </TableCell>
-                             <TableCell className="text-right font-bold text-slate-500 pl-8">{u.department}</TableCell>
+                             <TableCell className="text-right font-bold text-slate-500">{u.department}</TableCell>
+                             <TableCell className="text-center pl-8">
+                                <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 rounded-full h-10 w-10">
+                                   <Trash2 className="w-5 h-5" />
+                                </Button>
+                             </TableCell>
                           </TableRow>
                        ))}
                     </TableBody>
@@ -271,44 +282,48 @@ export function AdminView() {
             </DialogHeader>
             <form onSubmit={handleCreateUser} className="p-8 space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                     <Label className="font-black text-xs mr-1">الاسم الكامل</Label>
-                     <Input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="banking-input h-12 text-right" placeholder="اسم الموظف الثلاثي" />
+                  <div className="space-y-2 col-span-2">
+                     <Label className="font-black text-xs mr-1">الاسم الكامل للموظف</Label>
+                     <Input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="banking-input h-12 text-right" placeholder="الاسم الثلاثي المعتمد" />
                   </div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">اسم المستخدم (BIM ID)</Label>
-                     <Input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="banking-input h-12 font-mono text-right" placeholder="BIM0101" />
+                     <div className="relative">
+                        <Input 
+                          required 
+                          value={newUser.username} 
+                          onChange={e => setNewUser({...newUser, username: e.target.value})} 
+                          className={cn(
+                            "banking-input h-12 font-mono text-right transition-all",
+                            usernameError ? "border-red-500 focus:ring-red-200" : "border-slate-200"
+                          )} 
+                          placeholder="BIM0101" 
+                        />
+                        {isCheckingUsername && <Loader2 className="absolute left-3 top-3.5 w-5 h-5 animate-spin text-primary" />}
+                     </div>
+                     {usernameError && <p className="text-[10px] text-red-500 font-bold mr-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {usernameError}</p>}
                   </div>
                   <div className="space-y-2">
-                     <Label className="font-black text-xs mr-1">الدور الوظيفي</Label>
-                     <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
-                        <SelectTrigger className="banking-input h-12 text-right"><SelectValue /></SelectTrigger>
-                        <SelectContent dir="rtl">
-                           <SelectItem value="Agent">موظف رفع (Agent)</SelectItem>
-                           <SelectItem value="Specialist">أخصائي معالجة (Specialist)</SelectItem>
-                        </SelectContent>
-                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                     <Label className="font-black text-xs mr-1">القسم المعين</Label>
+                     <Label className="font-black text-xs mr-1">تعيين القسم</Label>
                      <Select value={newUser.dept} onValueChange={(v: any) => setNewUser({...newUser, dept: v})}>
                         <SelectTrigger className="banking-input h-12 text-right"><SelectValue /></SelectTrigger>
                         <SelectContent dir="rtl">
-                           <SelectItem value="Support">الكول سنتر</SelectItem>
-                           <SelectItem value="Cards">إدارة البطائق</SelectItem>
-                           <SelectItem value="Digital">خدمة العملاء</SelectItem>
-                           <SelectItem value="App">مشاكل التطبيق</SelectItem>
+                           <SelectItem value="Support">الكول سنتر (Support)</SelectItem>
+                           <SelectItem value="Cards">إدارة البطائق (Cards)</SelectItem>
+                           <SelectItem value="Digital">خدمة العملاء (Digital)</SelectItem>
+                           <SelectItem value="App">مشاكل التطبيق (App)</SelectItem>
                         </SelectContent>
                      </Select>
                   </div>
                   <div className="col-span-1 md:col-span-2 space-y-2">
-                     <Label className="font-black text-xs mr-1">كلمة المرور المؤقتة</Label>
+                     <Label className="font-black text-xs mr-1">كلمة المرور الافتتاحية</Label>
                      <Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" placeholder="••••••••" />
+                     <p className="text-[10px] text-slate-400 font-bold mr-1">سيتمكن الموظف من استخدام هذه الكلمة للدخول لقسمه المخصص فقط.</p>
                   </div>
                </div>
                <DialogFooter className="flex-row-reverse gap-3 pt-6">
-                  <Button type="button" variant="ghost" onClick={() => setShowAddUserDialog(false)} className="rounded-full font-black">إلغاء</Button>
-                  <Button type="submit" disabled={isCreatingUser} className="banking-button premium-gradient text-white h-12 px-10 rounded-full font-black shadow-lg">
+                  <Button type="button" variant="ghost" onClick={() => setShowAddUserDialog(false)} className="rounded-full font-black px-8 h-12">إلغاء</Button>
+                  <Button type="submit" disabled={isCreatingUser || !!usernameError} className="banking-button premium-gradient text-white h-12 px-10 rounded-full font-black shadow-lg">
                      {isCreatingUser ? <Loader2 className="animate-spin" /> : "إنشاء الحساب وتفعيله"}
                   </Button>
                </DialogFooter>
@@ -348,7 +363,7 @@ function StatCard({ icon: Icon, title, value, color }: any) {
   
   return (
     <div className={cn(
-      "relative rounded-[24px] p-6 shadow-xl border-none overflow-hidden",
+      "relative rounded-[24px] p-6 shadow-xl overflow-hidden",
       isBgColor ? `${color} text-white` : "bg-white text-slate-900 border border-slate-100"
     )}>
       <div className="flex justify-between items-center relative z-20">
@@ -366,11 +381,23 @@ function StatCard({ icon: Icon, title, value, color }: any) {
           <Icon className={cn("w-6 h-6", isBgColor ? "text-white" : color)} />
         </div>
       </div>
-      {isBgColor && (
-        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none z-10">
-          <Icon className="absolute -bottom-4 -left-4 w-24 h-24 rotate-12" />
-        </div>
-      )}
     </div>
+  );
+}
+
+function StaffCategoryCard({ icon: Icon, title, desc, count }: any) {
+  return (
+    <Card className="banking-card p-6 border-none shadow-md text-center space-y-4 hover:scale-105 transition-all">
+       <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+          <Icon className="w-8 h-8 text-primary" />
+       </div>
+       <div>
+          <h3 className="font-black text-slate-800">{title}</h3>
+          <p className="text-[10px] text-slate-400 font-bold mt-1">{desc}</p>
+       </div>
+       <div className="pt-2">
+          <Badge variant="secondary" className="font-black px-4 py-1">{count} موظفين</Badge>
+       </div>
+    </Card>
   );
 }

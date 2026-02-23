@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, X } from 'lucide-react';
+import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, X, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Department } from '@/lib/types';
 
 export default function Home() {
   const router = useRouter();
@@ -25,11 +26,11 @@ export default function Home() {
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   const employees = [
-    { id: 'admin', name: 'المدير العام', role: 'Admin', dept: 'Operations', icon: UserCog, defaultUsername: 'BIM0100' },
-    { id: 'cards', name: 'أخصائي البطائق', role: 'Specialist', dept: 'Cards', icon: CreditCard },
-    { id: 'callcenter', name: 'موظف الاتصال (الكول سنتر)', role: 'Agent', dept: 'Support', icon: Headset },
-    { id: 'digital', name: 'أخصائي خدمة العملاء الرقمية', role: 'Specialist', dept: 'Digital', icon: MonitorSmartphone },
-    { id: 'app', name: 'أخصائي مشاكل التطبيق', role: 'Specialist', dept: 'App', icon: Smartphone },
+    { id: 'admin', name: 'المدير العام', role: 'Admin', dept: 'Operations' as Department, icon: UserCog, defaultUsername: 'BIM0100' },
+    { id: 'cards', name: 'أخصائي البطائق', role: 'Specialist', dept: 'Cards' as Department, icon: CreditCard },
+    { id: 'callcenter', name: 'موظف الاتصال (الكول سنتر)', role: 'Agent', dept: 'Support' as Department, icon: Headset },
+    { id: 'digital', name: 'أخصائي خدمة العملاء الرقمية', role: 'Specialist', dept: 'Digital' as Department, icon: MonitorSmartphone },
+    { id: 'app', name: 'أخصائي مشاكل التطبيق', role: 'Specialist', dept: 'App' as Department, icon: Smartphone },
   ];
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -38,16 +39,14 @@ export default function Home() {
     
     setLoading(true);
     try {
-      await login(credentials.username, credentials.password);
-      toast({ title: "تم تسجيل الدخول", description: `مرحباً بك في محطة العمل، ${selectedEmp.name}` });
+      await login(credentials.username, credentials.password, selectedEmp.dept);
+      toast({ title: "تم تسجيل الدخول بنجاح", description: `مرحباً بك في نظام سند، ${credentials.username}` });
       router.push('/dashboard');
     } catch (error: any) {
-      // إظهار رسالة الخطأ للمستخدم دون تسجيلها في الكونسول لتجنب Overlay التطوير
-      const msg = error.message || "فشل تسجيل الدخول. تأكد من البيانات والارتباط بالقسم الصحيح.";
       toast({ 
         variant: "destructive", 
-        title: "خطأ في الدخول", 
-        description: msg.includes('auth/') ? "اسم المستخدم أو كلمة المرور غير صحيحة." : msg
+        title: "فشل الدخول", 
+        description: error.message 
       });
     } finally {
       setLoading(false);
@@ -114,14 +113,14 @@ export default function Home() {
                </div>
                <p className="text-[10px] text-slate-400 font-bold text-center leading-relaxed">
                  تخضع كافة العمليات في نظام سند للرقابة المباشرة من قبل الإدارة.<br/>
-                 يرجى استخدام حسابك المهني فقط.
+                 يرجى استخدام حسابك المهني المخصص لقسمك فقط.
                </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Dialog open={!!selectedEmp} onOpenChange={() => setSelectedEmp(null)}>
+      <Dialog open={!!selectedEmp} onOpenChange={() => { if (!loading) setSelectedEmp(null); }}>
         <DialogContent className="max-w-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
           <DialogHeader className="p-8 bg-primary/5 border-b">
             <DialogTitle className="text-2xl font-black text-primary text-right flex items-center gap-3 justify-end">
@@ -136,6 +135,7 @@ export default function Home() {
               <Label className="font-black text-sm text-slate-600 mr-1">اسم المستخدم (BIM ID)</Label>
               <Input 
                 required 
+                autoFocus
                 value={credentials.username}
                 onChange={e => setCredentials({...credentials, username: e.target.value})}
                 placeholder="BIMxxxx" 
@@ -153,13 +153,23 @@ export default function Home() {
                 className="banking-input h-14 text-right" 
               />
             </div>
-            <div className="pt-4 flex flex-col gap-3">
+            
+            <div className="bg-amber-50 p-4 rounded-2xl flex items-start gap-3 border border-amber-100">
+               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+               <p className="text-[11px] text-amber-700 font-bold leading-relaxed">
+                 تأكد من أن حسابك مخول لدخول قسم <strong>{selectedEmp?.dept}</strong> قبل المحاولة.
+               </p>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-3">
               <Button type="submit" disabled={loading} className="banking-button premium-gradient text-white h-14 w-full rounded-full font-black text-lg shadow-xl">
                 {loading ? <Loader2 className="animate-spin" /> : "تسجيل الدخول للنظام"}
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setSelectedEmp(null)} className="rounded-full font-black">
-                إلغاء والعودة
-              </Button>
+              {!loading && (
+                <Button type="button" variant="ghost" onClick={() => setSelectedEmp(null)} className="rounded-full font-black">
+                  إلغاء والعودة
+                </Button>
+              )}
             </div>
           </form>
         </DialogContent>

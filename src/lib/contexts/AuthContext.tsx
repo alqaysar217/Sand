@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, getAuth } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -12,10 +12,11 @@ import { firebaseConfig } from '@/firebase/config';
 interface AuthContextType {
   user: UserProfile | null;
   firebaseUser: any;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, targetDept: Department) => Promise<void>;
   logout: () => Promise<void>;
-  createEmployeeAccount: (data: { name: string, username: string, role: UserRole, dept: Department, password: string }) => Promise<void>;
+  createEmployeeAccount: (data: { name: string, username: string, dept: Department, password: string }) => Promise<void>;
   updateAdminPassword: (newPassword: string) => Promise<void>;
+  checkUsernameExists: (username: string) => Promise<boolean>;
   loading: boolean;
   error: string | null;
 }
@@ -56,7 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         },
         (err) => {
-          console.error("Firestore sync error:", err);
           setLoading(false);
         }
       );
@@ -72,10 +72,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [firebaseUser, isUserLoading, db]);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, targetDept: Department) => {
     const email = `${username.toLowerCase()}@sanad.bank`;
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // محاولة تسجيل الدخول أولاً للتحقق من كلمة السر
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // جلب بيانات المستخدم من Firestore للتحقق من القسم
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as UserProfile;
+        
+        // التحقق من تطابق القسم المخصص مع البوابة التي يحاول الدخول منها
+        // المدير العام (Operations) يمكنه الدخول من بوابته الخاصة فقط أو أي بوابة إدارية
+        if (userData.department !== targetDept && userData.role !== 'Admin') {
+          await signOut(auth); // تسجيل الخروج فوراً لأنه غير مخول لهذا القسم
+          throw new Error(`عذراً، هويتك مرتبطة بـ (${userData.department}) وغير مخول لك دخول قسم (${targetDept}).`);
+        }
+      }
     } catch (err: any) {
       // التعامل مع حالة المدير العام لأول مرة
       if (username === 'BIM0100' && password === 'ha892019' && 
@@ -92,24 +107,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           return;
         } catch (createErr: any) {
-          // إذا كان البريد مستخدم بالفعل، يعني أن كلمة السر خاطئة للمدير الموجود مسبقاً
           if (createErr.code === 'auth/email-already-in-use') {
              throw new Error('كلمة المرور غير صحيحة لحساب المدير العام.');
           }
           throw err;
         }
       }
+      
+      // ترجمة رسائل الخطأ الشائعة
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
+      }
       throw err;
     }
   };
 
-  const createEmployeeAccount = async (data: { name: string, username: string, role: UserRole, dept: Department, password: string }) => {
+  const checkUsernameExists = async (username: string) => {
+    if (!db) return false;
+    const q = query(collection(db, 'users'), where('username', '==', username));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  };
+
+  const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string }) => {
     if (!db || !auth.currentUser) return;
     
+    // التحقق من عدم تكرار اسم المستخدم
+    const exists = await checkUsernameExists(data.username);
+    if (exists) {
+      throw new Error('اسم المستخدم هذا محجوز بالفعل لموظف آخر.');
+    }
+
     const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
     const secondaryAuth = getAuth(secondaryApp);
     
     const email = `${data.username.toLowerCase()}@sanad.bank`;
+    
+    // تحديد الدور تلقائياً بناءً على القسم
+    const role: UserRole = data.dept === 'Support' ? 'Agent' : 'Specialist';
     
     try {
       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, data.password);
@@ -118,12 +153,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: data.username,
         name: data.name,
         email: email,
-        role: data.role,
-        department: data.dept
+        role: role,
+        department: data.dept,
+        createdAt: new Date().toISOString()
       });
       await signOut(secondaryAuth);
-    } catch (err) {
-      console.error("Create account error:", err);
+    } catch (err: any) {
+      if (err.code === 'auth/email-already-in-use') {
+        throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً في نظام فيربيس.');
+      }
       throw err;
     }
   };
@@ -133,7 +171,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await updatePassword(auth.currentUser, newPassword);
     } catch (err) {
-      console.error("Update password error:", err);
       throw err;
     }
   };
@@ -153,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       createEmployeeAccount,
       updateAdminPassword,
+      checkUsernameExists,
       loading,
       error 
     }}>
