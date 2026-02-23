@@ -316,7 +316,7 @@ function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
                      ) : (
                         <>
                            <span className="font-bold text-sm text-slate-700">{item}</span>
-                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <div className="flex gap-1 transition-opacity">
                               <Button 
                                  variant="ghost" 
                                  size="icon" 
