@@ -144,9 +144,9 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-3">
                 <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com', 'PASS_DIGITAL_11')}>
                   <MonitorSmartphone className="h-5 w-5 text-accent" />
-                  <span className="font-bold text-xs text-slate-800">خدمة العملاء الرقمية</span>
+                  <span className="font-bold text-xs text-slate-800">الخدمات الرقمية</span>
                 </Button>
-                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.frontline@bank.com', 'PASS_FRONT_99')}>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'PASS_CALL_99')}>
                   <Headset className="h-5 w-5 text-secondary" />
                   <span className="font-bold text-xs text-slate-800">الكول سنتر</span>
                 </Button>

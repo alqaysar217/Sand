@@ -19,10 +19,15 @@ export default function DashboardPage() {
 
   const autoValues = useMemo(() => {
     const email = firebaseUser?.email || '';
-    if (email.includes('admin')) return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
-    if (email.includes('cards')) return { role: 'Specialist' as UserRole, dept: 'Cards' as Department, name: 'أخصائي البطائق' };
-    if (email.includes('frontline')) return { role: 'Agent' as UserRole, dept: 'Support' as Department, name: 'موظف الكول سنتر' };
-    if (email.includes('digital')) return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
+    // مطابقة دقيقة بناءً على قائمة المستخدم المرسلة
+    if (email === 'admin.bank@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
+    if (email === 'balkharam.admin@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'بلخرم (المدير العام)' };
+    if (email === 'callcenter.agent@bank.com') return { role: 'Agent' as UserRole, dept: 'Support' as Department, name: 'موظف الاتصال' };
+    if (email === 'cards.ops@bank.com') return { role: 'Specialist' as UserRole, dept: 'Cards' as Department, name: 'الأخصائي الفني' };
+    if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
+    if (email === 'cs.digital@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
+    
+    // افتراضي في حال لم يتطابق شيء
     return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك' };
   }, [firebaseUser?.email]);
 
@@ -33,7 +38,7 @@ export default function DashboardPage() {
         setIsActivating(true);
         try {
           await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
-          toast({ title: "تم تفعيل الصلاحيات", description: "مرحباً بك في نظام سند." });
+          toast({ title: "تم تفعيل الصلاحيات", description: `مرحباً بك ${autoValues.name} في نظام سند.` });
         } catch (err) {
           console.error("Auto activation failed", err);
           toast({ variant: "destructive", title: "خطأ في التفعيل", description: "يرجى المحاولة مرة أخرى." });
@@ -55,7 +60,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-center space-y-2">
             <h2 className="font-black text-primary text-xl">جاري تهيئة بيئة العمل...</h2>
-            <p className="text-slate-400 font-bold text-sm">يتم الآن التحقق من هويتك المصرفية</p>
+            <p className="text-slate-400 font-bold text-sm">يتم الآن التحقق من هويتك المصرفية كـ {autoValues.name}</p>
           </div>
         </div>
       </div>
