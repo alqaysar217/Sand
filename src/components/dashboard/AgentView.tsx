@@ -413,12 +413,12 @@ export function AgentView() {
                 <div className="overflow-x-auto">
                   <Table className="border-collapse">
                     <TableHeader>
-                      <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b border-slate-100">
-                        <TableHead className="text-right h-16 font-black text-slate-500 uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
-                        <TableHead className="text-right h-16 font-black text-slate-500 uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
-                        <TableHead className="text-right h-16 font-black text-slate-500 uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
-                        <TableHead className="text-right h-16 font-black text-slate-500 uppercase text-[11px] tracking-[0.1em]">الحالة</TableHead>
-                        <TableHead className="text-center h-16 font-black text-slate-500 uppercase text-[11px] tracking-[0.1em] pl-10">الإجراءات</TableHead>
+                      <TableRow className="bg-primary/[0.04] hover:bg-primary/[0.04] border-b border-primary/10">
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">الحالة</TableHead>
+                        <TableHead className="text-center h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em] pl-10">الإجراءات</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
