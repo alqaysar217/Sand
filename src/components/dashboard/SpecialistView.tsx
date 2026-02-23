@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck
+  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -28,6 +28,7 @@ export function SpecialistView() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [activeDeptFilter, setActiveDeptFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'all-tickets' | 'my-tasks'>('all-tickets');
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [ticketToClaim, setTicketToClaim] = useState<any | null>(null);
 
@@ -40,7 +41,12 @@ export function SpecialistView() {
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
       const action = e.detail;
-      if (['all', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
+      if (action === 'my-tasks') {
+        setViewMode('my-tasks');
+        setActiveStatusFilter('all');
+        setSelectedTicket(null);
+      } else if (['all', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
+        setViewMode('all-tickets');
         setActiveStatusFilter(action);
         setSelectedTicket(null);
       }
@@ -60,20 +66,21 @@ export function SpecialistView() {
   const { data: tickets, isLoading } = useCollection(allTicketsQuery);
 
   const filteredTickets = useMemo(() => {
-    if (!tickets) return [];
+    if (!tickets || !user) return [];
     return tickets.filter(t => {
+      const matchesView = viewMode === 'all-tickets' || t.assignedToSpecialistId === user.id;
       const matchesStatus = activeStatusFilter === 'all' || t.status === activeStatusFilter;
       const matchesDept = activeDeptFilter === 'all' || t.serviceType === activeDeptFilter;
-      return matchesStatus && matchesDept;
+      return matchesView && matchesStatus && matchesDept;
     });
-  }, [tickets, activeStatusFilter, activeDeptFilter]);
+  }, [tickets, activeStatusFilter, activeDeptFilter, viewMode, user]);
 
   const handleClaimConfirm = () => {
     if (!db || !user || !ticketToClaim) return;
     
     updateDocumentNonBlocking(doc(db, 'tickets', ticketToClaim.id), {
       assignedToSpecialistId: user.id,
-      assignedToSpecialistName: user.name, // تلقائياً من الحساب
+      assignedToSpecialistName: user.name,
       status: 'Pending',
       logs: arrayUnion({ 
         action: `تم استلام البلاغ بواسطة الأخصائي: ${user.name}`, 
@@ -263,8 +270,14 @@ export function SpecialistView() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-right">
-            <h1 className="text-3xl font-black text-primary tracking-tight">محطة العمل الفنية - رؤية شاملة</h1>
-            <p className="text-slate-500 font-bold mt-1">متابعة ومعالجة كافة البلاغات المصرفية في النظام</p>
+            <h1 className="text-3xl font-black text-primary tracking-tight">
+               {viewMode === 'my-tasks' ? "عملياتي الفنية" : "محطة العمل الفنية - رؤية شاملة"}
+            </h1>
+            <p className="text-slate-500 font-bold mt-1">
+               {viewMode === 'my-tasks' 
+                 ? "متابعة المهام التي قمت باستلامها ومعالجتها شخصياً" 
+                 : "متابعة ومعالجة كافة البلاغات المصرفية في النظام"}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-4 bg-white p-2 rounded-[24px] shadow-sm border">
             <div className="flex items-center gap-2 px-3 border-l ml-2">
@@ -336,7 +349,9 @@ export function SpecialistView() {
                           !t.assignedToSpecialistId ? (
                             <Button onClick={() => { setTicketToClaim(t); setClaimDialogOpen(true); }} className="banking-button premium-gradient text-white h-10 px-8 font-black shadow-md">استلام والبدء</Button>
                           ) : (
-                            <Button variant="outline" onClick={() => setSelectedTicket(t)} className="rounded-full h-10 px-8 border-primary text-primary font-black hover:bg-primary hover:text-white transition-all">فتح المعالجة</Button>
+                            <Button variant="outline" onClick={() => setSelectedTicket(t)} className="rounded-full h-10 px-8 border-primary text-primary font-black hover:bg-primary hover:text-white transition-all">
+                               {t.assignedToSpecialistId === user?.id ? "إكمال المعالجة" : "فتح المتابعة"}
+                            </Button>
                           )
                         ) : (
                           <Button variant="ghost" onClick={() => setSelectedTicket(t)} className="rounded-full h-10 px-8 text-slate-400 font-black hover:bg-slate-100 transition-all">متابعة البلاغ</Button>
@@ -347,8 +362,12 @@ export function SpecialistView() {
                   {filteredTickets.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-28 flex flex-col items-center gap-4">
-                         <AlertCircle className="w-12 h-12 text-slate-200" />
-                         <span className="font-black text-slate-400 text-lg">لا توجد بلاغات مطابقة لهذه المعايير حالياً</span>
+                         {viewMode === 'my-tasks' ? <UserCheck className="w-12 h-12 text-indigo-200" /> : <Inbox className="w-12 h-12 text-slate-200" />}
+                         <span className="font-black text-slate-400 text-lg">
+                            {viewMode === 'my-tasks' 
+                               ? "لم تقم باستلام أي بلاغات بعد" 
+                               : "لا توجد بلاغات مطابقة لهذه المعايير حالياً"}
+                         </span>
                       </TableCell>
                     </TableRow>
                   )}
@@ -374,7 +393,7 @@ export function SpecialistView() {
                   </div>
                </div>
                <p className="text-[12px] text-slate-500 font-bold leading-relaxed text-right">
-                  أهلاً بك يا <strong>{user?.name}</strong>. بمجرد تأكيد الاستلام، سيتم ربط البلاغ رقم <strong>{ticketToClaim?.ticketID}</strong> بحسابك وسيتغير حالته إلى "قيد المعالجة" فوراً.
+                  أهلاً بك يا <strong>{user?.name}</strong>. بمجرد تأكيد الاستلام، سيتم ربط البلاغ رقم <strong>{ticketToClaim?.ticketID}</strong> بحسابك وسيتغير حالته إلى "قيد المعالجة" فوراً وسوف يظهر في قسم "عملياتي".
                </p>
             </div>
             <DialogFooter className="flex-row-reverse gap-3 p-8 border-t bg-slate-50">

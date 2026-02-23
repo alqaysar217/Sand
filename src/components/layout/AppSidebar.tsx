@@ -18,7 +18,8 @@ import {
   XCircle,
   Settings,
   ShieldCheck,
-  Bell
+  Bell,
+  UserCheck
 } from 'lucide-react';
 import {
   Sidebar,
@@ -52,7 +53,6 @@ export function AppSidebar() {
 
   const ticketsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
-    // الجميع الآن يرى كافة البلاغات لضمان الشفافية ومنع التكرار
     return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
   }, [db, user]);
 
@@ -67,8 +67,8 @@ export function AppSidebar() {
       Escalated: tickets.filter(t => t.status === 'Escalated').length,
       Resolved: tickets.filter(t => t.status === 'Resolved').length,
       Rejected: tickets.filter(t => t.status === 'Rejected').length,
-      // الإشعارات: البلاغات التي رفعها الموظف وحصلت على تحديث (ليست جديدة)
       notifications: tickets.filter(t => t.createdByAgentId === user.id && t.status !== 'New').length,
+      myTasks: tickets.filter(t => t.assignedToSpecialistId === user.id).length,
     };
   }, [tickets, user]);
 
@@ -96,6 +96,7 @@ export function AppSidebar() {
     } else if (user.role === 'Specialist') {
       return [
         { title: 'كل المهام', icon: Inbox, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
+        { title: 'عملياتي', icon: UserCheck, action: 'my-tasks', count: counts.myTasks, badgeColor: 'bg-indigo-600' },
         { title: 'قيد المعالجة', icon: Clock, action: 'Pending', count: counts.Pending, badgeColor: 'bg-amber-500' },
         { title: 'بلاغات محالة', icon: Send, action: 'Escalated', count: counts.Escalated, badgeColor: 'bg-red-600' },
         { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
