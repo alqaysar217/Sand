@@ -1,10 +1,10 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface AuthContextType {
@@ -26,13 +26,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const snapshotUnsubscribe = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    if (isUserLoading) {
+      setLoading(true);
+      return;
+    }
 
     if (firebaseUser && db) {
       setLoading(true);
-      unsubscribe = onSnapshot(
+      
+      // إلغاء أي اشتراك سابق لتجنب التكرار
+      if (snapshotUnsubscribe.current) {
+        snapshotUnsubscribe.current();
+      }
+
+      snapshotUnsubscribe.current = onSnapshot(
         doc(db, 'users', firebaseUser.uid),
         (docSnap) => {
           if (docSnap.exists()) {
@@ -45,33 +55,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         },
         (err) => {
+          console.error("Profile fetch error:", err);
           setError("خطأ في جلب بيانات المستخدم.");
           setLoading(false);
         }
       );
-    } else if (!isUserLoading) {
+    } else {
       setProfile(null);
       setError(null);
       setLoading(false);
     }
 
-    return () => unsubscribe();
+    return () => {
+      if (snapshotUnsubscribe.current) {
+        snapshotUnsubscribe.current();
+      }
+    };
   }, [firebaseUser, isUserLoading, db]);
 
   const login = async (email: string, password: string) => {
     try {
-      // تسجيل الخروج من أي جلسة سابقة لضمان الدخول النظيف
-      if (auth.currentUser) {
-        await signOut(auth);
-      }
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // إذا كان المستخدم غير موجود، نقوم بإنشائه (لأغراض العرض التوضيحي)
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        // محاولة إنشاء حساب إذا كان تجريبياً ولم يسبق إنشاؤه
         try {
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr: any) {
-          // إذا كان البريد مستخدماً بالفعل بكلمة مرور مختلفة، نحاول الدخول مرة أخرى أو نرفع الخطأ
           throw err;
         }
       } else {
@@ -83,14 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setupDemoProfile = async (role: UserRole, dept: Department, name: string) => {
     if (!firebaseUser || !db) return;
     try {
-      await setDoc(doc(db, 'users', firebaseUser.uid), {
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      await setDoc(userRef, {
         id: firebaseUser.uid,
         name: name,
         email: firebaseUser.email,
         role: role,
         department: dept
       });
-      // سيقوم الـ onSnapshot بتحديث الحالة تلقائياً
     } catch (err) {
       console.error("Error setting up profile:", err);
       throw err;
@@ -98,9 +108,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    setLoading(true);
     await signOut(auth);
     setProfile(null);
     setError(null);
+    setLoading(false);
   };
 
   return (
@@ -110,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login, 
       logout,
       setupDemoProfile,
-      loading: loading || isUserLoading,
+      loading,
       error 
     }}>
       {children}
