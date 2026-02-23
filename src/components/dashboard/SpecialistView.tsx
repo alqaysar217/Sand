@@ -224,9 +224,15 @@ export function SpecialistView() {
             <div className="py-6 space-y-4">
                <Label className="font-black text-xs">اسم الموظف القائم بالاستلام</Label>
                <Select value={selectedStaffName} onValueChange={setSelectedStaffName}>
-                  <SelectTrigger className="banking-input h-14 text-right font-black"><SelectValue placeholder="اختر اسمك من القائمة المعتمدة" /></SelectTrigger>
+                  <SelectTrigger className="banking-input h-14 text-right font-black">
+                    <SelectValue placeholder="اختر اسمك من القائمة المعتمدة" />
+                  </SelectTrigger>
                   <SelectContent dir="rtl">
-                     {(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">بانتظار إضافة الموظفين من المدير</SelectItem>}
+                     {((user?.department === 'Cards' ? config?.specialistNames : config?.csNames) && (user?.department === 'Cards' ? config?.specialistNames : config?.csNames).length > 0) ? (
+                       (user?.department === 'Cards' ? config?.specialistNames : config?.csNames).map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)
+                     ) : (
+                       <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
+                     )}
                   </SelectContent>
                </Select>
             </div>

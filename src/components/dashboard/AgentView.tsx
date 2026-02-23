@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Loader2, Inbox, Headset,
-  Phone, Share2, MessageSquare, Image as ImageIcon, User, Paperclip, X, Upload
+  Phone, Share2, MessageSquare, ImageIcon, User, Paperclip, X, Upload
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -159,9 +159,15 @@ export function AgentView() {
                     موظف الكول سنتر (الرفع) <User className="w-4 h-4" />
                   </Label>
                   <Select value={formData.createdByAgentName} onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
-                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="اختر اسمك من القائمة" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200">
+                      <SelectValue placeholder="اختر اسمك من القائمة" />
+                    </SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">بانتظار إضافة الموظفين من المدير</SelectItem>}
+                      {config?.agentNames && config.agentNames.length > 0 ? (
+                        config.agentNames.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)
+                      ) : (
+                        <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -204,7 +210,11 @@ export function AgentView() {
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="كيف تواصل العميل؟" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>) || <SelectItem value="dev">بانتظار الإعداد من المدير</SelectItem>}
+                      {config?.intakeMethods && config.intakeMethods.length > 0 ? (
+                        config.intakeMethods.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>)
+                      ) : (
+                        <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -213,7 +223,11 @@ export function AgentView() {
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="تصنيف المشكلة الفنية" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || <SelectItem value="dev">بانتظار الإعداد من المدير</SelectItem>}
+                      {config?.issueTypes && config.issueTypes.length > 0 ? (
+                        config.issueTypes.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>)
+                      ) : (
+                        <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

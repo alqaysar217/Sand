@@ -64,8 +64,17 @@ export function AdminView() {
 
   const handleUpdateConfigList = async (type: string, newList: string[]) => {
     if (!db) return;
+    // التأكد من الحفاظ على القيم السابقة حتى لو لم يكن المستند موجوداً بعد
+    const currentData = config || {
+      specialistNames: [],
+      csNames: [],
+      agentNames: [],
+      intakeMethods: [],
+      issueTypes: []
+    };
+    
     setDocumentNonBlocking(doc(db, 'settings', 'system-config'), {
-      ...config,
+      ...currentData,
       [type]: newList
     }, { merge: true });
     toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح في إعدادات النظام." });
@@ -148,19 +157,19 @@ export function AdminView() {
               <ConfigSection 
                 title="أخصائيي البطائق" 
                 items={config?.specialistNames || ['علاء', 'محمود', 'عبدالله']} 
-                onSave={newList => handleUpdateConfigList('specialistNames', newList)} 
+                onSave={(newList: string[]) => handleUpdateConfigList('specialistNames', newList)} 
                 icon={<CreditCard className="w-4 h-4" />}
               />
               <ConfigSection 
                 title="أخصائيي خدمة العملاء" 
                 items={config?.csNames || ['سالم', 'علي', 'فهد']} 
-                onSave={newList => handleUpdateConfigList('csNames', newList)} 
+                onSave={(newList: string[]) => handleUpdateConfigList('csNames', newList)} 
                 icon={<MonitorSmartphone className="w-4 h-4" />}
               />
               <ConfigSection 
                 title="موظفي الكول سنتر" 
                 items={config?.agentNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس']} 
-                onSave={newList => handleUpdateConfigList('agentNames', newList)} 
+                onSave={(newList: string[]) => handleUpdateConfigList('agentNames', newList)} 
                 icon={<Headset className="w-4 h-4" />}
               />
            </div>
@@ -171,13 +180,13 @@ export function AdminView() {
               <ConfigSection 
                 title="وسائل استلام البلاغات" 
                 items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} 
-                onSave={newList => handleUpdateConfigList('intakeMethods', newList)} 
+                onSave={(newList: string[]) => handleUpdateConfigList('intakeMethods', newList)} 
                 icon={<Share2 className="w-4 h-4" />}
               />
               <ConfigSection 
                 title="أنواع المشاكل الفنية" 
                 items={config?.issueTypes || ['مشكلة في التطبيق', 'تغيير رمز PIN', 'كلمة السر', 'استفسار عام']} 
-                onSave={newList => handleUpdateConfigList('issueTypes', newList)} 
+                onSave={(newList: string[]) => handleUpdateConfigList('issueTypes', newList)} 
                 icon={<MessageSquare className="w-4 h-4" />}
               />
            </div>
