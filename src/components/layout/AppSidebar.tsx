@@ -95,9 +95,9 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     onClick={() => handleNav(item.action)}
-                    className="flex-row-reverse hover:bg-slate-100 h-12 w-full px-4"
+                    className="flex items-center gap-3 hover:bg-slate-100 h-12 w-full px-4 justify-start text-right"
                   >
-                    <item.icon className="w-5 h-5 ml-4 mr-0 text-slate-500" />
+                    <item.icon className="w-5 h-5 text-slate-500" />
                     <span className="text-base font-medium">{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
