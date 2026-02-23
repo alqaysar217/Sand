@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,10 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, Settings2, ListTodo
 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,9 @@ export function AdminView() {
   const [newPass, setNewPass] = useState('');
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   
+  // لخيارات النظام
+  const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
+
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
@@ -49,6 +52,10 @@ export function AdminView() {
   });
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+
+  // جلب إعدادات النظام
+  const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
+  const { data: config } = useDoc(configRef);
 
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
@@ -177,6 +184,26 @@ export function AdminView() {
     }));
   };
 
+  const handleAddConfigItem = (field: string) => {
+    const val = newItemValues[field];
+    if (!val || !db || !configRef) return;
+    
+    updateDocumentNonBlocking(configRef, {
+      [field]: arrayUnion(val)
+    });
+    
+    setNewItemValues({ ...newItemValues, [field]: '' });
+    toast({ title: "تمت الإضافة", description: "تم تحديث قائمة الخيارات بنجاح" });
+  };
+
+  const handleRemoveConfigItem = (field: string, val: string) => {
+    if (!db || !configRef) return;
+    updateDocumentNonBlocking(configRef, {
+      [field]: arrayRemove(val)
+    });
+    toast({ title: "تم الحذف", description: "تم إزالة الخيار من القائمة" });
+  };
+
   return (
     <div className="space-y-8 text-right" dir="rtl">
       <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} dir="rtl" className="w-full">
@@ -195,6 +222,7 @@ export function AdminView() {
                <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">الإحصائيات</TabsTrigger>
                <TabsTrigger value="staff" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">إدارة الكادر</TabsTrigger>
                <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">حسابات النظام</TabsTrigger>
+               <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">خيارات النظام</TabsTrigger>
              </TabsList>
           </div>
         </div>
@@ -326,6 +354,88 @@ export function AdminView() {
                  </Table>
               </CardContent>
            </Card>
+        </TabsContent>
+
+        <TabsContent value="options" className="animate-in fade-in duration-500 mt-0 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* إدارة أسماء الكوادر */}
+            <Card className="banking-card border-none shadow-xl">
+              <CardHeader className="bg-primary/5 p-6 border-b">
+                <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+                  إدارة أسماء الكوادر المعتمدة <Users className="w-5 h-5 text-primary" />
+                </CardTitle>
+                <CardDescription className="text-right font-bold">تحديد الأسماء التي تظهر في نماذج الرفع والمعالجة</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <ConfigListManager 
+                  title="موظفي الكول سنتر" 
+                  field="agentNames" 
+                  items={config?.agentNames || []} 
+                  value={newItemValues.agentNames || ''}
+                  onValueChange={(v) => setNewItemValues({...newItemValues, agentNames: v})}
+                  onAdd={() => handleAddConfigItem('agentNames')}
+                  onRemove={(val) => handleRemoveConfigItem('agentNames', val)}
+                />
+                <ConfigListManager 
+                  title="أخصائيي البطائق" 
+                  field="specialistNames" 
+                  items={config?.specialistNames || []} 
+                  value={newItemValues.specialistNames || ''}
+                  onValueChange={(v) => setNewItemValues({...newItemValues, specialistNames: v})}
+                  onAdd={() => handleAddConfigItem('specialistNames')}
+                  onRemove={(val) => handleRemoveConfigItem('specialistNames', val)}
+                />
+                <ConfigListManager 
+                  title="أخصائيي القنوات الرقمية" 
+                  field="csNames" 
+                  items={config?.csNames || []} 
+                  value={newItemValues.csNames || ''}
+                  onValueChange={(v) => setNewItemValues({...newItemValues, csNames: v})}
+                  onAdd={() => handleAddConfigItem('csNames')}
+                  onRemove={(val) => handleRemoveConfigItem('csNames', val)}
+                />
+                <ConfigListManager 
+                  title="أخصائيي التطبيق" 
+                  field="appSpecialistNames" 
+                  items={config?.appSpecialistNames || []} 
+                  value={newItemValues.appSpecialistNames || ''}
+                  onValueChange={(v) => setNewItemValues({...newItemValues, appSpecialistNames: v})}
+                  onAdd={() => handleAddConfigItem('appSpecialistNames')}
+                  onRemove={(val) => handleRemoveConfigItem('appSpecialistNames', val)}
+                />
+              </CardContent>
+            </Card>
+
+            {/* إدارة تصنيفات النظام */}
+            <Card className="banking-card border-none shadow-xl">
+              <CardHeader className="bg-accent/5 p-6 border-b">
+                <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+                  إدارة تصنيفات النظام <ListTodo className="w-5 h-5 text-accent" />
+                </CardTitle>
+                <CardDescription className="text-right font-bold">التحكم في وسائل الاستلام وأنواع المشكلات الفنية</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <ConfigListManager 
+                  title="وسائل استلام الطلبات" 
+                  field="intakeMethods" 
+                  items={config?.intakeMethods || []} 
+                  value={newItemValues.intakeMethods || ''}
+                  onValueChange={(v) => setNewItemValues({...newItemValues, intakeMethods: v})}
+                  onAdd={() => handleAddConfigItem('intakeMethods')}
+                  onRemove={(val) => handleRemoveConfigItem('intakeMethods', val)}
+                />
+                <ConfigListManager 
+                  title="أنواع المشكلات الفنية" 
+                  field="issueTypes" 
+                  items={config?.issueTypes || []} 
+                  value={newItemValues.issueTypes || ''}
+                  onValueChange={(v) => setNewItemValues({...newItemValues, issueTypes: v})}
+                  onAdd={() => handleAddConfigItem('issueTypes')}
+                  onRemove={(val) => handleRemoveConfigItem('issueTypes', val)}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -494,5 +604,39 @@ function StaffCategoryCard({ icon: Icon, title, desc, count }: any) {
           <Badge variant="secondary" className="font-black px-4 py-1">{count} موظفين</Badge>
        </div>
     </Card>
+  );
+}
+
+function ConfigListManager({ title, field, items, value, onValueChange, onAdd, onRemove }: any) {
+  return (
+    <div className="space-y-3 bg-white p-4 rounded-[20px] border border-slate-100">
+      <div className="flex justify-between items-center flex-row-reverse mb-2">
+        <h5 className="font-black text-slate-700 text-sm">{title}</h5>
+        <Badge variant="outline" className="text-[10px] font-black">{items.length} خيارات</Badge>
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={onAdd} size="icon" className="shrink-0 h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-white">
+          <Plus className="w-5 h-5" />
+        </Button>
+        <Input 
+          value={value} 
+          onChange={(e) => onValueChange(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && onAdd()}
+          placeholder={`إضافة ${title.toLowerCase()}...`}
+          className="banking-input h-10 text-right text-xs"
+        />
+      </div>
+      <div className="flex flex-wrap gap-2 justify-end max-h-[150px] overflow-y-auto p-1 no-scrollbar">
+        {items.map((item: string) => (
+          <Badge key={item} variant="secondary" className="h-8 pl-1 pr-3 rounded-full flex items-center gap-2 bg-slate-50 border-slate-200 text-slate-600 font-bold">
+            <button onClick={() => onRemove(item)} className="hover:bg-red-100 p-0.5 rounded-full transition-colors">
+              <X className="w-3 h-3 text-red-500" />
+            </button>
+            <span>{item}</span>
+          </Badge>
+        ))}
+        {items.length === 0 && <p className="text-[10px] text-slate-400 font-black italic">لا توجد خيارات مضافة</p>}
+      </div>
+    </div>
   );
 }
