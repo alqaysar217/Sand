@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect } from 'react';
@@ -13,7 +14,6 @@ export default function DashboardPage() {
   const { user, loading, firebaseUser } = useAuth();
   const router = useRouter();
 
-  // معالجة التوجيه في useEffect لتجنب أخطاء ريندر React
   useEffect(() => {
     if (!loading && !firebaseUser && !user) {
       router.push('/');
@@ -24,39 +24,31 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="h-12 w-12 text-primary animate-spin" />
-        <p className="font-black text-slate-400 animate-pulse">جاري جلب ملفك الشخصي...</p>
+        <p className="font-black text-slate-400 animate-pulse">جاري جلب ملفك المصرفي...</p>
       </div>
     );
   }
 
-  if (!firebaseUser && !user) {
-    return null;
-  }
+  if (!firebaseUser && !user) return null;
 
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-10 text-center space-y-6">
-        <div className="p-6 bg-red-50 rounded-full">
-          <ShieldAlert className="h-16 w-16 text-red-600" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black text-slate-800">صلاحيات مفقودة</h2>
-          <p className="text-slate-500 font-bold max-w-md mx-auto">
-            تم تسجيل دخولك ولكن لم يتم العثور على ملفك الشخصي في قاعدة البيانات. يرجى العودة للرئيسية وإعادة المحاولة.
-          </p>
-        </div>
-        <Button onClick={() => router.push('/')} className="rounded-full font-black px-10 h-12">
-          العودة لصفحة الدخول
-        </Button>
+        <ShieldAlert className="h-16 w-16 text-red-600" />
+        <h2 className="text-2xl font-black">صلاحيات مفقودة</h2>
+        <Button onClick={() => router.push('/')} className="rounded-full font-black">العودة للرئيسية</Button>
       </div>
     );
   }
 
+  // التوجيه بناءً على الدور والقسم
+  // الكول سنتر يذهب لـ AgentView (للرفع)
+  // البطائق وخدمة العملاء يذهبون لـ SpecialistView (للمعالجة)
   return (
     <div className="animate-in fade-in duration-700">
       {user.role === 'Admin' && <AdminView />}
-      {user.role === 'Agent' && <AgentView />}
-      {user.role === 'Specialist' && <SpecialistView />}
+      {user.role === 'Agent' && user.department === 'Support' && <AgentView />}
+      {user.role === 'Specialist' && (user.department === 'Cards' || user.department === 'Digital') && <SpecialistView />}
     </div>
   );
 }

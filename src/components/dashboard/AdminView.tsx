@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -7,22 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { 
-  Users, 
-  AlertTriangle, 
-  Clock, 
-  FileSpreadsheet,
-  Plus,
-  Loader2,
-  ShieldCheck,
-  Trash2,
-  CheckCircle2,
-  Edit2,
-  Save,
-  X,
-  BarChart3,
-  PieChart as PieChartIcon,
-  UserPlus,
-  ShieldAlert
+  Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
+  Edit2, Save, X, BarChart3, PieChart as PieChartIcon, UserPlus, ShieldAlert, MonitorSmartphone, CreditCard, Headset
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -37,26 +24,11 @@ export function AdminView() {
   const db = useFirestore();
   const { toast } = useToast();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    const handleSync = (e: any) => {
-      const action = e.detail;
-      if (['stats', 'users', 'settings'].includes(action)) {
-        setActiveAdminTab(action);
-      }
-    };
-    window.addEventListener('sidebar-nav', handleSync);
-    return () => window.removeEventListener('sidebar-nav', handleSync);
-  }, []);
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  const allTicketsQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-  }, [db]);
+  const allTicketsQuery = useMemoFirebase(() => db ? query(collection(db, 'tickets'), orderBy('createdAt', 'desc')) : null, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
   const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
@@ -73,11 +45,7 @@ export function AdminView() {
     });
 
     const statusTranslation: Record<string, string> = {
-      'New': 'جديد',
-      'Pending': 'قيد المعالجة',
-      'Resolved': 'تم الحل',
-      'Escalated': 'محالة',
-      'Rejected': 'مرفوضة'
+      'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل', 'Escalated': 'محالة', 'Rejected': 'مرفوضة'
     };
 
     return {
@@ -95,30 +63,17 @@ export function AdminView() {
 
   const handleUpdateConfigList = async (type: string, newList: string[]) => {
     if (!db) return;
-    setIsSaving(true);
     setDocumentNonBlocking(doc(db, 'settings', 'system-config'), {
       ...config,
       [type]: newList
     }, { merge: true });
     toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح." });
-    setIsSaving(false);
   };
 
   const handleClearAllTickets = async () => {
-    if (!tickets || !db) {
-      toast({ title: "تنبيه", description: "لا توجد بلاغات لمسحها حالياً." });
-      return;
-    }
-    
-    try {
-      // حذف كافة البلاغات من قاعدة البيانات
-      tickets.forEach(t => {
-        deleteDocumentNonBlocking(doc(db, 'tickets', t.id));
-      });
-      toast({ title: "تم المسح بنجاح", description: "تم تفريغ كافة البلاغات من جميع الأقسام بنجاح." });
-    } catch (err) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل مسح البيانات، يرجى المحاولة لاحقاً." });
-    }
+    if (!tickets || !db) return;
+    tickets.forEach(t => deleteDocumentNonBlocking(doc(db, 'tickets', t.id)));
+    toast({ title: "تم المسح بنجاح", description: "تم تفريغ كافة البلاغات بنجاح." });
   };
 
   return (
@@ -127,14 +82,14 @@ export function AdminView() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
           <div className="text-right">
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
-               <ShieldCheck className="w-8 h-8" /> لوحة قيادة المدير العام
+               <ShieldCheck className="w-8 h-8" /> لوحة إدارة النظام المصرفي
             </h1>
-            <p className="text-slate-500 font-bold mt-1">إدارة قوائم النظام والموظفين والتحليل الذكي للبيانات</p>
+            <p className="text-slate-500 font-bold mt-1">الرقابة المركزية وإدارة صلاحيات الموظفين</p>
           </div>
           <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
-            <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة القوائم</TabsTrigger>
-            <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الموظفين</TabsTrigger>
+            <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات الحقيقية</TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة الموظفين</TabsTrigger>
+            <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">حسابات النظام</TabsTrigger>
           </TabsList>
         </div>
 
@@ -160,17 +115,14 @@ export function AdminView() {
                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                            <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
                            <YAxis orientation="right" fontSize={12} fontWeight="bold" />
-                           <Tooltip 
-                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', textAlign: 'right' }}
-                              itemStyle={{ fontWeight: 'bold' }}
-                           />
+                           <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
                            <Bar dataKey="tickets" name="عدد البلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} />
                         </BarChart>
                      </ResponsiveContainer>
                    ) : (
                      <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
                         <BarChart3 className="w-12 h-12 opacity-20" />
-                        <p className="font-bold">لا توجد بيانات كافية لعرض الرسم البياني</p>
+                        <p className="font-bold">لا توجد بلاغات مسجلة حالياً</p>
                      </div>
                    )}
                 </CardContent>
@@ -178,33 +130,24 @@ export function AdminView() {
              <Card className="banking-card border-none shadow-xl">
                 <CardHeader className="text-right border-b bg-slate-50/50 p-6">
                    <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
-                      توزيع حالات البلاغات <PieChartIcon className="w-5 h-5 text-primary" />
+                      توزيع الحالات <PieChartIcon className="w-5 h-5 text-primary" />
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 h-[350px]">
                    {stats.total > 0 ? (
                      <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                           <Pie 
-                              data={stats.statusData} 
-                              cx="50%" 
-                              cy="50%" 
-                              innerRadius={70} 
-                              outerRadius={100} 
-                              paddingAngle={8} 
-                              dataKey="value"
-                              label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                           >
-                              {stats.statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                           <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value">
+                              {stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                            </Pie>
-                           <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', textAlign: 'right' }} />
+                           <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
                            <Legend verticalAlign="bottom" height={36} />
                         </PieChart>
                      </ResponsiveContainer>
                    ) : (
                      <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
                         <PieChartIcon className="w-12 h-12 opacity-20" />
-                        <p className="font-bold">لا توجد بلاغات مسجلة حالياً</p>
+                        <p className="font-bold">النظام فارغ حالياً</p>
                      </div>
                    )}
                 </CardContent>
@@ -213,75 +156,71 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6 animate-in fade-in duration-500 mt-0">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <ConfigSection 
-                title="موظفي البطائق (الأخصائيين)" 
+                title="أخصائيي البطائق" 
                 items={config?.specialistNames || ['علاء', 'محمود', 'عبدالله']} 
                 onSave={newList => handleUpdateConfigList('specialistNames', newList)} 
-                icon={<UserPlus className="w-4 h-4" />}
+                icon={<CreditCard className="w-4 h-4" />}
               />
               <ConfigSection 
-                title="موظفي خدمة العملاء/العلاقات" 
+                title="موظفي خدمة العملاء" 
+                items={config?.csNames || ['سالم', 'علي', 'فهد']} 
+                onSave={newList => handleUpdateConfigList('csNames', newList)} 
+                icon={<MonitorSmartphone className="w-4 h-4" />}
+              />
+              <ConfigSection 
+                title="موظفي الكول سنتر (الرفع)" 
                 items={config?.agentNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس']} 
                 onSave={newList => handleUpdateConfigList('agentNames', newList)} 
-                icon={<Users className="w-4 h-4" />}
+                icon={<Headset className="w-4 h-4" />}
               />
-              <ConfigSection 
-                title="الجهات المعنية" 
-                items={config?.serviceTypes || ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق']} 
-                onSave={newList => handleUpdateConfigList('serviceTypes', newList)} 
-              />
-              <ConfigSection 
-                title="وسائل استلام البلاغات" 
-                items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} 
-                onSave={newList => handleUpdateConfigList('intakeMethods', newList)} 
-              />
-              <div className="md:col-span-2 space-y-6">
-                <Card className="banking-card border-none shadow-xl bg-red-50/30 border border-red-100 overflow-hidden">
-                   <CardHeader className="p-6 border-b border-red-100 flex flex-row-reverse items-center justify-between bg-red-50/50">
-                      <CardTitle className="text-red-700 font-black flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5" /> إجراءات النظام المتقدمة (تفريغ البيانات)
-                      </CardTitle>
-                   </CardHeader>
-                   <CardContent className="p-8">
-                      <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                         <div className="text-right">
-                            <h4 className="font-black text-slate-800">مسح كافة البلاغات السابقة من جميع الأقسام</h4>
-                            <p className="text-xs text-slate-500 font-bold mt-1">سيتم حذف جميع بلاغات العملاء (الجديدة، المعالجة، المحالة، والمرفوضة) نهائياً لبدء اختبار جديد ونظيف.</p>
-                         </div>
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                               <Button variant="destructive" className="rounded-full px-8 h-12 font-black shadow-lg shadow-red-500/20">
-                                  <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات فوراً
-                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
-                               <AlertDialogHeader>
-                                  <AlertDialogTitle className="font-black text-right text-red-700">تنبيه: مسح شامل للبيانات</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-right font-bold text-slate-500">
-                                     أنت على وشك حذف كافة البلاغات المسجلة في جميع الأقسام (خدمة العملاء، الكول سنتر، والبطائق). هذا الإجراء سيقوم بتفريغ النظام تماماً ولا يمكن التراجع عنه.
-                                  </AlertDialogDescription>
-                               </AlertDialogHeader>
-                               <AlertDialogFooter className="flex-row-reverse gap-3">
-                                  <AlertDialogCancel className="rounded-full font-black">إلغاء العملية</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleClearAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
-                                     تأكيد المسح الشامل
-                                  </AlertDialogAction>
-                               </AlertDialogFooter>
-                            </AlertDialogContent>
-                         </AlertDialog>
-                      </div>
-                   </CardContent>
-                </Card>
-              </div>
+           </div>
+           
+           <div className="mt-8">
+              <Card className="banking-card border-none shadow-xl bg-red-50/30 border border-red-100 overflow-hidden">
+                 <CardHeader className="p-6 border-b border-red-100 flex flex-row-reverse items-center justify-between bg-red-50/50">
+                    <CardTitle className="text-red-700 font-black flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5" /> تفريغ النظام بالكامل
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-8">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                       <div className="text-right">
+                          <h4 className="font-black text-slate-800">مسح كافة البلاغات المخزنة</h4>
+                          <p className="text-xs text-slate-500 font-bold mt-1">سيتم حذف جميع البلاغات نهائياً لبدء اختبار جديد ونظيف.</p>
+                       </div>
+                       <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                             <Button variant="destructive" className="rounded-full px-8 h-12 font-black">
+                                <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات فوراً
+                             </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                             <AlertDialogHeader>
+                                <AlertDialogTitle className="font-black text-right text-red-700">تأكيد المسح الشامل</AlertDialogTitle>
+                                <AlertDialogDescription className="text-right font-bold text-slate-500">
+                                   سيتم حذف جميع البلاغات من كافة الأقسام نهائياً.
+                                </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter className="flex-row-reverse gap-3">
+                                <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleClearAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
+                                   تأكيد المسح
+                                </AlertDialogAction>
+                             </AlertDialogFooter>
+                          </AlertDialogContent>
+                       </AlertDialog>
+                    </div>
+                 </CardContent>
+              </Card>
            </div>
         </TabsContent>
 
         <TabsContent value="users" className="animate-in fade-in duration-500 mt-0">
            <Card className="banking-card border-none shadow-xl overflow-hidden">
-              <CardHeader className="p-8 border-b bg-white">
-                 <CardTitle className="text-2xl font-black text-primary">إدارة موظفي النظام</CardTitle>
-                 <p className="text-slate-400 font-bold mt-1">عرض الموظفين المسجلين وصلاحياتهم الحالية</p>
+              <CardHeader className="p-8 border-b">
+                 <CardTitle className="text-2xl font-black text-primary">حسابات الموظفين المسجلين</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                  <div className="overflow-x-auto">
@@ -296,22 +235,19 @@ export function AdminView() {
                        </TableHeader>
                        <TableBody>
                           {appUsers?.map((u, idx) => (
-                             <TableRow key={u.id} className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                             <TableRow key={u.id} className={`border-b transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                                 <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
                                 <TableCell className="text-right">{u.email}</TableCell>
                                 <TableCell className="text-right">
                                    <Badge className={`rounded-full px-4 font-black ${
                                       u.role === 'Admin' ? 'bg-red-500' : u.role === 'Specialist' ? 'bg-primary' : 'bg-secondary'
                                    }`}>
-                                      {u.role === 'Admin' ? 'مدير' : u.role === 'Specialist' ? 'أخصائي' : 'موظف'}
+                                      {u.role === 'Admin' ? 'مدير' : u.role === 'Specialist' ? 'أخصائي معالجة' : 'موظف رفع'}
                                    </Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-bold text-slate-500 pl-8">{u.department}</TableCell>
                              </TableRow>
                           ))}
-                          {(!appUsers || appUsers.length === 0) && (
-                             <TableRow><TableCell colSpan={4} className="py-20 text-center font-bold text-slate-400">لا يوجد موظفين مسجلين حالياً</TableCell></TableRow>
-                          )}
                        </TableBody>
                     </Table>
                  </div>
@@ -332,7 +268,7 @@ function StatCard({ icon: Icon, title, value, color }: any) {
                <Icon className={`w-6 h-6 ${!color.startsWith('bg') ? color : 'text-white'}`} />
             </div>
             <div className="text-right">
-              <p className={`text-[10px] font-black uppercase tracking-widest ${color.startsWith('bg') ? 'text-white/70' : 'text-slate-400'}`}>{title}</p>
+              <p className={`text-[10px] font-black uppercase ${color.startsWith('bg') ? 'text-white/70' : 'text-slate-400'}`}>{title}</p>
               <h3 className={`text-3xl font-black mt-1 ${!color.startsWith('bg') ? 'text-slate-900' : 'text-white'}`}>{value}</h3>
             </div>
          </div>
@@ -341,14 +277,7 @@ function StatCard({ icon: Icon, title, value, color }: any) {
   );
 }
 
-interface ConfigSectionProps {
-  title: string;
-  items: string[];
-  onSave: (newList: string[]) => void;
-  icon?: React.ReactNode;
-}
-
-function ConfigSection({ title, items, onSave, icon }: ConfigSectionProps) {
+function ConfigSection({ title, items, onSave, icon }: any) {
    const [newItem, setNewItem] = useState('');
    const [editingIndex, setEditingIndex] = useState<number | null>(null);
    const [editingValue, setEditingValue] = useState('');
@@ -361,13 +290,7 @@ function ConfigSection({ title, items, onSave, icon }: ConfigSectionProps) {
    };
 
    const handleDelete = (index: number) => {
-      const newList = items.filter((_, i) => i !== index);
-      onSave(newList);
-   };
-
-   const handleStartEdit = (index: number, val: string) => {
-      setEditingIndex(index);
-      setEditingValue(val);
+      onSave(items.filter((_: any, i: number) => i !== index));
    };
 
    const handleSaveEdit = () => {
@@ -385,77 +308,32 @@ function ConfigSection({ title, items, onSave, icon }: ConfigSectionProps) {
             <CardTitle className="text-lg font-black text-primary flex items-center gap-2">
                {title} {icon}
             </CardTitle>
-            <Badge variant="outline" className="font-black text-[10px]">{items.length} عنصر</Badge>
+            <Badge variant="outline" className="font-black text-[10px]">{items.length}</Badge>
          </CardHeader>
-         <CardContent className="p-6 space-y-6">
+         <CardContent className="p-6 space-y-4">
             <div className="flex gap-2 flex-row-reverse">
-               <Input 
-                  value={newItem} 
-                  onChange={e => setNewItem(e.target.value)} 
-                  placeholder="إضافة جديد..." 
-                  className="banking-input h-11 text-right" 
-                  onKeyPress={e => e.key === 'Enter' && handleAdd()}
-               />
-               <Button size="icon" onClick={handleAdd} className="bg-primary h-11 w-11 rounded-xl shadow-lg shadow-primary/20 shrink-0">
-                  <Plus className="w-5 h-5" />
-               </Button>
+               <Input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="إضافة موظف..." className="banking-input h-11 text-right" />
+               <Button onClick={handleAdd} className="bg-primary h-11 w-11 rounded-xl shrink-0"><Plus className="w-5 h-5" /></Button>
             </div>
-            
-            <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
-               {items.map((item, idx) => (
-                  <div 
-                     key={idx} 
-                     className={`flex items-center justify-between p-3 rounded-2xl flex-row-reverse transition-all border group ${
-                        idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
-                     } ${editingIndex === idx ? 'border-primary ring-2 ring-primary/10' : 'border-transparent'}`}
-                  >
+            <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+               {items.map((item: string, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl flex-row-reverse bg-slate-50 border border-transparent">
                      {editingIndex === idx ? (
                         <div className="flex items-center gap-2 w-full flex-row-reverse">
-                           <Input 
-                              value={editingValue} 
-                              onChange={e => setEditingValue(e.target.value)} 
-                              className="h-9 banking-input text-right text-sm font-bold"
-                              autoFocus
-                           />
-                           <div className="flex gap-1">
-                              <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="h-8 w-8 text-green-600 hover:bg-green-50">
-                                 <Save className="w-4 h-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => setEditingIndex(null)} className="h-8 w-8 text-slate-400">
-                                 <X className="w-4 h-4" />
-                              </Button>
-                           </div>
+                           <Input value={editingValue} onChange={e => setEditingValue(e.target.value)} className="h-9 banking-input text-right" autoFocus />
+                           <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="text-green-600"><Save className="w-4 h-4" /></Button>
                         </div>
                      ) : (
                         <>
-                           <span className="font-bold text-sm text-slate-700">{item}</span>
+                           <span className="font-bold text-sm">{item}</span>
                            <div className="flex gap-1">
-                              <Button 
-                                 variant="ghost" 
-                                 size="icon" 
-                                 onClick={() => handleStartEdit(idx, item)} 
-                                 className="text-primary h-8 w-8 hover:bg-primary/5"
-                              >
-                                 <Edit2 className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button 
-                                 variant="ghost" 
-                                 size="icon" 
-                                 onClick={() => handleDelete(idx)} 
-                                 className="text-red-500 h-8 w-8 hover:bg-red-50"
-                              >
-                                 <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingIndex(idx); setEditingValue(item); }} className="text-primary"><Edit2 className="w-3.5 h-3.5" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(idx)} className="text-red-500"><Trash2 className="w-3.5 h-3.5" /></Button>
                            </div>
                         </>
                      )}
                   </div>
                ))}
-               {items.length === 0 && (
-                  <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                     <p className="text-xs font-bold text-slate-400">القائمة فارغة، ابدأ بالإضافة</p>
-                  </div>
-               )}
             </div>
          </CardContent>
       </Card>

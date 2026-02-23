@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,27 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  CheckCircle2, 
-  UserPlus, 
-  MessageSquare, 
-  Sparkles, 
-  ArrowRight, 
-  Loader2, 
-  AlertCircle, 
-  Clock,
-  History,
-  UserCircle,
-  Fingerprint,
-  Phone,
-  Building2,
-  Calendar,
-  Inbox,
-  Paperclip,
-  Eye,
-  FileText,
-  XCircle,
-  Send,
-  Filter
+  CheckCircle2, UserPlus, MessageSquare, Sparkles, ArrowRight, Loader2, Clock, History, UserCircle, Fingerprint, Inbox, XCircle, Send
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -48,373 +28,190 @@ export function SpecialistView() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
-  const [activeDeptFilter, setActiveDeptFilter] = useState('all');
-  
-  // حالة نافذة اختيار الاسم عند الاستلام
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [ticketToClaim, setTicketToClaim] = useState<any | null>(null);
   const [selectedStaffName, setSelectedStaffName] = useState('');
 
-  // جلب إعدادات النظام للحصول على أسماء الموظفين
+  // تحديد المسمى البرمجي للقسم لاستلام البلاغات الموجهة إليه فقط
+  const myDeptServiceType = user?.department === 'Cards' ? 'إدارة البطائق' : 'خدمة العملاء';
+
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  // ربط التنقل من القائمة الجانبية
-  useEffect(() => {
-    const handleSync = (e: any) => {
-      const action = e.detail;
-      if (['all', 'Pending', 'Escalated', 'Resolved', 'Rejected'].includes(action)) {
-        setActiveStatusFilter(action);
-        setSelectedTicket(null);
-      }
-    };
-    window.addEventListener('sidebar-nav', handleSync);
-    return () => window.removeEventListener('sidebar-nav', handleSync);
-  }, []);
-
-  // جلب كافة البلاغات (ليتمكن الأخصائي من رؤية كل شيء والفلترة)
-  const allTicketsQuery = useMemoFirebase(() => {
+  // جلب البلاغات الموجهة لقسم المستخدم فقط
+  const myDeptTicketsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-  }, [db]);
+    return query(collection(db, 'tickets'), where('serviceType', '==', myDeptServiceType), orderBy('createdAt', 'desc'));
+  }, [db, myDeptServiceType]);
 
-  const { data: allTickets, isLoading: isTicketsLoading } = useCollection(allTicketsQuery);
+  const { data: tickets, isLoading } = useCollection(myDeptTicketsQuery);
 
-  // الفلترة في الواجهة
   const filteredTickets = useMemo(() => {
-    if (!allTickets) return [];
-    return allTickets.filter(t => {
-      const matchesStatus = activeStatusFilter === 'all' || t.status === activeStatusFilter;
-      const matchesDept = activeDeptFilter === 'all' || t.serviceType === activeDeptFilter;
-      return matchesStatus && matchesDept;
-    });
-  }, [allTickets, activeStatusFilter, activeDeptFilter]);
-
-  const handleOpenClaimDialog = (ticket: any) => {
-    setTicketToClaim(ticket);
-    setClaimDialogOpen(true);
-  };
+    if (!tickets) return [];
+    return tickets.filter(t => activeStatusFilter === 'all' || t.status === activeStatusFilter);
+  }, [tickets, activeStatusFilter]);
 
   const handleClaimConfirm = () => {
-    if (!db || !user || !ticketToClaim || !selectedStaffName) {
-      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسمك من القائمة." });
-      return;
-    }
-
-    const ticketRef = doc(db, 'tickets', ticketToClaim.id);
-    updateDocumentNonBlocking(ticketRef, {
+    if (!db || !user || !ticketToClaim || !selectedStaffName) return;
+    updateDocumentNonBlocking(doc(db, 'tickets', ticketToClaim.id), {
       assignedToSpecialistId: user.id,
       assignedToSpecialistName: selectedStaffName,
       status: 'Pending',
-      logs: arrayUnion({
-        action: `تم استلام البلاغ بواسطة الأخصائي: ${selectedStaffName}`,
-        timestamp: new Date().toISOString(),
-        userName: selectedStaffName
-      })
+      logs: arrayUnion({ action: `تم استلام البلاغ بواسطة الأخصائي: ${selectedStaffName}`, timestamp: new Date().toISOString(), userName: selectedStaffName })
     });
-
-    toast({ title: "تم الاستلام", description: `تم تعيين البلاغ لـ ${selectedStaffName}` });
+    toast({ title: "تم الاستلام", description: "تم بدء معالجة البلاغ" });
     setClaimDialogOpen(false);
     setTicketToClaim(null);
-    setSelectedStaffName('');
   };
 
   const handleAction = async (actionType: 'Resolved' | 'Rejected' | 'Escalated') => {
-    if (!db || !user || !selectedTicket) return;
-    if (!response.trim()) {
-      toast({ variant: "destructive", title: "تنبيه", description: "يجب كتابة رد فني يوضح الإجراء المتخذ." });
-      return;
+    if (!db || !selectedTicket || !response.trim()) {
+       toast({ variant: "destructive", title: "تنبيه", description: "يجب كتابة رد فني." });
+       return;
     }
-
     setIsProcessing(true);
-    const ticketRef = doc(db, 'tickets', selectedTicket.id);
-    
-    let actionText = '';
-    switch(actionType) {
-      case 'Resolved': actionText = 'تم اعتماد الحل الفني وإغلاق البلاغ'; break;
-      case 'Rejected': actionText = 'تم رفض البلاغ مع ذكر السبب'; break;
-      case 'Escalated': actionText = 'تمت إحالة البلاغ للمستوى الأعلى'; break;
-    }
-
     const updateData: any = {
       status: actionType,
-      logs: arrayUnion({
-        action: actionText,
-        timestamp: new Date().toISOString(),
-        userName: selectedTicket.assignedToSpecialistName || user.name,
-        note: response
-      })
+      logs: arrayUnion({ action: `إجراء متخذ: ${actionType}`, timestamp: new Date().toISOString(), userName: selectedTicket.assignedToSpecialistName, note: response })
     };
-
-    if (actionType === 'Resolved') {
-      updateData.specialistResponse = response;
-      updateData.resolvedAt = new Date().toISOString();
-    } else if (actionType === 'Rejected') {
-      updateData.rejectionReason = response;
-      updateData.rejectedAt = new Date().toISOString();
-    }
-
-    try {
-      updateDocumentNonBlocking(ticketRef, updateData);
-      toast({ title: "تم التحديث", description: "تم تحديث حالة البلاغ بنجاح." });
-      setSelectedTicket(null);
-      setResponse('');
-    } finally {
-      setIsProcessing(false);
-    }
+    if (actionType === 'Resolved') updateData.specialistResponse = response;
+    
+    updateDocumentNonBlocking(doc(db, 'tickets', selectedTicket.id), updateData);
+    toast({ title: "تم التحديث", description: "تم حفظ الإجراء بنجاح." });
+    setSelectedTicket(null);
+    setResponse('');
+    setIsProcessing(false);
   };
 
   const handleAiSuggest = async () => {
     if (!selectedTicket) return;
     setIsGenerating(true);
-    try {
-      const result = await smartResponseAssistant({
-        complaintDetails: `المشكلة: ${selectedTicket.subIssue}, التفاصيل: ${selectedTicket.description}`,
-        resolutionHistory: ["تفعيل البطاقة المجمدة", "تغيير رمز PIN", "تحديث بيانات KYC"]
-      });
-      setResponse(result.suggestedResponse);
-      toast({ title: "اقتراح ذكي", description: "تم توليد رد فني مقترح." });
-    } finally {
-      setIsGenerating(false);
-    }
+    const result = await smartResponseAssistant({ complaintDetails: selectedTicket.description });
+    setResponse(result.suggestedResponse);
+    setIsGenerating(false);
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending': return <Badge className="bg-amber-500 text-white rounded-full px-4 font-black">قيد المعالجة</Badge>;
-      case 'Resolved': return <Badge className="bg-green-600 text-white rounded-full px-4 font-black">تم الحل</Badge>;
-      case 'Rejected': return <Badge className="bg-slate-800 text-white rounded-full px-4 font-black">مرفوض</Badge>;
-      case 'Escalated': return <Badge className="bg-red-600 text-white rounded-full px-4 font-black">محال</Badge>;
-      default: return <Badge className="bg-blue-600 text-white rounded-full px-4 font-black">جديد</Badge>;
+      case 'Pending': return <Badge className="bg-amber-500 rounded-full font-black">قيد المعالجة</Badge>;
+      case 'Resolved': return <Badge className="bg-green-600 rounded-full font-black">تم الحل</Badge>;
+      default: return <Badge className="bg-blue-600 rounded-full font-black">جديد</Badge>;
     }
   };
 
   if (selectedTicket) {
     return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 text-right h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pb-10" dir="rtl">
-        <div className="flex items-center justify-between flex-row-reverse">
-          <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="rounded-full hover:bg-white text-slate-500 font-black px-6">
-            <ArrowRight className="w-5 h-5 ml-2" /> العودة لمحطة العمل
-          </Button>
-          <div className="flex items-center gap-3 flex-row-reverse">
-            <span className="text-slate-400 font-black text-xs">الحالة:</span>
-            {getStatusBadge(selectedTicket.status)}
-          </div>
-        </div>
-
+      <div className="space-y-8 text-right animate-in fade-in" dir="rtl">
+        <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="rounded-full font-black"><ArrowRight className="w-5 h-5 ml-2" /> العودة لمحطة العمل</Button>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8 text-right">
-            <Card className="banking-card border-r-4 border-r-primary shadow-xl">
-              <CardHeader className="bg-slate-50/50 p-8 border-b">
-                <div className="flex items-center gap-4 flex-row-reverse">
-                  <div className="p-4 bg-primary/5 rounded-[20px] border border-primary/10">
-                    <Inbox className="w-8 h-8 text-primary" />
-                  </div>
-                  <div className="text-right">
-                    <CardTitle className="text-2xl font-black text-primary">معالجة بلاغ رقم: {selectedTicket.ticketID}</CardTitle>
-                    <p className="text-xs text-slate-400 font-bold mt-1">تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p>
-                  </div>
-                </div>
+           <Card className="lg:col-span-2 banking-card border-r-4 border-primary">
+              <CardHeader className="bg-slate-50 p-8 border-b">
+                 <CardTitle className="text-2xl font-black text-primary">معالجة بلاغ: {selectedTicket.ticketID}</CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
-                    <UserCircle className="w-5 h-5 text-primary" />
-                    <div className="text-right"><span className="text-[10px] text-slate-400 block font-black">اسم العميل</span><p className="font-black text-sm">{selectedTicket.customerName}</p></div>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
-                    <Fingerprint className="w-5 h-5 text-primary" />
-                    <div className="text-right"><span className="text-[10px] text-slate-400 block font-black">رقم CIF</span><p className="font-mono font-black text-sm">{selectedTicket.cif}</p></div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                   <div className="flex items-center gap-3 justify-end px-2">
-                      <h3 className="font-black text-xl text-slate-900">تفاصيل المشكلة الفنية</h3>
-                      <MessageSquare className="w-6 h-6 text-primary" />
-                   </div>
-                   <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm text-lg leading-relaxed text-slate-700 text-right relative">
-                      <div className="flex justify-end mb-4">
-                        <Badge className="bg-primary/5 border-primary/10 text-primary font-black px-6 py-2 rounded-full border">{selectedTicket.subIssue}</Badge>
-                      </div>
-                      <p>{selectedTicket.description}</p>
-                   </div>
-                </div>
-
-                <div className="space-y-4 pt-10 border-t">
-                   <div className="flex items-center justify-between px-2 flex-row-reverse">
-                      <div className="flex items-center gap-3 flex-row-reverse">
-                        <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المقترح</h3>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full border-accent/20 hover:bg-accent/5 text-accent font-black h-11">
-                         {isGenerating ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2" />}
-                         مساعد الرد الذكي
-                      </Button>
-                   </div>
-                   <Textarea 
-                      value={response} 
-                      onChange={(e) => setResponse(e.target.value)} 
-                      placeholder="اكتب ردك الفني المفصل هنا..." 
-                      className="banking-input min-h-[200px] p-8 text-lg text-right shadow-inner" 
-                   />
-                   
-                   <div className="flex flex-wrap justify-end gap-4 pt-6">
-                      <Button variant="outline" className="h-16 px-10 rounded-[28px] border-red-200 text-red-600 hover:bg-red-50 font-black text-lg" onClick={() => handleAction('Rejected')} disabled={isProcessing}>
-                         <XCircle className="w-6 h-6 ml-2" /> رفض البلاغ
-                      </Button>
-                      <Button variant="outline" className="h-16 px-10 rounded-[28px] border-amber-200 text-amber-600 hover:bg-amber-50 font-black text-lg" onClick={() => handleAction('Escalated')} disabled={isProcessing}>
-                         <Send className="w-6 h-6 ml-2" /> إحالة للمشرف
-                      </Button>
-                      <Button className="banking-button premium-gradient text-white h-16 px-16 text-xl shadow-2xl" onClick={() => handleAction('Resolved')} disabled={isProcessing}>
-                         <CheckCircle2 className="w-6 h-6 ml-2" /> اعتماد الحل
-                      </Button>
-                   </div>
-                </div>
+              <CardContent className="p-8 space-y-6">
+                 <div className="bg-slate-50 p-6 rounded-2xl space-y-4">
+                    <h4 className="font-black text-slate-800">تفاصيل بلاغ الكول سنتر:</h4>
+                    <p className="font-medium text-slate-600">{selectedTicket.description}</p>
+                 </div>
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center flex-row-reverse">
+                       <h4 className="font-black text-slate-800">الرد الفني والحل المتخذ:</h4>
+                       <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full text-accent font-black">
+                          {isGenerating ? <Loader2 className="animate-spin ml-2" /> : <Sparkles className="ml-2" />} مساعد الرد الذكي
+                       </Button>
+                    </div>
+                    <Textarea value={response} onChange={e => setResponse(e.target.value)} placeholder="اكتب الرد الفني هنا..." className="banking-input min-h-[150px] text-right" />
+                    <div className="flex justify-end gap-3 pt-4">
+                       <Button variant="outline" onClick={() => handleAction('Rejected')} className="text-red-600 rounded-full font-black">رفض</Button>
+                       <Button className="banking-button premium-gradient text-white px-12 rounded-full font-black" onClick={() => handleAction('Resolved')} disabled={isProcessing}>اعتماد الحل</Button>
+                    </div>
+                 </div>
               </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-8">
-             <Card className="banking-card shadow-lg border-none overflow-hidden">
-                <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start flex-row-reverse">
-                   <History className="w-5 h-5 text-primary" />
-                   <CardTitle className="text-lg font-black text-slate-800">تتبع البلاغ</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                   <div className="space-y-6">
-                      {selectedTicket.logs?.map((log: any, idx: number) => (
-                        <div key={idx} className="relative pr-6 border-r-2 border-slate-100 last:border-0 pb-6 text-right">
-                           <div className="absolute top-0 -right-[7px] w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-sm"></div>
-                           <p className="font-black text-slate-800 text-xs">{log.action}</p>
-                           <p className="text-[10px] text-slate-400 font-black mt-1">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
-                           {log.note && <p className="mt-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100 font-bold text-slate-600">{log.note}</p>}
-                        </div>
-                      ))}
-                   </div>
-                </CardContent>
-             </Card>
-          </div>
+           </Card>
+           <Card className="banking-card">
+              <CardHeader className="p-6 border-b"><CardTitle className="text-lg font-black">سجل التتبع</CardTitle></CardHeader>
+              <CardContent className="p-6 space-y-4">
+                 {selectedTicket.logs?.map((log: any, idx: number) => (
+                    <div key={idx} className="border-r-2 border-slate-100 pr-4 pb-4">
+                       <p className="text-xs font-black text-slate-800">{log.action}</p>
+                       <p className="text-[10px] text-slate-400 mt-1">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
+                    </div>
+                 ))}
+              </CardContent>
+           </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 text-right" dir="rtl">
+    <div className="space-y-8 text-right animate-in fade-in" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-right">
-          <h1 className="text-4xl font-black text-primary tracking-tight">محطة العمل الفنية</h1>
-          <p className="text-slate-500 font-bold mt-2">إدارة ومعالجة البلاغات المصرفية - قسم <span className="text-secondary">{user?.department}</span></p>
+          <h1 className="text-3xl font-black text-primary tracking-tight">محطة العمل الفنية - قسم {user?.department === 'Cards' ? 'البطائق' : 'خدمة العملاء'}</h1>
+          <p className="text-slate-500 font-bold mt-1">معالجة البلاغات الواردة من الكول سنتر</p>
         </div>
-        <div className="flex gap-4 items-center">
-           <Label className="font-black text-slate-400 text-xs hidden md:block">فلترة حسب القسم:</Label>
-           <Select value={activeDeptFilter} onValueChange={setActiveDeptFilter}>
-              <SelectTrigger className="w-[200px] banking-input h-11 text-right font-black">
-                <SelectValue placeholder="كل الأقسام" />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                 <SelectItem value="all">كل الأقسام</SelectItem>
-                 {config?.serviceTypes?.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>) || (
-                   ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)
-                 )}
-              </SelectContent>
-           </Select>
-        </div>
+        <Tabs value={activeStatusFilter} onValueChange={setActiveStatusFilter} className="bg-slate-100 p-1 rounded-full h-auto">
+          <TabsList className="bg-transparent">
+            <TabsTrigger value="all" className="rounded-full px-6 py-2 font-black">الكل</TabsTrigger>
+            <TabsTrigger value="New" className="rounded-full px-6 py-2 font-black">جديد</TabsTrigger>
+            <TabsTrigger value="Pending" className="rounded-full px-6 py-2 font-black">قيد المعالجة</TabsTrigger>
+            <TabsTrigger value="Resolved" className="rounded-full px-6 py-2 font-black">تم الحل</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      <Card className="banking-card overflow-hidden shadow-2xl border-none bg-white">
-        <CardHeader className="p-8 border-b bg-slate-50/30">
-          <div className="flex items-center gap-4 justify-start flex-row-reverse">
-            <div className="p-4 bg-primary/5 rounded-[22px]"><Inbox className="w-8 h-8 text-primary" /></div>
-            <div className="text-right">
-              <CardTitle className="text-2xl text-primary font-black">
-                {activeStatusFilter === 'all' ? 'صندوق المهام الواردة' : 
-                 activeStatusFilter === 'Pending' ? 'بلاغات قيد المعالجة' :
-                 activeStatusFilter === 'Resolved' ? 'بلاغات تم حلها' :
-                 activeStatusFilter === 'Rejected' ? 'بلاغات مرفوضة' : 'بلاغات محالة'}
-              </CardTitle>
-              <p className="text-slate-400 font-bold mt-1">إجمالي المعروض: {filteredTickets.length} بلاغ</p>
-            </div>
-          </div>
-        </CardHeader>
+      <Card className="banking-card overflow-hidden shadow-xl border-none">
         <CardContent className="p-0">
-          {isTicketsLoading ? (
-            <div className="flex justify-center py-24"><Loader2 className="animate-spin text-primary h-14 w-14" /></div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
+           {isLoading ? (
+             <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>
+           ) : (
+             <Table>
                 <TableHeader className="bg-primary">
                   <TableRow className="border-none hover:bg-primary">
-                    <TableHead className="text-right h-18 font-black text-white pr-12">رقم البلاغ</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white">العميل</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white">نوع المشكلة</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white">القسم المعني</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white">الحالة</TableHead>
-                    <TableHead className="text-center h-18 font-black text-white pl-12">الإجراء</TableHead>
+                    <TableHead className="text-right h-14 font-black text-white pr-8">رقم البلاغ</TableHead>
+                    <TableHead className="text-right h-14 font-black text-white">العميل</TableHead>
+                    <TableHead className="text-right h-14 font-black text-white">الحالة</TableHead>
+                    <TableHead className="text-center h-14 font-black text-white pl-8">الإجراء</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTickets?.map((t: any, index: number) => (
-                    <TableRow key={t.id} className={`transition-colors border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                      <TableCell className="py-6 font-black text-primary pr-12 text-right">
-                        <span className="bg-primary/5 px-4 py-2 rounded-full text-xs">{t.ticketID}</span>
-                      </TableCell>
-                      <TableCell className="py-6 text-right">
-                         <div className="font-black text-slate-800 text-sm">{t.customerName}</div>
-                         <div className="text-[10px] text-slate-400 font-mono">{t.cif}</div>
-                      </TableCell>
-                      <TableCell className="py-6 text-right">
-                        <Badge variant="outline" className="font-black border-slate-200 text-slate-500">{t.subIssue}</Badge>
-                      </TableCell>
-                      <TableCell className="py-6 text-right font-bold text-slate-500 text-xs">{t.serviceType}</TableCell>
-                      <TableCell className="py-6 text-right">{getStatusBadge(t.status)}</TableCell>
-                      <TableCell className="py-6 text-center pl-12">
+                  {filteredTickets?.map((t: any, idx: number) => (
+                    <TableRow key={t.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                      <TableCell className="py-4 font-black pr-8 text-right"><Badge variant="outline">{t.ticketID}</Badge></TableCell>
+                      <TableCell className="py-4 text-right font-bold">{t.customerName}</TableCell>
+                      <TableCell className="py-4 text-right">{getStatusBadge(t.status)}</TableCell>
+                      <TableCell className="py-4 text-center pl-8">
                         {!t.assignedToSpecialistId ? (
-                          <Button onClick={() => handleOpenClaimDialog(t)} className="banking-button premium-gradient text-white h-11 px-8 font-black">
-                             <UserPlus className="w-4 h-4 ml-2" /> استلام البلاغ
-                          </Button>
+                          <Button onClick={() => { setTicketToClaim(t); setClaimDialogOpen(true); }} className="banking-button premium-gradient text-white h-10 px-8 font-black">استلام والعمل</Button>
                         ) : (
-                          <Button variant="outline" onClick={() => setSelectedTicket(t)} className="rounded-full h-11 px-8 border-primary text-primary hover:bg-primary hover:text-white font-black">
-                             {t.assignedToSpecialistId === user?.id ? 'فتح المعالجة' : 'عرض التفاصيل'}
-                          </Button>
+                          <Button variant="outline" onClick={() => setSelectedTicket(t)} className="rounded-full h-10 px-8 border-primary text-primary font-black">فتح المعالجة</Button>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
-                  {(!filteredTickets || filteredTickets.length === 0) && (
-                    <TableRow><TableCell colSpan={6} className="text-center py-32 font-black text-slate-400">لا توجد بلاغات حالياً ضمن هذه الفلترة</TableCell></TableRow>
-                  )}
+                  {filteredTickets.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-20 font-black text-slate-400">لا توجد بلاغات حالياً</TableCell></TableRow>}
                 </TableBody>
-              </Table>
-            </div>
-          )}
+             </Table>
+           )}
         </CardContent>
       </Card>
 
-      {/* نافذة اختيار الاسم عند الاستلام */}
       <Dialog open={claimDialogOpen} onOpenChange={setClaimDialogOpen}>
-         <DialogContent className="max-w-md text-right rounded-[32px] border-none" dir="rtl">
-            <DialogHeader>
-               <DialogTitle className="text-2xl font-black text-primary text-right">تأكيد استلام البلاغ</DialogTitle>
-               <DialogDescription className="text-right font-bold text-slate-500">يرجى اختيار اسم الأخصائي القائم بالعمل لتوثيق المسؤولية الفنية.</DialogDescription>
-            </DialogHeader>
+         <DialogContent className="max-w-md text-right rounded-[32px]" dir="rtl">
+            <DialogHeader><DialogTitle className="text-2xl font-black text-primary text-right">تأكيد استلام البلاغ</DialogTitle></DialogHeader>
             <div className="py-6 space-y-4">
-               <Label className="font-black text-slate-700 text-xs mr-1">اسم الأخصائي المستلم</Label>
+               <Label className="font-black text-xs">اسم الموظف القائم بالاستلام</Label>
                <Select value={selectedStaffName} onValueChange={setSelectedStaffName}>
-                  <SelectTrigger className="banking-input h-14 text-right font-black">
-                     <SelectValue placeholder="اختر اسمك من القائمة" />
-                  </SelectTrigger>
+                  <SelectTrigger className="banking-input h-14 text-right font-black"><SelectValue placeholder="اختر اسمك" /></SelectTrigger>
                   <SelectContent dir="rtl">
-                     {config?.specialistNames?.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>) || (
-                        ['علاء', 'محمود', 'عبدالله'].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)
-                     )}
+                     {(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">موظف تجريبي</SelectItem>}
                   </SelectContent>
                </Select>
             </div>
             <DialogFooter className="flex-row-reverse gap-3">
-               <Button variant="ghost" onClick={() => setClaimDialogOpen(false)} className="rounded-full font-black px-8">إلغاء</Button>
-               <Button onClick={handleClaimConfirm} disabled={!selectedStaffName} className="banking-button premium-gradient text-white px-10 rounded-full font-black h-12">تأكيد الاستلام والعمل</Button>
+               <Button variant="ghost" onClick={() => setClaimDialogOpen(false)} className="rounded-full font-black">إلغاء</Button>
+               <Button onClick={handleClaimConfirm} disabled={!selectedStaffName} className="banking-button premium-gradient text-white px-10 rounded-full font-black h-12">تأكيد الاستلام</Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>

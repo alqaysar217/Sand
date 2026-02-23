@@ -12,8 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Plus, Search, Loader2, ArrowRight, MessageSquare, Inbox, Headset, MonitorSmartphone,
-  UserCircle, Fingerprint, History, Calendar, CheckCircle2, Paperclip, XCircle, Send, Archive, Upload, FileText, Trash2, Eye, Phone, Building2, AlertTriangle
+  Plus, Search, Loader2, ArrowRight, MessageSquare, Inbox, Headset,
+  UserCircle, Fingerprint, History, Calendar, CheckCircle2, Paperclip, XCircle, Send, Upload, FileText, Trash2, Eye, Phone, Building2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -34,37 +34,27 @@ export function AgentView() {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [attachments, setAttachments] = useState<{url: string, name: string, type: string}[]>([]);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  // ربط التنقل من القائمة الجانبية بالفلترة أو النماذج
+  // التأكد من أن الكول سنتر هو الوحيد الذي يمكنه الرفع
+  const canRaiseTickets = user?.department === 'Support';
+
   useEffect(() => {
     const handleSync = (e: any) => {
       const action = e.detail;
-      if (action === 'new-ticket') {
-        setShowNewForm(true);
-      } else if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected'].includes(action)) {
+      if (action === 'new-ticket' && canRaiseTickets) setShowNewForm(true);
+      else if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected'].includes(action)) {
         setShowNewForm(false);
         setActiveTab(action);
       }
     };
     window.addEventListener('sidebar-nav', handleSync);
     return () => window.removeEventListener('sidebar-nav', handleSync);
-  }, []);
+  }, [canRaiseTickets]);
 
-  // جلب إعدادات النظام
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  const [formData, setFormData] = useState({
-    customerName: '', 
-    cif: '', 
-    phone: '', 
-    serviceType: '', 
-    intakeMethod: '', 
-    subIssue: '', 
-    description: '',
-    createdByAgentName: ''
-  });
+  const [formData, setFormData] = useState({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
 
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
@@ -76,8 +66,7 @@ export function AgentView() {
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
     return tickets.filter(t => {
-      const searchStr = searchQuery.toLowerCase();
-      const matchesSearch = (t.ticketID || '').toLowerCase().includes(searchStr) || (t.customerName || '').toLowerCase().includes(searchStr) || (t.cif || '').includes(searchStr);
+      const matchesSearch = (t.ticketID || '').includes(searchQuery) || (t.customerName || '').includes(searchQuery) || (t.cif || '').includes(searchQuery);
       const matchesStatus = activeTab === 'all' || t.status === activeTab;
       return matchesSearch && matchesStatus;
     });
@@ -86,27 +75,11 @@ export function AgentView() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
     Array.from(files).forEach(file => {
-      if (file.size > 2 * 1024 * 1024) {
-        toast({ variant: "destructive", title: "حجم الملف كبير", description: "الحد الأقصى لكل ملف هو 2 ميجابايت." });
-        return;
-      }
-
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setAttachments(prev => [...prev, {
-          url: reader.result as string,
-          name: file.name,
-          type: file.type
-        }]);
-      };
+      reader.onloadend = () => setAttachments(prev => [...prev, { url: reader.result as string, name: file.name, type: file.type }]);
       reader.readAsDataURL(file);
     });
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -129,16 +102,12 @@ export function AgentView() {
       createdByAgentId: user.id,
       createdByAgentName: formData.createdByAgentName,
       attachments: attachments.map(a => ({ url: a.url, description: a.name })),
-      logs: [{ 
-        action: `تم رفع البلاغ بواسطة: ${formData.createdByAgentName}`, 
-        timestamp: new Date().toISOString(), 
-        userName: user.name 
-      }]
+      logs: [{ action: `تم رفع البلاغ من الكول سنتر بواسطة: ${formData.createdByAgentName}`, timestamp: new Date().toISOString(), userName: formData.createdByAgentName }]
     };
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
       .then(() => {
-        toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}.` });
+        toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}` });
         setShowNewForm(false);
         setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
         setAttachments([]);
@@ -146,41 +115,25 @@ export function AgentView() {
       .finally(() => setIsSubmitting(false));
   };
 
-  const handleDeleteTicket = async (ticketId: string) => {
-    if (!db) return;
-    setIsDeleting(true);
-    try {
-      deleteDocumentNonBlocking(doc(db, 'tickets', ticketId));
-      toast({ title: "تم الحذف", description: "تم حذف البلاغ بنجاح من النظام." });
-      setSelectedTicket(null);
-    } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل حذف البلاغ، يرجى المحاولة لاحقاً." });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending': return <Badge className="bg-amber-500 text-white rounded-full px-4 font-black">قيد المعالجة</Badge>;
-      case 'Resolved': return <Badge className="bg-green-600 text-white rounded-full px-4 font-black">تم الحل</Badge>;
-      case 'Escalated': return <Badge className="bg-red-600 text-white rounded-full px-4 font-black">محالة</Badge>;
-      case 'Rejected': return <Badge className="bg-slate-700 text-white rounded-full px-4 font-black">مرفوضة</Badge>;
-      default: return <Badge className="bg-blue-600 text-white rounded-full px-4 font-black">جديد</Badge>;
+      case 'Pending': return <Badge className="bg-amber-500 rounded-full font-black">قيد المعالجة</Badge>;
+      case 'Resolved': return <Badge className="bg-green-600 rounded-full font-black">تم الحل</Badge>;
+      case 'Rejected': return <Badge className="bg-slate-700 rounded-full font-black">مرفوض</Badge>;
+      default: return <Badge className="bg-blue-600 rounded-full font-black">جديد</Badge>;
     }
   };
 
   return (
-    <div className="space-y-8 text-right animate-in fade-in duration-700" dir="rtl">
+    <div className="space-y-8 text-right" dir="rtl">
       <div className="flex justify-between items-center flex-row-reverse">
         <div className="text-right">
           <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
-             {user?.department === 'Support' ? <Headset className="w-8 h-8" /> : <MonitorSmartphone className="w-8 h-8" />}
-             {user?.department === 'Support' ? 'محطة عمل الكول سنتر' : 'بوابة خدمة العملاء الرقمية'}
+             <Headset className="w-8 h-8" /> محطة عمل الكول سنتر (مركز الرفع)
           </h1>
-          <p className="text-slate-500 font-bold mt-1">إدارة البلاغات لقسم {user?.department === 'Support' ? 'الدعم الهاتفي' : 'الخدمات الرقمية'}</p>
+          <p className="text-slate-500 font-bold mt-1">توجيه بلاغات العملاء للأقسام الفنية المختصة</p>
         </div>
-        {!showNewForm && (
+        {canRaiseTickets && !showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="banking-button premium-gradient text-white h-14 px-8 shadow-xl">
             <Plus className="w-5 h-5 ml-2" /> فتح بلاغ جديد
           </Button>
@@ -188,381 +141,128 @@ export function AgentView() {
       </div>
 
       {showNewForm ? (
-        <Card className="banking-card max-w-4xl shadow-2xl border-none overflow-hidden mx-auto">
-          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100 flex flex-row-reverse items-center justify-between">
-            <div className="text-right">
-              <CardTitle className="text-primary text-2xl font-black">نموذج استلام بلاغ عميل</CardTitle>
-              <CardDescription className="text-slate-500 font-bold">يرجى اختيار البيانات بدقة لضمان سرعة المعالجة</CardDescription>
-            </div>
-            <Button variant="ghost" onClick={() => setShowNewForm(false)} className="rounded-full hover:bg-white text-slate-500 font-black">
-              <ArrowRight className="w-5 h-5 ml-2" /> العودة للسجل
-            </Button>
+        <Card className="banking-card max-w-4xl shadow-2xl border-none mx-auto overflow-hidden">
+          <CardHeader className="bg-slate-50 p-8 border-b">
+            <CardTitle className="text-primary text-2xl font-black">نموذج استلام وبث بلاغ</CardTitle>
           </CardHeader>
           <CardContent className="p-8">
-            <form onSubmit={handleCreateTicket} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <form onSubmit={handleCreateTicket} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">موظف العلاقات (القائم بالرفع)</Label>
+                  <Label className="font-black text-xs mr-1">موظف الكول سنتر (الرفع)</Label>
                   <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
                     <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر اسم الموظف" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.agentNames?.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>) || (
-                        ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس'].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)
-                      )}
+                      {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">موظف تجريبي</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">الجهة الموجه إليها البلاغ</Label>
+                  <Label className="font-black text-xs mr-1">توجيه البلاغ إلى (الجهة المستلمة)</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر الجهة المعنية" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر القسم المستلم" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.serviceTypes?.map((e: string) => <SelectItem key={e} value={e}>{e}</SelectItem>) || (
-                        ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق'].map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)
-                      )}
+                      <SelectItem value="إدارة البطائق">قسم البطائق</SelectItem>
+                      <SelectItem value="خدمة العملاء">قسم خدمة العملاء</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">اسم العميل</Label>
-                  <Input required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="banking-input h-12 text-right" placeholder="الاسم الكامل للعميل" />
+                  <Label className="font-black text-xs mr-1">اسم العميل</Label>
+                  <Input required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="banking-input h-12 text-right" />
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">رقم CIF للعميل</Label>
-                  <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-12 font-mono text-right" placeholder="00000000" />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">رقم هاتف العميل</Label>
-                  <Input required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-12 text-right" placeholder="+967..." />
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">وسيلة استلام البلاغ</Label>
-                  <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر وسيلة الاستلام" /></SelectTrigger>
-                    <SelectContent dir="rtl">
-                      {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>) || (
-                        ['واتساب', 'اتصال', 'من خلال الفروع'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">نوع المشكلة</Label>
-                  <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
-                    <SelectContent dir="rtl">
-                      {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || (
-                        ['تغيير رمز pin أو تأخره', 'الاستعلام عن حوالة'].map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Label className="font-black text-xs mr-1">رقم CIF</Label>
+                  <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-12 font-mono text-right" />
                 </div>
               </div>
               <div className="space-y-2 text-right">
-                <Label className="font-black text-slate-700 mr-1 text-xs">تفاصيل البلاغ</Label>
-                <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" placeholder="اكتب تفاصيل المشكلة هنا..." />
+                <Label className="font-black text-xs mr-1">تفاصيل البلاغ</Label>
+                <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" />
               </div>
-              
-              <div className="space-y-4 text-right">
-                <Label className="font-black text-slate-700 mr-1 text-xs flex items-center justify-end gap-2">
-                   إرفاق مستندات أو لقطات شاشة <Paperclip className="w-4 h-4" />
-                </Label>
-                <input 
-                  type="file" 
-                  multiple 
-                  accept="image/*,.pdf" 
-                  className="hidden" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                />
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-200 rounded-[20px] p-10 text-center bg-slate-50/50 hover:bg-slate-100 transition-all cursor-pointer group"
-                >
-                   <div className="flex flex-col items-center gap-3">
-                      <div className="p-4 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform"><Upload className="w-6 h-6 text-primary" /></div>
-                      <p className="text-slate-500 font-black">اضغط لاختيار المستندات أو لقطات الشاشة</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">المرفقات المختارة: {attachments.length}</p>
-                   </div>
-                </div>
-
-                {attachments.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                    {attachments.map((file, idx) => (
-                      <div key={idx} className="relative bg-white p-2 rounded-xl border border-slate-100 shadow-sm group">
-                        {file.type.startsWith('image/') ? (
-                          <div className="relative aspect-video rounded-lg overflow-hidden mb-2">
-                             <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="aspect-video bg-slate-50 rounded-lg flex items-center justify-center mb-2">
-                             <FileText className="w-8 h-8 text-primary/40" />
-                          </div>
-                        )}
-                        <p className="text-[10px] font-bold text-slate-600 truncate px-1">{file.name}</p>
-                        <button 
-                          type="button" 
-                          onClick={(e) => { e.stopPropagation(); removeAttachment(idx); }}
-                          className="absolute -top-2 -left-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               <div className="flex justify-end gap-3 pt-6 border-t">
-                <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="h-12 px-6 rounded-full font-black">إلغاء</Button>
-                <Button type="submit" className="banking-button premium-gradient text-white h-12 px-12" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "إرسال البلاغ فوراً"}
-                </Button>
+                <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="rounded-full font-black">إلغاء</Button>
+                <Button type="submit" className="banking-button premium-gradient text-white h-12 px-12" disabled={isSubmitting}>إرسال البلاغ فوراً</Button>
               </div>
             </form>
           </CardContent>
         </Card>
       ) : (
-        <Card className="banking-card overflow-hidden border-none shadow-xl">
+        <Card className="banking-card overflow-hidden shadow-xl border-none">
           <CardHeader className="p-8 border-b bg-white">
             <div className="flex flex-col md:flex-row-reverse justify-between items-center gap-6">
-              <CardTitle className="text-2xl font-black text-primary flex items-center gap-3 justify-end">
-                 <Inbox className="w-6 h-6" /> سجل البلاغات الصادرة
+              <CardTitle className="text-2xl font-black text-primary flex items-center gap-3">
+                 <Inbox className="w-6 h-6" /> سجل البلاغات الصادرة من الكول سنتر
               </CardTitle>
               <div className="relative w-full md:w-80">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="بحث برقم التذكرة أو CIF..." className="banking-input pr-10 h-11 text-right" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <Input placeholder="بحث برقم البلاغ أو CIF..." className="banking-input pr-10 h-11 text-right" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
               </div>
             </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="mt-6">
-              <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto max-w-full">
-                <TabsTrigger value="all" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الكل</TabsTrigger>
-                <TabsTrigger value="New" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-blue-600 data-[state=active]:text-white">جديد</TabsTrigger>
-                <TabsTrigger value="Pending" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-amber-500 data-[state=active]:text-white">قيد المعالجة</TabsTrigger>
-                <TabsTrigger value="Escalated" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-red-600 data-[state=active]:text-white">المحالة</TabsTrigger>
-                <TabsTrigger value="Rejected" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-slate-700 data-[state=active]:text-white">مرفوضة</TabsTrigger>
-                <TabsTrigger value="Resolved" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-green-600 data-[state=active]:text-white">تم الحل</TabsTrigger>
-              </TabsList>
-            </Tabs>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-primary">
-                  <TableRow className="border-none hover:bg-primary">
-                    <TableHead className="text-right h-14 font-black text-white pr-8">رقم البلاغ</TableHead>
-                    <TableHead className="text-right h-14 font-black text-white">العميل</TableHead>
-                    <TableHead className="text-right h-14 font-black text-white">نوع المشكلة</TableHead>
-                    <TableHead className="text-right h-14 font-black text-white">الجهة الموجه إليها</TableHead>
-                    <TableHead className="text-right h-14 font-black text-white">الحالة</TableHead>
-                    <TableHead className="text-center h-14 font-black text-white pl-8">الإجراء</TableHead>
+            <Table>
+              <TableHeader className="bg-primary text-white">
+                <TableRow className="border-none hover:bg-primary">
+                  <TableHead className="text-right h-14 font-black text-white pr-8">رقم البلاغ</TableHead>
+                  <TableHead className="text-right h-14 font-black text-white">العميل</TableHead>
+                  <TableHead className="text-right h-14 font-black text-white">الجهة المستلمة</TableHead>
+                  <TableHead className="text-right h-14 font-black text-white">الحالة</TableHead>
+                  <TableHead className="text-center h-14 font-black text-white pl-8">الإجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTickets?.map((t, idx) => (
+                  <TableRow key={t.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                    <TableCell className="font-black pr-8 text-right"><Badge variant="outline">{t.ticketID}</Badge></TableCell>
+                    <TableCell className="text-right font-bold">{t.customerName}</TableCell>
+                    <TableCell className="text-right font-bold text-slate-500">{t.serviceType}</TableCell>
+                    <TableCell className="text-right">{getStatusBadge(t.status)}</TableCell>
+                    <TableCell className="text-center pl-8">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black">عرض التفاصيل</Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTickets?.map((t, idx) => (
-                    <TableRow key={t.id} className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                      <TableCell className="py-4 font-black text-slate-800 pr-8 text-right">
-                         <span className="bg-primary/5 px-3 py-1 rounded-full text-xs">{t.ticketID}</span>
-                      </TableCell>
-                      <TableCell className="py-4 text-right">
-                         <div className="font-black text-sm">{t.customerName}</div>
-                         <div className="text-[10px] text-slate-400 font-mono">{t.cif}</div>
-                      </TableCell>
-                      <TableCell className="py-4 text-right">
-                        <Badge variant="outline" className="font-bold border-slate-200 text-slate-500">{t.subIssue}</Badge>
-                      </TableCell>
-                      <TableCell className="py-4 text-right">
-                        <span className="font-bold text-slate-600 text-xs">{t.serviceType}</span>
-                      </TableCell>
-                      <TableCell className="py-4 text-right">{getStatusBadge(t.status)}</TableCell>
-                      <TableCell className="py-4 text-center pl-8">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black hover:bg-primary hover:text-white transition-all">عرض التفاصيل</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {(!filteredTickets || filteredTickets.length === 0) && (
-                    <TableRow><TableCell colSpan={6} className="py-20 text-center font-bold text-slate-400">لا توجد بلاغات حالياً</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
 
-      {/* Detail Dialog */}
+      {/* تفاصيل البلاغ */}
       <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
-        <DialogContent className="max-w-4xl text-right border-none rounded-[32px] p-0 overflow-hidden" dir="rtl">
-          <DialogHeader className="sr-only">
-            <DialogTitle>تفاصيل البلاغ الكاملة</DialogTitle>
-            <DialogDescription>عرض بيانات ومرفقات وسجل العمليات للبلاغ المختار</DialogDescription>
-          </DialogHeader>
-          {selectedTicket && (
-            <div className="flex flex-col h-[85vh] overflow-y-auto no-scrollbar">
-              <div className="premium-gradient p-8 text-white sticky top-0 z-10 shadow-lg">
-                <div className="flex justify-between items-center flex-row-reverse">
-                  <div className="flex items-center gap-4 flex-row-reverse">
-                    <div className="p-3 bg-white/20 rounded-[18px] backdrop-blur-md"><Inbox className="w-6 h-6" /></div>
-                    <div className="text-right">
-                      <h3 className="text-xl font-black">بلاغ رقم {selectedTicket.ticketID}</h3>
-                      <p className="text-xs opacity-70 font-bold mt-1 text-right">تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(selectedTicket.status)}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="bg-red-500/20 hover:bg-red-500 text-white rounded-full h-10 w-10">
-                          <Trash2 className="w-5 h-5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent dir="rtl" className="text-right rounded-[24px]">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="font-black text-right">هل أنت متأكد من حذف البلاغ؟</AlertDialogTitle>
-                          <AlertDialogDescription className="text-right font-bold text-slate-500">
-                            سيتم إزالة البلاغ رقم {selectedTicket.ticketID} نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter className="flex-row-reverse gap-2">
-                          <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => handleDeleteTicket(selectedTicket.id)}
-                            className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black"
-                          >
-                            تأكيد الحذف
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+        <DialogContent className="max-w-3xl text-right rounded-[32px] p-0 overflow-hidden" dir="rtl">
+           {selectedTicket && (
+             <div className="p-8 space-y-6">
+                <div className="flex justify-between items-center border-b pb-4">
+                   <h3 className="text-2xl font-black text-primary">بلاغ رقم {selectedTicket.ticketID}</h3>
+                   {getStatusBadge(selectedTicket.status)}
                 </div>
-              </div>
-
-              <div className="p-8 space-y-8 bg-white pb-20">
-                {/* Basic Info Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
-                      <div className="p-2 bg-white rounded-lg shadow-sm"><UserCircle className="w-5 h-5 text-primary" /></div>
-                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">اسم العميل</span><p className="font-black text-sm text-right">{selectedTicket.customerName}</p></div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-slate-50 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-400 block font-black">اسم العميل</span>
+                      <p className="font-black">{selectedTicket.customerName}</p>
                    </div>
-                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
-                      <div className="p-2 bg-white rounded-lg shadow-sm"><Fingerprint className="w-5 h-5 text-primary" /></div>
-                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">رقم CIF</span><p className="font-mono font-black text-sm text-right">{selectedTicket.cif}</p></div>
-                   </div>
-                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
-                      <div className="p-2 bg-white rounded-lg shadow-sm"><Phone className="w-5 h-5 text-primary" /></div>
-                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">رقم الهاتف</span><p className="font-mono font-black text-sm text-right">{selectedTicket.phoneNumber}</p></div>
+                   <div className="bg-slate-50 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-400 block font-black">رقم CIF</span>
+                      <p className="font-mono font-black">{selectedTicket.cif}</p>
                    </div>
                 </div>
-
-                {/* Routing & Method */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-slate-800 font-black flex-row-reverse px-2">
-                        <Building2 className="w-4 h-4 text-primary" /> 
-                        <span>الجهة الموجه إليها</span>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-slate-700 text-right">{selectedTicket.serviceType}</div>
-                   </div>
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-slate-800 font-black flex-row-reverse px-2">
-                        <Send className="w-4 h-4 text-primary" /> 
-                        <span>وسيلة استلام البلاغ</span>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-slate-700 text-right">{selectedTicket.intakeMethod}</div>
-                   </div>
+                <div className="bg-slate-50 p-6 rounded-2xl">
+                   <span className="text-[10px] text-slate-400 block font-black mb-2">تفاصيل المشكلة</span>
+                   <p className="font-medium">{selectedTicket.description}</p>
                 </div>
-
-                {/* Description Box */}
-                <div className="bg-white border p-6 rounded-[28px] space-y-4 shadow-sm relative overflow-hidden">
-                   <div className="absolute top-0 right-0 w-1 h-full bg-primary"></div>
-                   <div className="flex items-center gap-2 text-primary font-black flex-row-reverse">
-                      <MessageSquare className="w-5 h-5" /> 
-                      <span>تفاصيل المشكلة ({selectedTicket.subIssue})</span>
-                   </div>
-                   <p className="text-slate-600 font-medium leading-relaxed text-right bg-slate-50/30 p-5 rounded-2xl border border-slate-50">{selectedTicket.description}</p>
-                </div>
-
-                {/* Specialist Response if resolved */}
                 {selectedTicket.specialistResponse && (
-                  <div className="bg-green-50/50 border border-green-100 p-6 rounded-[28px] space-y-4 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-1 h-full bg-green-500"></div>
-                    <div className="flex items-center gap-2 text-green-700 font-black flex-row-reverse">
-                      <CheckCircle2 className="w-5 h-5" /> 
-                      <span>الرد الفني والحل المتخذ</span>
-                    </div>
-                    <p className="text-green-800 font-bold leading-relaxed text-right bg-white/50 p-5 rounded-2xl border border-green-50">{selectedTicket.specialistResponse}</p>
+                  <div className="bg-green-50 border border-green-100 p-6 rounded-2xl">
+                     <span className="text-[10px] text-green-600 block font-black mb-2">الرد الفني من القسم المختص</span>
+                     <p className="font-bold text-green-800">{selectedTicket.specialistResponse}</p>
                   </div>
                 )}
-
-                {/* Attachments Section */}
-                {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-slate-800 font-black flex-row-reverse px-2">
-                      <Paperclip className="w-4 h-4 text-primary" /> 
-                      <span>المرفقات والمستندات</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {selectedTicket.attachments.map((file: any, idx: number) => (
-                        <div key={idx} className="bg-slate-50 p-3 rounded-[24px] border border-slate-100 flex flex-col gap-3 group transition-all hover:shadow-md">
-                          {file.url.startsWith('data:image/') ? (
-                             <div className="relative aspect-video rounded-xl overflow-hidden shadow-sm">
-                               <img src={file.url} alt={file.description} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white rounded-full text-primary shadow-lg">
-                                    <Eye className="w-5 h-5" />
-                                  </a>
-                               </div>
-                             </div>
-                          ) : (
-                             <div className="aspect-video bg-white rounded-xl flex items-center justify-center border border-dashed">
-                               <FileText className="w-10 h-10 text-slate-300" />
-                             </div>
-                          )}
-                          <div className="flex items-center justify-between flex-row-reverse px-2 pb-1">
-                            <span className="text-[9px] font-black text-slate-400 truncate w-3/4 text-right">{file.description}</span>
-                            <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-1 bg-primary/10 rounded-full text-primary hover:bg-primary hover:text-white transition-colors">
-                               <Eye className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Timeline / Logs */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 font-black flex-row-reverse px-2">
-                    <History className="w-4 h-4 text-primary" /> 
-                    <span>سجل تتبع البلاغ</span>
-                  </div>
-                  <div className="space-y-3">
-                    {selectedTicket.logs?.map((log: any, idx: number) => (
-                      <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center flex-row-reverse gap-4">
-                         <div className="flex items-center gap-3 flex-row-reverse">
-                            <div className="w-2 h-2 rounded-full bg-primary/40"></div>
-                            <div className="text-right">
-                               <p className="font-bold text-slate-700 text-xs">{log.action}</p>
-                               <p className="text-[10px] text-slate-400 mt-1 font-bold">{log.userName}</p>
-                            </div>
-                         </div>
-                         <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full">{new Date(log.timestamp).toLocaleString('ar-SA')}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex justify-end">
+                   <Button onClick={() => setSelectedTicket(null)} className="rounded-full font-black px-10">إغلاق</Button>
                 </div>
-              </div>
-
-              {/* Sticky Footer */}
-              <div className="p-6 border-t bg-slate-50 flex justify-between items-center sticky bottom-0 z-20">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">رفع بواسطة: {selectedTicket.createdByAgentName}</p>
-                <Button onClick={() => setSelectedTicket(null)} className="rounded-full font-black px-10 h-12 bg-white border-slate-200 text-slate-600 hover:bg-slate-100 shadow-sm">
-                  إغلاق النافذة
-                </Button>
-              </div>
-            </div>
-          )}
+             </div>
+           )}
         </DialogContent>
       </Dialog>
     </div>
