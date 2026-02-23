@@ -10,5 +10,5 @@ export const MOCK_USERS: UserProfile[] = [
   }
 ];
 
-// تفريغ كافة البلاغات التجريبية لضمان بداية اختبار نظيفة
+// تم تفريغ كافة البلاغات لضمان بداية اختبار نظيفة تماماً
 export const MOCK_TICKETS: Ticket[] = [];

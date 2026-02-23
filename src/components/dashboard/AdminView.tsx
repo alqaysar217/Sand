@@ -105,14 +105,19 @@ export function AdminView() {
   };
 
   const handleClearAllTickets = async () => {
-    if (!tickets || !db) return;
+    if (!tickets || !db) {
+      toast({ title: "تنبيه", description: "لا توجد بلاغات لمسحها حالياً." });
+      return;
+    }
+    
     try {
+      // حذف كافة البلاغات من قاعدة البيانات
       tickets.forEach(t => {
         deleteDocumentNonBlocking(doc(db, 'tickets', t.id));
       });
-      toast({ title: "تم المسح بنجاح", description: "تم تفريغ كافة البلاغات من النظام بنجاح." });
+      toast({ title: "تم المسح بنجاح", description: "تم تفريغ كافة البلاغات من جميع الأقسام بنجاح." });
     } catch (err) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل مسح البيانات." });
+      toast({ variant: "destructive", title: "خطأ", description: "فشل مسح البيانات، يرجى المحاولة لاحقاً." });
     }
   };
 
@@ -247,7 +252,7 @@ export function AdminView() {
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                                <Button variant="destructive" className="rounded-full px-8 h-12 font-black shadow-lg shadow-red-500/20">
-                                  <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات
+                                  <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات فوراً
                                </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
