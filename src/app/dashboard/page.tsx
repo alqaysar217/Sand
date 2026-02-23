@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect } from 'react';
@@ -16,10 +15,10 @@ export default function DashboardPage() {
 
   // معالجة التوجيه في useEffect لتجنب أخطاء ريندر React
   useEffect(() => {
-    if (!loading && !firebaseUser) {
+    if (!loading && !firebaseUser && !user) {
       router.push('/');
     }
-  }, [firebaseUser, loading, router]);
+  }, [firebaseUser, user, loading, router]);
 
   if (loading) {
     return (
@@ -30,7 +29,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!firebaseUser) {
+  if (!firebaseUser && !user) {
     return null;
   }
 

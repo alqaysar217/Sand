@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
@@ -82,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // محاولة إنشاء الحساب إذا لم يكن موجوداً
+      // محاولة إنشاء الحساب إذا لم يكن موجوداً أو هناك خطأ في الاعتمادات (لأغراض العرض التقديمي)
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
@@ -96,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setupDemoProfile = async (role: UserRole, dept: Department, name: string) => {
-    if (mockUser) return; // لا حاجة للتحديث في وضع العبور
+    if (mockUser) return;
     if (!auth.currentUser || !db) return;
     try {
       const userRef = doc(db, 'users', auth.currentUser.uid);
