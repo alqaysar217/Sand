@@ -4,14 +4,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface AuthContextType {
   user: UserProfile | null;
   firebaseUser: any;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setupDemoProfile: (role: 'Agent' | 'Specialist', dept: string, name: string) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -60,9 +61,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      // محاولة تسجيل الدخول
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      throw error;
+    } catch (err: any) {
+      // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه تلقائياً لتسهيل التجربة
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (signUpErr) {
+          throw err; // رمي الخطأ الأصلي إذا فشل الإنشاء أيضاً
+        }
+      } else {
+        throw err;
+      }
+    }
+  };
+
+  const setupDemoProfile = async (role: 'Agent' | 'Specialist', dept: string, name: string) => {
+    if (!firebaseUser || !db) return;
+    setLoading(true);
+    try {
+      await setDoc(doc(db, 'users', firebaseUser.uid), {
+        id: firebaseUser.uid,
+        name: name,
+        email: firebaseUser.email,
+        role: role,
+        department: dept
+      });
+      setError(null);
+    } catch (err) {
+      console.error("Error setting up profile:", err);
+      setError("فشل في إنشاء الملف الشخصي التجريبي.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,7 +108,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: profile,
       firebaseUser,
       login, 
-      logout, 
+      logout,
+      setupDemoProfile,
       loading: loading || isUserLoading,
       error 
     }}>

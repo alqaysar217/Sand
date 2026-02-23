@@ -415,7 +415,7 @@ export function AgentView() {
                 <div className="overflow-x-auto">
                   <Table className="border-collapse">
                     <TableHeader>
-                      <TableRow className="bg-primary border-b-2 border-primary/10">
+                      <TableRow className="bg-primary border-none">
                         <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
                         <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
                         <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
@@ -587,20 +587,24 @@ export function AgentView() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card className="rounded-[24px] border-none shadow-sm bg-white">
                       <CardContent className="p-6 text-right flex items-center justify-between">
-                        <div>
-                          <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">قناة الاستلام</Label>
-                          <p className="font-bold text-slate-700">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
+                        <div className="flex items-center gap-3">
+                           <div className="p-3 bg-slate-50 rounded-full"><Share2 className="w-5 h-5 text-slate-400" /></div>
+                           <div className="text-right">
+                              <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">قناة الاستلام</Label>
+                              <p className="font-bold text-slate-700">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
+                           </div>
                         </div>
-                        <div className="p-3 bg-slate-50 rounded-full"><Share2 className="w-5 h-5 text-slate-400" /></div>
                       </CardContent>
                     </Card>
                     <Card className="rounded-[24px] border-none shadow-sm bg-white">
                       <CardContent className="p-6 text-right flex items-center justify-between">
-                        <div>
-                          <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">الجهة المعنية</Label>
-                          <p className="font-black text-secondary">{getEntityLabel(selectedTicket.serviceType)}</p>
+                        <div className="flex items-center gap-3">
+                           <div className="p-3 bg-secondary/5 rounded-full"><Building2 className="w-5 h-5 text-secondary/40" /></div>
+                           <div className="text-right">
+                              <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">الجهة المعنية</Label>
+                              <p className="font-black text-secondary">{getEntityLabel(selectedTicket.serviceType)}</p>
+                           </div>
                         </div>
-                        <div className="p-3 bg-secondary/5 rounded-full"><Building2 className="w-5 h-5 text-secondary/40" /></div>
                       </CardContent>
                     </Card>
                   </div>
@@ -627,9 +631,12 @@ export function AgentView() {
                         <div key={idx} className="relative pr-10 pb-10 border-r-2 border-slate-100 last:border-0 last:pb-0">
                           <div className="absolute top-0 -right-[11px] w-5 h-5 rounded-full bg-white border-4 border-primary shadow-sm z-10"></div>
                           <div className="bg-white p-5 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between">
-                            <div className="text-right">
-                              <p className="font-black text-slate-800 text-sm">{log.action}</p>
-                              <p className="text-[10px] text-slate-400 font-bold mt-1">بواسطة: {log.userName}</p>
+                            <div className="flex items-center gap-3">
+                               <div className="p-2 bg-primary/5 rounded-full"><History className="w-4 h-4 text-primary/60" /></div>
+                               <div className="text-right">
+                                 <p className="font-black text-slate-800 text-sm">{log.action}</p>
+                                 <p className="text-[10px] text-slate-400 font-bold mt-1">بواسطة: {log.userName}</p>
+                               </div>
                             </div>
                             <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-full">
                               {new Date(log.timestamp).toLocaleString('ar-SA')}

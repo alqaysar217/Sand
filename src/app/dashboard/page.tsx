@@ -6,12 +6,26 @@ import { AgentView } from '@/components/dashboard/AgentView';
 import { SpecialistView } from '@/components/dashboard/SpecialistView';
 import { AdminView } from '@/components/dashboard/AdminView';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Database, LayoutDashboard } from "lucide-react";
+import { AlertCircle, Database, LayoutDashboard, Rocket, Loader2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
 
 export default function DashboardPage() {
-  const { user, firebaseUser, error, logout } = useAuth();
+  const { user, firebaseUser, error, logout, setupDemoProfile } = useAuth();
+  const [isActivating, setIsActivating] = useState(false);
+
+  const handleQuickActivate = async () => {
+    setIsActivating(true);
+    // تحديد الصلاحيات بناءً على البريد الإلكتروني للتجربة
+    const isSpecialist = firebaseUser?.email?.includes('cards');
+    if (isSpecialist) {
+      await setupDemoProfile('Specialist', 'Cards', 'أخصائي معالجة البطائق');
+    } else {
+      await setupDemoProfile('Agent', 'Digital', 'موظف خدمة العملاء');
+    }
+    setIsActivating(false);
+  };
 
   if (error === "MISSING_PROFILE" && firebaseUser) {
     return (
@@ -22,45 +36,43 @@ export default function DashboardPage() {
               <div className="p-3 bg-white/20 rounded-2xl"><Database className="h-8 w-8" /></div>
               <div>
                 <CardTitle className="text-2xl font-black">إعداد صلاحيات الوصول</CardTitle>
-                <p className="text-white/70 text-sm mt-1">حسابك مسجل في النظام ولكن يحتاج لتعريف الصلاحيات</p>
+                <p className="text-white/70 text-sm mt-1">حسابك مسجل ولكن يحتاج لتعريف الصلاحيات الفنية</p>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
             <div className="bg-amber-50 border border-amber-100 p-6 rounded-[24px] text-amber-900 leading-relaxed font-medium">
-              يرجى إضافة مستند في مجموعة <code className="bg-amber-200/50 px-2 py-0.5 rounded font-bold">users</code> في قاعدة بيانات Firestore لكي يتمكن النظام من توجيهك للواجهة الصحيحة.
+              مرحباً بك! أنت الآن مسجل في نظام "سند" بنجاح. لكي نتمكن من عرض لوحة التحكم الصحيحة لك، يجب تفعيل ملفك الشخصي.
             </div>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mr-1">معرف المستخدم (UID)</p>
-                <div className="p-4 bg-slate-50 rounded-[18px] border border-slate-100 font-mono text-sm font-bold text-primary break-all">
-                  {firebaseUser.uid}
-                </div>
-              </div>
+            <div className="space-y-4">
+              <Button 
+                onClick={handleQuickActivate} 
+                className="w-full h-16 rounded-[20px] bg-primary hover:bg-primary/90 text-white font-black text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3"
+                disabled={isActivating}
+              >
+                {isActivating ? <Loader2 className="animate-spin" /> : <Rocket className="w-6 h-6" />}
+                تفعيل حسابي التجريبي الآن
+              </Button>
+              <p className="text-center text-xs text-slate-400 font-bold">هذا الإجراء سيقوم بإنشاء سجل صلاحياتك في Firestore تلقائياً</p>
+            </div>
 
+            <div className="pt-8 border-t border-slate-100">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-4">بياناتك التقنية الحالية</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-white border border-slate-100 rounded-[18px] shadow-sm">
-                  <p className="text-[10px] text-slate-400 font-bold mb-1">الحقل: role</p>
-                  <p className="font-black text-slate-800">Specialist</p>
+                <div className="p-4 bg-slate-50 rounded-[18px] border border-slate-100">
+                  <p className="text-[10px] text-slate-400 font-bold mb-1">البريد الإلكتروني</p>
+                  <p className="font-black text-slate-800 text-sm">{firebaseUser.email}</p>
                 </div>
-                <div className="p-4 bg-white border border-slate-100 rounded-[18px] shadow-sm">
-                  <p className="text-[10px] text-slate-400 font-bold mb-1">الحقل: department</p>
-                  <p className="font-black text-slate-800">Cards</p>
-                </div>
-                <div className="p-4 bg-white border border-slate-100 rounded-[18px] shadow-sm">
-                  <p className="text-[10px] text-slate-400 font-bold mb-1">الحقل: name</p>
-                  <p className="font-black text-slate-800">أخصائي البطائق</p>
-                </div>
-                <div className="p-4 bg-white border border-slate-100 rounded-[18px] shadow-sm">
-                  <p className="text-[10px] text-slate-400 font-bold mb-1">الحقل: email</p>
-                  <p className="font-black text-slate-800">{firebaseUser.email}</p>
+                <div className="p-4 bg-slate-50 rounded-[18px] border border-slate-100">
+                  <p className="text-[10px] text-slate-400 font-bold mb-1">نوع الدخول</p>
+                  <p className="font-black text-slate-800 text-sm">{firebaseUser.email?.includes('cards') ? 'أخصائي بطائق' : 'موظف خدمة عملاء'}</p>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-50 flex gap-4">
-              <Button variant="outline" className="flex-1 h-14 rounded-full font-bold" onClick={logout}>تسجيل الخروج</Button>
+            <div className="pt-4 flex gap-4">
+              <Button variant="ghost" className="flex-1 h-14 rounded-full font-bold text-slate-400" onClick={logout}>تسجيل الخروج</Button>
             </div>
           </CardContent>
         </Card>
