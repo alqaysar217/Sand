@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/use-toast';
 import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, orderBy, arrayUnion } from 'firebase/firestore';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function SpecialistView() {
   const { user } = useAuth();
@@ -121,13 +120,13 @@ export function SpecialistView() {
 
   if (selectedTicket) {
     return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4" dir="rtl">
-        <div className="flex items-center justify-between">
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 text-right" dir="rtl">
+        <div className="flex items-center justify-between flex-row-reverse">
           <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="rounded-full hover:bg-white text-slate-500 font-bold px-6">
             <ArrowRight className="w-5 h-5 ml-2" /> العودة لمحطة العمل
           </Button>
-          <div className="flex items-center gap-3">
-            <span className="text-slate-400 font-bold text-xs">حالة البلاغ الحالية:</span>
+          <div className="flex items-center gap-3 flex-row-reverse">
+            <span className="text-slate-400 font-bold text-xs text-right">حالة البلاغ الحالية:</span>
             {getStatusBadge(selectedTicket.status)}
           </div>
         </div>
@@ -136,7 +135,7 @@ export function SpecialistView() {
           <div className="lg:col-span-2 space-y-8 text-right">
             <Card className="banking-card border-r-4 border-r-primary overflow-hidden shadow-xl">
               <CardHeader className="bg-slate-50/50 p-8 border-b">
-                <div className="flex items-center gap-4 justify-start">
+                <div className="flex items-center gap-4 justify-start flex-row-reverse">
                   <div className="p-4 bg-primary/5 rounded-[20px] border border-primary/10">
                     <Inbox className="w-8 h-8 text-primary" />
                   </div>
@@ -144,7 +143,7 @@ export function SpecialistView() {
                     <CardTitle className="text-2xl font-black text-primary">
                       معالجة بلاغ رقم: {selectedTicket.ticketID}
                     </CardTitle>
-                    <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold justify-start">
+                    <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold justify-end">
                       <Calendar className="w-4 h-4" />
                       <span>تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</span>
                     </div>
@@ -154,52 +153,54 @@ export function SpecialistView() {
               <CardContent className="p-8 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
-                    <CardContent className="p-6 flex items-center gap-4 justify-start">
+                    <CardContent className="p-6 flex items-center gap-4 justify-start flex-row-reverse">
                       <div className="p-3 bg-white rounded-full shadow-sm"><UserCircle className="w-6 h-6 text-primary/40" /></div>
                       <div className="text-right">
-                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">اسم العميل</Label>
-                        <p className="font-black text-slate-800">{selectedTicket.customerName}</p>
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1 text-right">اسم العميل</Label>
+                        <p className="font-black text-slate-800 text-right">{selectedTicket.customerName}</p>
                       </div>
                     </CardContent>
                   </Card>
                   <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
-                    <CardContent className="p-6 flex items-center gap-4 justify-start">
+                    <CardContent className="p-6 flex items-center gap-4 justify-start flex-row-reverse">
                       <div className="p-3 bg-white rounded-full shadow-sm"><Fingerprint className="w-6 h-6 text-primary/40" /></div>
                       <div className="text-right">
-                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">رقم الحساب (CIF)</Label>
-                        <p className="font-mono font-black text-primary">{selectedTicket.cif}</p>
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1 text-right">رقم الحساب (CIF)</Label>
+                        <p className="font-mono font-black text-primary text-right">{selectedTicket.cif}</p>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 <div className="space-y-4">
-                   <div className="flex items-center gap-3 px-2 justify-start">
-                      <MessageSquare className="w-6 h-6 text-primary" />
+                   <div className="flex items-center gap-3 px-2 justify-end">
                       <h3 className="font-black text-xl text-slate-900">وصف المشكلة الفنية</h3>
+                      <MessageSquare className="w-6 h-6 text-primary" />
                    </div>
                    <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm text-lg leading-relaxed text-slate-700 font-medium whitespace-pre-wrap text-right">
-                      <Badge className="mb-6 bg-primary/5 border-primary/10 text-primary font-black px-6 py-2 rounded-full border shadow-sm">{selectedTicket.subIssue}</Badge>
-                      <p>{selectedTicket.description}</p>
+                      <div className="flex justify-end mb-6">
+                        <Badge className="bg-primary/5 border-primary/10 text-primary font-black px-6 py-2 rounded-full border shadow-sm">{selectedTicket.subIssue}</Badge>
+                      </div>
+                      <p className="text-right">{selectedTicket.description}</p>
                    </div>
                 </div>
 
                 <div className="space-y-4 pt-6">
                    <div className="flex items-center justify-between px-2 flex-row-reverse">
+                      <div className="flex items-center gap-3 flex-row-reverse">
+                        <CheckCircle2 className="w-6 h-6 text-green-600" />
+                        <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المتخذ</h3>
+                      </div>
                       <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full border-accent/20 hover:bg-accent/5 text-accent font-black px-6 h-11 shadow-sm transition-all hover:scale-105">
                          {isGenerating ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2" />}
                          مساعد الرد الذكي (AI)
                       </Button>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المتخذ</h3>
-                      </div>
                    </div>
                    <Textarea 
                       value={response} 
                       onChange={(e) => setResponse(e.target.value)} 
                       placeholder="يرجى كتابة التفاصيل التقنية للحل هنا..." 
-                      className="banking-input min-h-[220px] p-8 text-lg border-slate-200 shadow-inner bg-slate-50/30 focus:bg-white" 
+                      className="banking-input min-h-[220px] p-8 text-lg border-slate-200 shadow-inner bg-slate-50/30 focus:bg-white text-right" 
                    />
                    <div className="flex justify-end pt-6">
                       <Button className="banking-button premium-gradient text-white h-16 px-16 text-xl shadow-2xl shadow-primary/20" onClick={handleResolve}>
@@ -213,46 +214,24 @@ export function SpecialistView() {
 
           <div className="space-y-8 text-right">
              <Card className="banking-card shadow-lg border-none overflow-hidden">
-                <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start">
+                <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start flex-row-reverse">
                    <History className="w-5 h-5 text-primary" />
                    <CardTitle className="text-lg font-black text-slate-800">سجل البلاغ</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                    <div className="space-y-6">
                       {selectedTicket.logs?.map((log: any, idx: number) => (
-                        <div key={idx} className="relative pr-6 border-r-2 border-slate-100 last:border-0 pb-6">
+                        <div key={idx} className="relative pr-6 border-r-2 border-slate-100 last:border-0 pb-6 text-right">
                            <div className="absolute top-0 -right-[7px] w-3.5 h-3.5 rounded-full bg-primary shadow-md border-2 border-white"></div>
                            <div className="text-right">
                               <p className="font-black text-slate-800 text-xs">{log.action}</p>
-                              <p className="text-[10px] text-slate-400 font-bold mt-1 tracking-wider">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
+                              <p className="text-[10px] text-slate-400 font-bold mt-1 tracking-wider text-right">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
                            </div>
                         </div>
                       ))}
                    </div>
                 </CardContent>
              </Card>
-
-             {selectedTicket.attachments?.length > 0 && (
-               <Card className="banking-card shadow-lg border-none overflow-hidden">
-                  <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start">
-                    <Paperclip className="w-5 h-5 text-primary" />
-                    <CardTitle className="text-lg font-black text-slate-800">المرفقات</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-4">
-                     {selectedTicket.attachments.map((att: any, idx: number) => (
-                       <div key={idx} className="group rounded-[24px] overflow-hidden border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all">
-                          <img src={att.url} className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-500" />
-                          <div className="p-4 flex justify-between items-center bg-slate-50/50">
-                             <a href={att.url} target="_blank" rel="noreferrer" className="text-[10px] text-primary font-black hover:underline flex items-center gap-2">
-                                <ExternalLink className="w-4 h-4" /> فتح الملف
-                             </a>
-                             <span className="text-[10px] text-slate-400 font-black">{att.description}</span>
-                          </div>
-                       </div>
-                     ))}
-                  </CardContent>
-               </Card>
-             )}
           </div>
         </div>
       </div>
@@ -268,7 +247,7 @@ export function SpecialistView() {
 
       <Card className="banking-card overflow-hidden shadow-2xl border-none">
         <CardHeader className="p-10 border-b border-slate-50 bg-white">
-          <div className="flex items-center gap-4 justify-start">
+          <div className="flex items-center gap-4 justify-start flex-row-reverse">
             <div className="p-4 bg-primary/5 rounded-[22px]"><Clock className="w-8 h-8 text-primary" /></div>
             <div className="text-right">
               <CardTitle className="text-2xl text-primary font-black">المهام والعمليات الواردة</CardTitle>
@@ -282,7 +261,7 @@ export function SpecialistView() {
             <div className="overflow-x-auto">
               <Table className="border-collapse">
                 <TableHeader>
-                  <TableRow className="bg-primary border-none">
+                  <TableRow className="bg-primary border-none hover:bg-primary">
                     <TableHead className="text-right h-18 font-black text-white pr-12">رقم البلاغ</TableHead>
                     <TableHead className="text-right h-18 font-black text-white">العميل</TableHead>
                     <TableHead className="text-right h-18 font-black text-white">نوع المشكلة</TableHead>
@@ -294,15 +273,15 @@ export function SpecialistView() {
                   {tickets?.map((t: any, index: number) => (
                     <TableRow 
                       key={t.id} 
-                      className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/[0.03] cursor-pointer group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100/40'}`}
+                      className={`transition-all duration-200 border-b border-slate-100 cursor-pointer group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
                       onClick={() => t.assignedToSpecialistId === user?.id && setSelectedTicket(t)}
                     >
                       <TableCell className="py-6 font-black text-primary pr-12 text-right">
                         <span className="bg-primary/5 px-5 py-2.5 rounded-full text-xs shadow-sm border border-primary/5">{t.ticketID}</span>
                       </TableCell>
                       <TableCell className="py-6 text-right">
-                         <div className="font-black text-slate-800 text-sm">{t.customerName}</div>
-                         <div className="text-[10px] text-slate-400 font-black font-mono mt-1 tracking-wider uppercase">{t.cif}</div>
+                         <div className="font-black text-slate-800 text-sm text-right">{t.customerName}</div>
+                         <div className="text-[10px] text-slate-400 font-black font-mono mt-1 tracking-wider uppercase text-right">{t.cif}</div>
                       </TableCell>
                       <TableCell className="py-6 text-right text-slate-600 font-bold text-sm">
                         <Badge variant="outline" className="rounded-full bg-slate-50 border-slate-200 text-slate-500 font-bold">{t.subIssue}</Badge>

@@ -74,7 +74,7 @@ export default function DashboardPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
-                <div className="flex items-center gap-3 text-primary font-black text-xl mb-4">
+                <div className="flex items-center gap-3 text-primary font-black text-xl mb-4 justify-start">
                   <Rocket className="w-6 h-6" />
                   <h3>التفعيل التلقائي (موصى به)</h3>
                 </div>
@@ -92,12 +92,12 @@ export default function DashboardPage() {
               </div>
 
               <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 space-y-6">
-                <div className="flex items-center gap-3 text-slate-800 font-black text-lg">
+                <div className="flex items-center gap-3 text-slate-800 font-black text-lg justify-start">
                   <Database className="w-5 h-5 text-secondary" />
                   <h3>بيانات الربط اليدوي (Firestore)</h3>
                 </div>
                 <div className="space-y-4">
-                  <Label className="text-[10px] text-primary font-black uppercase">Document ID (UID)</Label>
+                  <Label className="text-[10px] text-primary font-black uppercase block text-right">Document ID (UID)</Label>
                   <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-[14px] border border-slate-200">
                     <p className="font-mono font-black text-primary text-xs break-all">{firebaseUser.uid}</p>
                     <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full shrink-0" onClick={handleCopyUid}>
@@ -106,19 +106,19 @@ export default function DashboardPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white p-3 rounded-[14px] border border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 block">role</span>
-                      <p className="font-black text-xs">{autoValues.role}</p>
+                      <span className="text-[9px] font-black text-slate-400 block text-right">role</span>
+                      <p className="font-black text-xs text-right">{autoValues.role}</p>
                     </div>
                     <div className="bg-white p-3 rounded-[14px] border border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 block">department</span>
-                      <p className="font-black text-xs">{autoValues.dept}</p>
+                      <span className="text-[9px] font-black text-slate-400 block text-right">department</span>
+                      <p className="font-black text-xs text-right">{autoValues.dept}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="pt-6 flex gap-4 border-t">
+            <div className="pt-6 flex gap-4 border-t justify-end">
               <Button variant="ghost" className="h-12 rounded-full font-black text-slate-400 hover:text-red-500" onClick={logout}>
                 <LogOut className="w-4 h-4 ml-2" /> خروج وإلغاء
               </Button>

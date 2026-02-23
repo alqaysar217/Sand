@@ -16,13 +16,11 @@ import {
   Settings2, Paperclip, Inbox, Headset, MonitorSmartphone
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 const SERVICE_ENTITIES = [
   { id: 'CallCenter', label: 'الكول سنتر' },
@@ -31,30 +29,16 @@ const SERVICE_ENTITIES = [
   { id: 'AppAdmin', label: 'إدارة تطبيق البنك' },
 ];
 
-const INTAKE_METHODS = [
-  { id: 'WhatsApp', label: 'واتساب', icon: MessageSquare },
-  { id: 'Call', label: 'اتصال هاتف', icon: Phone },
-  { id: 'Branch', label: 'من أحد الفروع', icon: MapPin },
-];
-
-const ISSUE_TYPES = [
-  'تأخر رمز PIN', 'تأخر فتح الحساب', 'الرسائل لا تعمل', 'استعلام عن حوالة', 'تغيير رمز PIN', 'أخرى'
-];
-
 export function AgentView() {
   const { user } = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const isCallCenter = user?.department === 'Support';
 
@@ -121,10 +105,10 @@ export function AgentView() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700" dir="rtl">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-in fade-in duration-700 text-right" dir="rtl">
+      <div className="flex justify-between items-center flex-row-reverse">
         <div className="text-right">
-          <h1 className="text-3xl font-black text-primary flex items-center gap-3">
+          <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
              {isCallCenter ? <Headset className="w-8 h-8" /> : <MonitorSmartphone className="w-8 h-8" />}
              {isCallCenter ? 'محطة عمل الكول سنتر' : 'بوابة خدمة العملاء الرقمية'}
           </h1>
@@ -139,7 +123,7 @@ export function AgentView() {
 
       {showNewForm ? (
         <Card className="banking-card max-w-4xl shadow-2xl border-none">
-          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100 flex flex-row items-center justify-between">
+          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100 flex flex-row-reverse items-center justify-between">
             <div className="text-right">
               <CardTitle className="text-primary text-2xl font-black">نموذج استلام بلاغ عميل</CardTitle>
               <CardDescription className="text-slate-500 font-bold">تأكد من مطابقة بيانات CIF مع النظام البنكي</CardDescription>
@@ -153,20 +137,20 @@ export function AgentView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2 text-right">
                   <Label className="font-black text-slate-700 mr-1 text-xs">اسم العميل الكامل</Label>
-                  <Input required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="banking-input h-12" />
+                  <Input required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="banking-input h-12 text-right" />
                 </div>
                 <div className="space-y-2 text-right">
                   <Label className="font-black text-slate-700 mr-1 text-xs">رقم CIF / الحساب</Label>
-                  <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-12 font-mono" />
+                  <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-12 font-mono text-right" />
                 </div>
                 <div className="space-y-2 text-right">
                   <Label className="font-black text-slate-700 mr-1 text-xs">رقم التواصل</Label>
-                  <Input required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-12" />
+                  <Input required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-12 text-right" />
                 </div>
                 <div className="space-y-2 text-right">
                   <Label className="font-black text-slate-700 mr-1 text-xs">التوجيه الفني</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required>
-                    <SelectTrigger className="banking-input h-12"><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر القسم" /></SelectTrigger>
                     <SelectContent dir="rtl">
                       {SERVICE_ENTITIES.map(e => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
                     </SelectContent>
@@ -175,7 +159,7 @@ export function AgentView() {
               </div>
               <div className="space-y-2 text-right">
                 <Label className="font-black text-slate-700 mr-1 text-xs">ملاحظات البلاغ</Label>
-                <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px]" />
+                <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" />
               </div>
               <div className="flex justify-end gap-3 pt-6 border-t">
                 <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="h-12 px-6 rounded-full font-black">إلغاء</Button>
@@ -189,13 +173,13 @@ export function AgentView() {
       ) : (
         <Card className="banking-card overflow-hidden border-none shadow-xl">
           <CardHeader className="p-8 border-b bg-white">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <CardTitle className="text-2xl font-black text-primary flex items-center gap-3">
+            <div className="flex flex-col md:flex-row-reverse justify-between items-center gap-6">
+              <CardTitle className="text-2xl font-black text-primary flex items-center gap-3 justify-end">
                  <Inbox className="w-6 h-6" /> البلاغات الأخيرة
               </CardTitle>
               <div className="relative w-full md:w-80">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="بحث برقم التذكرة أو CIF..." className="banking-input pr-10 h-11" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <Input placeholder="بحث برقم التذكرة أو CIF..." className="banking-input pr-10 h-11 text-right" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
               </div>
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="mt-6">
@@ -209,19 +193,19 @@ export function AgentView() {
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow className="border-none">
-                  <TableHead className="text-right h-14 font-black text-primary pr-8">رقم البلاغ</TableHead>
-                  <TableHead className="text-right h-14 font-black text-primary">العميل</TableHead>
-                  <TableHead className="text-right h-14 font-black text-primary">القسم الموجه له</TableHead>
-                  <TableHead className="text-right h-14 font-black text-primary">الحالة</TableHead>
-                  <TableHead className="text-center h-14 font-black text-primary pl-8">الإجراء</TableHead>
+              <TableHeader className="bg-primary">
+                <TableRow className="border-none hover:bg-primary">
+                  <TableHead className="text-right h-14 font-black text-white pr-8">رقم البلاغ</TableHead>
+                  <TableHead className="text-right h-14 font-black text-white">العميل</TableHead>
+                  <TableHead className="text-right h-14 font-black text-white">القسم الموجه له</TableHead>
+                  <TableHead className="text-right h-14 font-black text-white">الحالة</TableHead>
+                  <TableHead className="text-center h-14 font-black text-white pl-8">الإجراء</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTickets.map((t, idx) => (
                   <TableRow key={t.id} className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                    <TableCell className="py-4 font-black text-slate-800 pr-8">
+                    <TableCell className="py-4 font-black text-slate-800 pr-8 text-right">
                        <span className="bg-primary/5 px-3 py-1 rounded-full text-xs">{t.ticketID}</span>
                     </TableCell>
                     <TableCell className="py-4 text-right font-black">{t.customerName}</TableCell>
@@ -247,12 +231,12 @@ export function AgentView() {
           {selectedTicket && (
             <div className="flex flex-col">
               <div className="premium-gradient p-8 text-white">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-4">
+                <div className="flex justify-between items-center flex-row-reverse">
+                  <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="p-3 bg-white/20 rounded-[18px] backdrop-blur-md"><History className="w-6 h-6" /></div>
                     <div className="text-right">
                       <h3 className="text-xl font-black">بلاغ رقم {selectedTicket.ticketID}</h3>
-                      <p className="text-xs opacity-70 font-bold mt-1">تاريخ الإنشاء: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p>
+                      <p className="text-xs opacity-70 font-bold mt-1 text-right">تاريخ الإنشاء: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</p>
                     </div>
                   </div>
                   {getStatusBadge(selectedTicket.status)}
@@ -260,18 +244,18 @@ export function AgentView() {
               </div>
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3">
+                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse">
                       <UserCircle className="w-5 h-5 text-primary" />
-                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black">العميل</span><p className="font-black text-sm">{selectedTicket.customerName}</p></div>
+                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">العميل</span><p className="font-black text-sm text-right">{selectedTicket.customerName}</p></div>
                    </div>
-                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3">
+                   <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse">
                       <Fingerprint className="w-5 h-5 text-primary" />
-                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black">رقم الحساب</span><p className="font-mono font-black text-sm">{selectedTicket.cif}</p></div>
+                      <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">رقم الحساب</span><p className="font-mono font-black text-sm text-right">{selectedTicket.cif}</p></div>
                    </div>
                 </div>
                 <div className="bg-white border p-6 rounded-[24px] space-y-3">
-                   <div className="flex items-center gap-2 text-primary font-black"><MessageSquare className="w-4 h-4" /> <span>وصف المشكلة</span></div>
-                   <p className="text-slate-600 font-medium leading-relaxed">{selectedTicket.description}</p>
+                   <div className="flex items-center gap-2 text-primary font-black flex-row-reverse"><MessageSquare className="w-4 h-4" /> <span>وصف المشكلة</span></div>
+                   <p className="text-slate-600 font-medium leading-relaxed text-right">{selectedTicket.description}</p>
                 </div>
               </div>
               <div className="p-6 border-t bg-slate-50 flex justify-end">
