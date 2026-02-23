@@ -1,39 +1,35 @@
 
 "use client"
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Plus, Search, Loader2, ArrowRight, MessageSquare, Inbox, Headset,
-  UserCircle, Fingerprint, History, Calendar, CheckCircle2, Paperclip, XCircle, Send, Upload, FileText, Trash2, Eye, Phone, Building2
+  Plus, Search, Loader2, Inbox, Headset,
+  Phone, Share2, MessageSquare
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 
 export function AgentView() {
   const { user } = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-  const [attachments, setAttachments] = useState<{url: string, name: string, type: string}[]>([]);
 
   // التأكد من أن الكول سنتر هو الوحيد الذي يمكنه الرفع
   const canRaiseTickets = user?.department === 'Support';
@@ -54,7 +50,16 @@ export function AgentView() {
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  const [formData, setFormData] = useState({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
+  const [formData, setFormData] = useState({ 
+    customerName: '', 
+    cif: '', 
+    phone: '', 
+    serviceType: '', 
+    intakeMethod: '', 
+    subIssue: '', 
+    description: '', 
+    createdByAgentName: '' 
+  });
 
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
@@ -71,16 +76,6 @@ export function AgentView() {
       return matchesSearch && matchesStatus;
     });
   }, [tickets, searchQuery, activeTab]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => setAttachments(prev => [...prev, { url: reader.result as string, name: file.name, type: file.type }]);
-      reader.readAsDataURL(file);
-    });
-  };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +96,7 @@ export function AgentView() {
       description: formData.description,
       createdByAgentId: user.id,
       createdByAgentName: formData.createdByAgentName,
-      attachments: attachments.map(a => ({ url: a.url, description: a.name })),
+      attachments: [],
       logs: [{ action: `تم رفع البلاغ من الكول سنتر بواسطة: ${formData.createdByAgentName}`, timestamp: new Date().toISOString(), userName: formData.createdByAgentName }]
     };
 
@@ -110,7 +105,6 @@ export function AgentView() {
         toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}` });
         setShowNewForm(false);
         setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
-        setAttachments([]);
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -129,7 +123,7 @@ export function AgentView() {
       <div className="flex justify-between items-center flex-row-reverse">
         <div className="text-right">
           <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
-             <Headset className="w-8 h-8" /> محطة عمل الكول سنتر (مركز الرفع)
+             <Headset className="w-8 h-8" /> محطة عمل الكول سنتر
           </h1>
           <p className="text-slate-500 font-bold mt-1">توجيه بلاغات العملاء للأقسام الفنية المختصة</p>
         </div>
@@ -158,7 +152,7 @@ export function AgentView() {
                   </Select>
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1">توجيه البلاغ إلى (الجهة المستلمة)</Label>
+                  <Label className="font-black text-xs mr-1">توجيه البلاغ إلى القسم المختص</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required>
                     <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر القسم المستلم" /></SelectTrigger>
                     <SelectContent dir="rtl">
@@ -175,9 +169,31 @@ export function AgentView() {
                   <Label className="font-black text-xs mr-1">رقم CIF</Label>
                   <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-12 font-mono text-right" />
                 </div>
+                <div className="space-y-2 text-right">
+                  <Label className="font-black text-xs mr-1 flex items-center gap-1 justify-end"><Share2 className="w-3 h-3" /> وسيلة استلام الطلب</Label>
+                  <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
+                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
+                    <SelectContent dir="rtl">
+                      {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>) || <SelectItem value="dev">وسيلة تجريبية</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label className="font-black text-xs mr-1 flex items-center gap-1 justify-end"><MessageSquare className="w-3 h-3" /> نوع المشكلة</Label>
+                  <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
+                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
+                    <SelectContent dir="rtl">
+                      {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || <SelectItem value="dev">مشكلة تجريبية</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-right">
+                   <Label className="font-black text-xs mr-1 flex items-center gap-1 justify-end"><Phone className="w-3 h-3" /> رقم هاتف العميل</Label>
+                   <Input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-12 text-right" />
+                </div>
               </div>
               <div className="space-y-2 text-right">
-                <Label className="font-black text-xs mr-1">تفاصيل البلاغ</Label>
+                <Label className="font-black text-xs mr-1">تفاصيل البلاغ كاملة</Label>
                 <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" />
               </div>
               <div className="flex justify-end gap-3 pt-6 border-t">
@@ -192,7 +208,7 @@ export function AgentView() {
           <CardHeader className="p-8 border-b bg-white">
             <div className="flex flex-col md:flex-row-reverse justify-between items-center gap-6">
               <CardTitle className="text-2xl font-black text-primary flex items-center gap-3">
-                 <Inbox className="w-6 h-6" /> سجل البلاغات الصادرة من الكول سنتر
+                 <Inbox className="w-6 h-6" /> سجل البلاغات الصادرة
               </CardTitle>
               <div className="relative w-full md:w-80">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -248,13 +264,23 @@ export function AgentView() {
                       <p className="font-mono font-black">{selectedTicket.cif}</p>
                    </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-slate-50 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-400 block font-black">وسيلة الاستلام</span>
+                      <p className="font-bold">{selectedTicket.intakeMethod}</p>
+                   </div>
+                   <div className="bg-slate-50 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-400 block font-black">نوع المشكلة</span>
+                      <p className="font-bold">{selectedTicket.subIssue}</p>
+                   </div>
+                </div>
                 <div className="bg-slate-50 p-6 rounded-2xl">
                    <span className="text-[10px] text-slate-400 block font-black mb-2">تفاصيل المشكلة</span>
                    <p className="font-medium">{selectedTicket.description}</p>
                 </div>
                 {selectedTicket.specialistResponse && (
                   <div className="bg-green-50 border border-green-100 p-6 rounded-2xl">
-                     <span className="text-[10px] text-green-600 block font-black mb-2">الرد الفني من القسم المختص</span>
+                     <span className="text-[10px] text-green-600 block font-black mb-2">الرد الفني المعتمد</span>
                      <p className="font-bold text-green-800">{selectedTicket.specialistResponse}</p>
                   </div>
                 )}

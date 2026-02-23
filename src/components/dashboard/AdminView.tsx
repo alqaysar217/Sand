@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
-  Edit2, Save, X, BarChart3, PieChart as PieChartIcon, UserPlus, ShieldAlert, MonitorSmartphone, CreditCard, Headset
+  Edit2, Save, BarChart3, PieChart as PieChartIcon, ShieldAlert, MonitorSmartphone, CreditCard, Headset,
+  Share2, MessageSquare
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -67,7 +68,7 @@ export function AdminView() {
       ...config,
       [type]: newList
     }, { merge: true });
-    toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح." });
+    toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح في إعدادات النظام." });
   };
 
   const handleClearAllTickets = async () => {
@@ -84,11 +85,12 @@ export function AdminView() {
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
                <ShieldCheck className="w-8 h-8" /> لوحة إدارة النظام المصرفي
             </h1>
-            <p className="text-slate-500 font-bold mt-1">الرقابة المركزية وإدارة صلاحيات الموظفين</p>
+            <p className="text-slate-500 font-bold mt-1">الرقابة المركزية وإدارة خيارات ومعايير النظام</p>
           </div>
           <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
             <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات الحقيقية</TabsTrigger>
             <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة الموظفين</TabsTrigger>
+            <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة خيارات النظام</TabsTrigger>
             <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">حسابات النظام</TabsTrigger>
           </TabsList>
         </div>
@@ -164,16 +166,33 @@ export function AdminView() {
                 icon={<CreditCard className="w-4 h-4" />}
               />
               <ConfigSection 
-                title="موظفي خدمة العملاء" 
+                title="أخصائيي خدمة العملاء" 
                 items={config?.csNames || ['سالم', 'علي', 'فهد']} 
                 onSave={newList => handleUpdateConfigList('csNames', newList)} 
                 icon={<MonitorSmartphone className="w-4 h-4" />}
               />
               <ConfigSection 
-                title="موظفي الكول سنتر (الرفع)" 
+                title="موظفي الكول سنتر" 
                 items={config?.agentNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس']} 
                 onSave={newList => handleUpdateConfigList('agentNames', newList)} 
                 icon={<Headset className="w-4 h-4" />}
+              />
+           </div>
+        </TabsContent>
+
+        <TabsContent value="options" className="space-y-6 animate-in fade-in duration-500 mt-0">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ConfigSection 
+                title="وسائل استلام البلاغات" 
+                items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} 
+                onSave={newList => handleUpdateConfigList('intakeMethods', newList)} 
+                icon={<Share2 className="w-4 h-4" />}
+              />
+              <ConfigSection 
+                title="أنواع المشاكل الفنية" 
+                items={config?.issueTypes || ['مشكلة في التطبيق', 'تغيير رمز PIN', 'كلمة السر', 'استفسار عام']} 
+                onSave={newList => handleUpdateConfigList('issueTypes', newList)} 
+                icon={<MessageSquare className="w-4 h-4" />}
               />
            </div>
            
@@ -312,7 +331,7 @@ function ConfigSection({ title, items, onSave, icon }: any) {
          </CardHeader>
          <CardContent className="p-6 space-y-4">
             <div className="flex gap-2 flex-row-reverse">
-               <Input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="إضافة موظف..." className="banking-input h-11 text-right" />
+               <Input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="إضافة..." className="banking-input h-11 text-right" />
                <Button onClick={handleAdd} className="bg-primary h-11 w-11 rounded-xl shrink-0"><Plus className="w-5 h-5" /></Button>
             </div>
             <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
