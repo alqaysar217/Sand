@@ -1,3 +1,4 @@
+
 "use client"
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
@@ -9,16 +10,17 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, error } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    // لا تقم بإعادة التوجيه إذا كان هناك خطأ "ملف مفقود" لكي نتمكن من عرض رسالة الخطأ في صفحة Dashboard
+    if (!loading && !user && !error) {
       router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading, error, router]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -28,6 +30,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  // إذا كان هناك مستخدم ولكن بدون ملف شخصي، دع DashboardPage تتعامل مع العرض
+  if (!user && !error) return null;
 
   return (
     <SidebarProvider>
