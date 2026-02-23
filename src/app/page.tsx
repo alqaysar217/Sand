@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, Loader2, Info, CreditCard, Headset } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, Loader2, CreditCard, Headset, UserCog, MonitorSmartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -36,18 +36,13 @@ export default function Home() {
       await login(email, password);
       toast({
         title: "تم تسجيل الدخول",
-        description: "مرحباً بك في نظام سند.",
+        description: "مرحباً بك في نظام سند المصرفي.",
       });
     } catch (error: any) {
-      let message = "فشل تسجيل الدخول. يرجى التحقق من البيانات.";
-      if (error.code === 'auth/invalid-credential') {
-        message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-      }
-      
       toast({
         variant: "destructive",
         title: "خطأ في الدخول",
-        description: message,
+        description: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
       });
     } finally {
       setIsLoggingIn(false);
@@ -74,45 +69,44 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-700">
-        <div className="flex flex-col items-center gap-4 mb-8">
+      <div className="w-full max-w-lg space-y-8 animate-in fade-in zoom-in-95 duration-700">
+        <div className="flex flex-col items-center gap-4 mb-4">
           <div className="relative">
             {logo && (
               <Image 
                 src={logo.imageUrl} 
                 alt="Logo" 
-                width={90} 
-                height={90} 
-                className="rounded-[28px] shadow-2xl border-4 border-white"
+                width={80} 
+                height={80} 
+                className="rounded-[24px] shadow-2xl border-4 border-white"
                 data-ai-hint={logo.imageHint}
               />
             )}
-            <div className="absolute -bottom-2 -right-2 bg-accent p-2 rounded-full shadow-lg border-2 border-white">
-              <Shield className="w-4 h-4 text-white" />
+            <div className="absolute -bottom-1 -right-1 bg-accent p-1.5 rounded-full shadow-lg border-2 border-white">
+              <Shield className="w-3.5 h-3.5 text-white" />
             </div>
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-extrabold text-primary tracking-tight">سند</h1>
-            <p className="text-slate-500 font-medium mt-1">بوابة الموظفين | نظام الإدارة المصرفية</p>
+            <h1 className="text-4xl font-black text-primary tracking-tight">سند</h1>
+            <p className="text-slate-500 font-bold mt-1 text-sm">نظام إدارة العمليات المصرفية الذكي</p>
           </div>
         </div>
 
-        <Card className="banking-card overflow-hidden">
-          <CardHeader className="space-y-2 text-center bg-slate-50/30 pb-10 pt-8">
-            <CardTitle className="text-2xl font-bold text-slate-800">تسجيل الدخول</CardTitle>
-            <CardDescription className="text-slate-500">أدخل بياناتك الرسمية للوصول للنظام</CardDescription>
+        <Card className="banking-card overflow-hidden border-none shadow-2xl">
+          <CardHeader className="space-y-2 text-center bg-slate-50/50 pb-8 pt-8 border-b border-slate-100">
+            <CardTitle className="text-2xl font-black text-slate-800">تسجيل الدخول الآمن</CardTitle>
+            <CardDescription className="text-slate-400 font-medium">أدخل بيانات الهوية الوظيفية للوصول</CardDescription>
           </CardHeader>
-          <CardContent className="pt-8 px-8 pb-10">
-            <form onSubmit={handleLogin} className="space-y-6">
+          <CardContent className="pt-8 px-10 pb-10">
+            <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2 text-right">
-                <Label htmlFor="email" className="text-slate-600 font-bold mr-1">البريد الإلكتروني</Label>
+                <Label className="text-slate-600 font-bold mr-1 text-xs">البريد الإلكتروني الرسمي</Label>
                 <div className="relative">
                   <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input 
-                    id="email" 
                     type="email" 
-                    placeholder="name@bank.com" 
-                    className="banking-input pr-12 text-right h-13"
+                    placeholder="user@bank.com" 
+                    className="banking-input pr-12 text-right h-12"
                     dir="ltr"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -121,14 +115,13 @@ export default function Home() {
                 </div>
               </div>
               <div className="space-y-2 text-right">
-                <Label htmlFor="password" className="text-slate-600 font-bold mr-1">كلمة المرور</Label>
+                <Label className="text-slate-600 font-bold mr-1 text-xs">كلمة المرور</Label>
                 <div className="relative">
                   <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input 
-                    id="password" 
                     type="password" 
                     placeholder="••••••••" 
-                    className="banking-input pr-12 text-right h-13"
+                    className="banking-input pr-12 text-right h-12"
                     dir="ltr"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -136,8 +129,8 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full banking-button premium-gradient text-white h-14 text-lg" disabled={isLoggingIn}>
-                {isLoggingIn ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              <Button type="submit" className="w-full banking-button premium-gradient text-white h-12 text-lg font-black mt-2" disabled={isLoggingIn}>
+                {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <>
                     <ArrowLeft className="w-5 h-5 ml-2" />
                     <span>دخول النظام</span>
@@ -146,31 +139,29 @@ export default function Home() {
               </Button>
             </form>
 
-            <div className="mt-10 pt-8 border-t border-slate-50">
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">خيارات الدخول السريع</p>
-              <div className="grid grid-cols-1 gap-3">
-                <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
+            <div className="mt-8 pt-6 border-t border-slate-50">
+              <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">بوابات الدخول التجريبي</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.frontline@bank.com', 'PASS_FRONT_99')}>
                   <Headset className="h-5 w-5 text-secondary" />
-                  <div className="text-right">
-                    <p className="font-bold text-sm text-slate-800">موظف الكول سنتر</p>
-                    <p className="text-[10px] text-slate-400">إدارة البلاغات الهاتفية والواتساب</p>
-                  </div>
+                  <span className="font-bold text-xs text-slate-800">الكول سنتر</span>
                 </Button>
-                <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SPECIALIST_101')}>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com', 'PASS_DIGITAL_11')}>
+                  <MonitorSmartphone className="h-5 w-5 text-accent" />
+                  <span className="font-bold text-xs text-slate-800">خدمة العملاء</span>
+                </Button>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cards.ops@bank.com', 'PASS_CARDS_22')}>
                   <CreditCard className="h-5 w-5 text-primary" />
-                  <div className="text-right">
-                    <p className="font-bold text-sm text-slate-800">أخصائي معالجة البطائق</p>
-                    <p className="text-[10px] text-slate-400">فحص البلاغات والرد الفني الذكي</p>
-                  </div>
+                  <span className="font-bold text-xs text-slate-800">قسم البطائق</span>
+                </Button>
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('admin.bank@bank.com', 'PASS_ADMIN_88')}>
+                  <UserCog className="h-5 w-5 text-red-600" />
+                  <span className="font-bold text-xs text-slate-800">المدير العام</span>
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        <footer className="text-center text-[10px] text-slate-400 pt-4 font-medium">
-          © {new Date().getFullYear()} نظام سند المصرفي | النسخة الاحترافية 2.5
-        </footer>
       </div>
     </div>
   );

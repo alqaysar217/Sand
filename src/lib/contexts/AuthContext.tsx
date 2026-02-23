@@ -2,7 +2,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -12,7 +12,7 @@ interface AuthContextType {
   firebaseUser: any;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  setupDemoProfile: (role: 'Agent' | 'Specialist', dept: string, name: string) => Promise<void>;
+  setupDemoProfile: (role: UserRole, dept: Department, name: string) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -45,8 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         },
         (err) => {
-          console.error("Error fetching profile:", err);
-          setError("خطأ في جلب بيانات المستخدم من قاعدة البيانات.");
+          setError("خطأ في جلب بيانات المستخدم.");
           setLoading(false);
         }
       );
@@ -75,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setupDemoProfile = async (role: 'Agent' | 'Specialist', dept: string, name: string) => {
+  const setupDemoProfile = async (role: UserRole, dept: Department, name: string) => {
     if (!firebaseUser || !db) return;
     try {
       await setDoc(doc(db, 'users', firebaseUser.uid), {
