@@ -390,7 +390,11 @@ export function AgentView() {
                     { val: 'Resolved', label: 'الأرشيف', count: counters.resolved, color: 'bg-green-600' },
                     { val: 'Rejected', label: 'المرفوضة', count: counters.rejected, color: 'bg-slate-700' },
                   ].map(tab => (
-                    <TabsTrigger key={tab.val} value={tab.val} className="relative rounded-[16px] py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger 
+                      key={tab.val} 
+                      value={tab.val} 
+                      className="relative rounded-[16px] py-2.5 font-bold data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                    >
                       <span>{tab.label}</span>
                       {tab.count > 0 && (
                         <span className={`absolute -top-1 -left-1 ${tab.color || 'bg-slate-400'} text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1.5 border-2 border-white font-extrabold shadow-sm`}>
@@ -534,7 +538,7 @@ export function AgentView() {
                   {/* Customer Info Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-slate-50/50 p-8 rounded-[32px] border border-slate-100">
                     <div className="text-right space-y-1"><Label className="text-[10px] text-slate-400 font-bold uppercase block">العميل</Label><p className="font-bold text-slate-800 text-lg">{selectedTicket.customerName}</p></div>
-                    <div className="text-right space-y-1"><Label className="text-[10px] text-slate-400 font-bold uppercase block">الرقم التعريفي (CIF)</Label><p className="font-mono font-bold text-primary text-lg">{selectedTicket.cif}</p></div>
+                    <div className="text-right space-y-1"><Label className="text-[10px] text-slate-400 font-bold uppercase block">رقم الحساب (CIF)</Label><p className="font-mono font-bold text-primary text-lg">{selectedTicket.cif}</p></div>
                     <div className="text-right space-y-1"><Label className="text-[10px] text-slate-400 font-bold uppercase block">رقم التواصل</Label><p className="font-bold text-slate-800 text-lg" dir="ltr">{selectedTicket.phoneNumber}</p></div>
                     <div className="text-right space-y-1"><Label className="text-[10px] text-slate-400 font-bold uppercase block">قناة الاستلام</Label><p className="font-bold text-slate-600">{getIntakeLabel(selectedTicket.intakeMethod)}</p></div>
                     <div className="text-right space-y-1"><Label className="text-[10px] text-slate-400 font-bold uppercase block">تصنيف الخدمة</Label><div className="mt-1"><Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5">{selectedTicket.subIssue}</Badge></div></div>
