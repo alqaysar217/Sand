@@ -134,46 +134,49 @@ export function SpecialistView() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Ticket Info */}
           <div className="lg:col-span-2 space-y-8 text-right">
             <Card className="banking-card border-r-4 border-r-primary overflow-hidden shadow-xl">
               <CardHeader className="bg-slate-50/50 p-8 border-b">
-                <div className="flex justify-between items-start">
-                   <div className="text-right flex-1">
-                      <CardTitle className="text-2xl font-black text-primary flex items-center gap-3 justify-start">
-                         <div className="p-3 bg-primary/10 rounded-[16px]"><Inbox className="w-6 h-6" /></div>
-                         معالجة بلاغ رقم: {selectedTicket.ticketID}
-                      </CardTitle>
-                      <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold justify-start">
-                        <Calendar className="w-4 h-4" />
-                        <span>تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</span>
-                      </div>
-                   </div>
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-primary/5 rounded-[20px] border border-primary/10">
+                    <Inbox className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <CardTitle className="text-2xl font-black text-primary">
+                      معالجة بلاغ رقم: {selectedTicket.ticketID}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold">
+                      <Calendar className="w-4 h-4" />
+                      <span>تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</span>
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
-                {/* Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-5 rounded-[24px] flex items-center justify-between border border-slate-100 shadow-sm">
-                    <div className="text-right">
-                       <Label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1">اسم العميل</Label>
-                       <p className="font-black text-slate-800">{selectedTicket.customerName}</p>
-                    </div>
-                    <div className="p-2 bg-white rounded-full"><UserCircle className="w-5 h-5 text-primary/40" /></div>
-                  </div>
-                  <div className="bg-slate-50 p-5 rounded-[24px] flex items-center justify-between border border-slate-100 shadow-sm">
-                    <div className="text-right">
-                       <Label className="text-[10px] text-slate-400 font-black uppercase tracking-wider block mb-1">رقم الحساب (CIF)</Label>
-                       <p className="font-mono font-black text-primary">{selectedTicket.cif}</p>
-                    </div>
-                    <div className="p-2 bg-white rounded-full"><Fingerprint className="w-5 h-5 text-primary/40" /></div>
-                  </div>
+                  <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
+                    <CardContent className="p-6 flex items-center gap-4">
+                      <div className="p-3 bg-white rounded-full shadow-sm"><UserCircle className="w-6 h-6 text-primary/40" /></div>
+                      <div className="text-right">
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">اسم العميل</Label>
+                        <p className="font-black text-slate-800">{selectedTicket.customerName}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
+                    <CardContent className="p-6 flex items-center gap-4">
+                      <div className="p-3 bg-white rounded-full shadow-sm"><Fingerprint className="w-6 h-6 text-primary/40" /></div>
+                      <div className="text-right">
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1">رقم الحساب (CIF)</Label>
+                        <p className="font-mono font-black text-primary">{selectedTicket.cif}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                {/* Problem Section */}
                 <div className="space-y-4">
-                   <div className="flex items-center gap-3 justify-start">
-                      <div className="p-2 bg-primary/5 rounded-full"><MessageSquare className="w-5 h-5 text-primary" /></div>
+                   <div className="flex items-center gap-3 px-2">
+                      <MessageSquare className="w-6 h-6 text-primary" />
                       <h3 className="font-black text-xl text-slate-900">وصف المشكلة الفنية</h3>
                    </div>
                    <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm text-lg leading-relaxed text-slate-700 font-medium whitespace-pre-wrap text-right">
@@ -182,11 +185,10 @@ export function SpecialistView() {
                    </div>
                 </div>
 
-                {/* Response Section */}
                 <div className="space-y-4 pt-6">
-                   <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 justify-start">
-                        <div className="p-2 bg-green-50 rounded-full"><CheckCircle2 className="w-5 h-5 text-green-600" /></div>
+                   <div className="flex items-center justify-between px-2">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-green-600" />
                         <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المتخذ</h3>
                       </div>
                       <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full border-accent/20 hover:bg-accent/5 text-accent font-black px-6 h-11 shadow-sm transition-all hover:scale-105">
@@ -210,13 +212,11 @@ export function SpecialistView() {
             </Card>
           </div>
 
-          {/* Right Column: Timeline & Attachments */}
           <div className="space-y-8 text-right">
              <Card className="banking-card shadow-lg border-none overflow-hidden">
-                <CardHeader className="p-6 border-b bg-slate-50/50">
-                   <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-3 justify-start">
-                      <History className="w-5 h-5 text-primary" /> سجل البلاغ
-                   </CardTitle>
+                <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3">
+                   <History className="w-5 h-5 text-primary" />
+                   <CardTitle className="text-lg font-black text-slate-800">سجل البلاغ</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                    <div className="space-y-6">
@@ -235,10 +235,9 @@ export function SpecialistView() {
 
              {selectedTicket.attachments?.length > 0 && (
                <Card className="banking-card shadow-lg border-none overflow-hidden">
-                  <CardHeader className="p-6 border-b bg-slate-50/50">
-                    <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-3 justify-start">
-                       <Paperclip className="w-5 h-5 text-primary" /> المرفقات
-                    </CardTitle>
+                  <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3">
+                    <Paperclip className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg font-black text-slate-800">المرفقات</CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                      {selectedTicket.attachments.map((att: any, idx: number) => (
@@ -270,9 +269,9 @@ export function SpecialistView() {
 
       <Card className="banking-card overflow-hidden shadow-2xl border-none">
         <CardHeader className="p-10 border-b border-slate-50 bg-white">
-          <div className="flex items-center gap-4 justify-start">
+          <div className="flex items-center gap-4">
             <div className="p-4 bg-primary/5 rounded-[22px]"><Clock className="w-8 h-8 text-primary" /></div>
-            <div>
+            <div className="text-right">
               <CardTitle className="text-2xl text-primary font-black">المهام والعمليات الواردة</CardTitle>
               <CardDescription className="text-slate-500 mt-1 font-medium text-lg">مراقبة ومعالجة البلاغات المصعدة من خدمة العملاء</CardDescription>
             </div>
@@ -292,11 +291,11 @@ export function SpecialistView() {
               <Table className="border-collapse">
                 <TableHeader>
                   <TableRow className="bg-primary border-none">
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px] tracking-[0.1em] pr-12">رقم البلاغ</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px] tracking-[0.1em]">العميل</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px] tracking-[0.1em]">نوع المشكلة</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px] tracking-[0.1em]">الحالة</TableHead>
-                    <TableHead className="text-center h-18 font-black text-white uppercase text-[12px] tracking-[0.1em] pl-12">الإجراء الفني</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px] pr-12">رقم البلاغ</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px]">العميل</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px]">نوع المشكلة</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px]">الحالة</TableHead>
+                    <TableHead className="text-center h-18 font-black text-white uppercase text-[12px] pl-12">الإجراء الفني</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -306,7 +305,7 @@ export function SpecialistView() {
                       className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/[0.03] cursor-pointer group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100/40'}`}
                       onClick={() => t.assignedToSpecialistId === user?.id && setSelectedTicket(t)}
                     >
-                      <TableCell className="py-6 font-black text-primary pr-12">
+                      <TableCell className="py-6 font-black text-primary pr-12 text-right">
                         <span className="bg-primary/5 px-5 py-2.5 rounded-full text-xs shadow-sm border border-primary/5">{t.ticketID}</span>
                       </TableCell>
                       <TableCell className="py-6 text-right">
