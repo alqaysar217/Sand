@@ -4,52 +4,30 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%; /* #F6F9FA */
-    --foreground: 217 33% 17%;
+    --background: 225 33% 97%; /* #F4F6FA */
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 217 33% 17%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 17%;
-    --primary: 212 100% 19%; /* #002D62 */
-    --primary-foreground: 210 20% 98%;
-    --secondary: 209 100% 36%; /* #005EB8 */
-    --secondary-foreground: 210 20% 98%;
-    --muted: 210 20% 90%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 42 82% 51%; /* #ECAC17 */
-    --accent-foreground: 217 33% 17%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 240 80% 40%; /* #1414B8 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 235 100% 58%; /* #2A3BFF */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 244 100% 69%; /* #6C63FF */
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 212 100% 19%;
-    --radius: 0.75rem;
+    --ring: 240 80% 40%;
+    --radius: 1.5rem; /* 24px default for cards */
 
     /* Status Colors */
-    --status-pending: 53 95% 54%; /* #F9DD1D */
-    --status-resolved: 145 63% 49%; /* #2ECC71 */
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --status-pending: 45 93% 47%;
+    --status-resolved: 142 76% 36%;
   }
 }
 
@@ -62,8 +40,49 @@
   }
 }
 
-.status-pending { background-color: hsl(var(--status-pending)); color: #000; }
-.status-resolved { background-color: hsl(var(--status-resolved)); color: #fff; }
-.status-new { @apply bg-blue-100 text-blue-800; }
-.status-escalated { @apply bg-red-100 text-red-800; }
-.status-rejected { @apply bg-gray-600 text-white; }
+/* Custom Banking Styles */
+.premium-gradient {
+  background: linear-gradient(90deg, #1414B8 0%, #2A3BFF 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-gradient::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.banking-card {
+  @apply rounded-[24px] border-none bg-white;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.banking-button {
+  @apply rounded-[28px] font-bold transition-all duration-300;
+  box-shadow: 0 6px 18px rgba(20,20,184,0.25);
+}
+
+.banking-input {
+  @apply rounded-[20px] border-slate-100 bg-slate-50/50 focus:bg-white transition-colors;
+}
+
+.status-pending { background-color: #F59E0B; color: white; }
+.status-resolved { background-color: #10B981; color: white; }
+.status-new { @apply bg-blue-100 text-blue-700; }
+.status-escalated { @apply bg-red-100 text-red-600; }
+.status-rejected { @apply bg-slate-800 text-white; }
+
+/* Hide scrollbar for cleaner look */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

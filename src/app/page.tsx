@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check, Database, UserCheck } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, Loader2, Info, Copy, Check, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from 'next/image';
@@ -69,12 +69,12 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
+      <div className="h-screen w-screen flex items-center justify-center bg-[#F4F6FA]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-             <div className="w-10 h-10 bg-primary rounded-lg animate-spin"></div>
+             <div className="w-10 h-10 bg-primary rounded-[12px] animate-spin"></div>
           </div>
-          <div className="h-4 w-32 bg-slate-200 rounded"></div>
+          <div className="h-4 w-32 bg-slate-200 rounded-full"></div>
         </div>
       </div>
     );
@@ -93,109 +93,91 @@ export default function Home() {
   const suggestions = getSuggestedFields();
 
   return (
-    <div className="min-h-screen bg-[#F6F9FA] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8 text-center animate-in fade-in zoom-in-95 duration-500">
+    <div className="min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-700">
         <div className="flex flex-col items-center gap-4 mb-8">
-          {logo && (
-            <Image 
-              src={logo.imageUrl} 
-              alt="Logo" 
-              width={80} 
-              height={80} 
-              className="rounded-2xl border-4 border-white shadow-xl"
-              data-ai-hint={logo.imageHint}
-            />
-          )}
-          <h1 className="text-4xl font-extrabold text-primary tracking-tight">سند</h1>
-          <p className="text-muted-foreground font-medium">نظام إدارة بلاغات العملاء</p>
+          <div className="relative">
+            {logo && (
+              <Image 
+                src={logo.imageUrl} 
+                alt="Logo" 
+                width={90} 
+                height={90} 
+                className="rounded-[28px] shadow-2xl border-4 border-white"
+                data-ai-hint={logo.imageHint}
+              />
+            )}
+            <div className="absolute -bottom-2 -right-2 bg-accent p-2 rounded-full shadow-lg border-2 border-white">
+              <Shield className="w-4 h-4 text-white" />
+            </div>
+          </div>
+          <div className="text-center">
+            <h1 className="text-4xl font-extrabold text-primary tracking-tight">سند</h1>
+            <p className="text-slate-500 font-medium mt-1">بوابة الموظفين | نظام الإدارة المصرفية</p>
+          </div>
         </div>
 
         {error === "MISSING_PROFILE" && firebaseUser && suggestions && (
-          <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-2 shadow-xl bg-white text-slate-900 overflow-hidden text-right">
-            <div className="bg-red-600 p-4 -mx-4 -mt-4 mb-4 text-white flex items-center justify-between flex-row-reverse">
+          <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-4 border-none shadow-2xl bg-white text-slate-900 rounded-[24px] overflow-hidden text-right">
+            <div className="premium-gradient p-5 -mx-4 -mt-4 mb-4 text-white flex items-center justify-between flex-row-reverse">
               <div className="flex items-center gap-2">
                 <Database className="h-6 w-6" />
-                <AlertTitle className="font-bold text-lg m-0">دليل ربط قاعدة البيانات</AlertTitle>
+                <AlertTitle className="font-bold text-lg m-0">تفعيل الصلاحيات</AlertTitle>
               </div>
             </div>
-            <AlertDescription className="space-y-6">
-              <div className="bg-blue-50 p-3 rounded-md border border-blue-200 text-sm text-blue-800 font-bold">
-                حسابك مفعل في الهوية، لكن ينقصه ملف الصلاحيات في Firestore. اتبع التالي:
+            <AlertDescription className="space-y-6 px-2 pb-2">
+              <div className="bg-blue-50 p-4 rounded-[16px] border border-blue-100 text-sm text-blue-800 font-bold">
+                يرجى ربط حسابك بقاعدة بيانات Firestore للمتابعة:
               </div>
 
               <div className="space-y-4">
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-slate-500 font-bold">1. أنشئ مستنداً جديداً في مجموعة (users) بالمعرف التالي:</Label>
-                  <div className="flex items-center justify-between gap-2 border-2 border-primary/20 p-2 rounded bg-slate-50 shadow-inner">
-                    <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-200" onClick={() => copyText(firebaseUser.uid)}>
+                  <Label className="text-xs text-slate-500 font-bold mb-1">معرف المستخدم (UID):</Label>
+                  <div className="flex items-center justify-between gap-2 border border-slate-100 p-3 rounded-[16px] bg-slate-50 shadow-inner">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-white" onClick={() => copyText(firebaseUser.uid)}>
                       {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-primary" />}
                     </Button>
-                    <code className="text-primary font-mono text-sm font-bold break-all">{firebaseUser.uid}</code>
+                    <code className="text-primary font-mono text-xs font-bold break-all">{firebaseUser.uid}</code>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs text-slate-500 font-bold">2. أضف الحقول التالية لهذا المستند بدقة:</Label>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center p-2 bg-slate-100 rounded border">
-                      <span className="font-bold text-blue-700">{suggestions.name}</span>
-                      <span className="text-xs font-mono text-slate-500">name (string)</span>
+                  <Label className="text-xs text-slate-500 font-bold">الحقول المطلوبة:</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex justify-between items-center p-3 bg-white rounded-[16px] border border-slate-50 shadow-sm">
+                      <span className="font-bold text-slate-800">{suggestions.name}</span>
+                      <span className="text-[10px] text-slate-400">name</span>
                     </div>
-                    <div className="flex justify-between items-center p-2 bg-slate-100 rounded border">
-                      <span className="font-bold text-blue-700">{firebaseUser.email}</span>
-                      <span className="text-xs font-mono text-slate-500">email (string)</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 bg-amber-100 rounded border border-amber-300">
-                      <span className="font-bold text-red-600">{suggestions.role}</span>
-                      <span className="text-xs font-mono text-slate-500">role (string)</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 bg-slate-100 rounded border">
-                      <span className="font-bold text-blue-700">{suggestions.dept}</span>
-                      <span className="text-xs font-mono text-slate-500">department (string)</span>
+                    <div className="flex justify-between items-center p-3 bg-white rounded-[16px] border border-slate-50 shadow-sm">
+                      <span className="font-bold text-slate-800">{suggestions.role}</span>
+                      <span className="text-[10px] text-slate-400">role</span>
                     </div>
                   </div>
                 </div>
-
-                {suggestions.isAdmin && (
-                  <div className="bg-amber-50 p-4 rounded-md border-2 border-amber-300 text-xs shadow-md">
-                    <div className="flex items-center gap-2 mb-2 flex-row-reverse">
-                      <Shield className="h-4 w-4 text-amber-700" />
-                      <p className="font-bold text-amber-800 text-sm">3. تفعيل مفتاح المدير العام (Admin Flag)</p>
-                    </div>
-                    <p className="text-amber-700 mb-2 leading-relaxed">اضغط <b>+ Start collection</b> فوق كلمة `users` تماماً:</p>
-                    <ul className="space-y-1 text-amber-800 list-disc list-inside">
-                      <li>اسم المجموعة الجديدة: <code className="bg-white px-1 font-bold">admins</code></li>
-                      <li>في خانة <b>Document ID</b> ضع كود الـ UID الخاص بك أعلاه.</li>
-                      <li>اضغط <b>Save</b> مباشرة دون إضافة أي حقول.</li>
-                    </ul>
-                  </div>
-                )}
               </div>
               
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="w-full" onClick={logout}>تسجيل الخروج والمحاولة لاحقاً</Button>
-              </div>
+              <Button variant="outline" className="w-full rounded-[20px] h-12" onClick={logout}>تسجيل الخروج</Button>
             </AlertDescription>
           </Alert>
         )}
 
         {!firebaseUser && (
-          <Card className="w-full shadow-2xl border-t-4 border-t-primary overflow-hidden">
-            <CardHeader className="space-y-2 text-center bg-slate-50/50 pb-8">
-              <CardTitle className="text-2xl font-bold">دخول الموظفين</CardTitle>
-              <CardDescription>أدخل البريد الرسمي وكلمة السر لنظام سند</CardDescription>
+          <Card className="banking-card overflow-hidden">
+            <CardHeader className="space-y-2 text-center bg-slate-50/30 pb-10 pt-8">
+              <CardTitle className="text-2xl font-bold text-slate-800">تسجيل الدخول</CardTitle>
+              <CardDescription className="text-slate-500">أدخل بياناتك الرسمية للوصول للنظام</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleLogin} className="space-y-5">
+            <CardContent className="pt-8 px-8 pb-10">
+              <form onSubmit={handleLogin} className="space-y-6">
                 <div className="space-y-2 text-right">
-                  <Label htmlFor="email">البريد الإلكتروني</Label>
+                  <Label htmlFor="email" className="text-slate-600 font-bold mr-1">البريد الإلكتروني</Label>
                   <div className="relative">
-                    <Mail className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input 
                       id="email" 
                       type="email" 
-                      placeholder="employee@bank.com" 
-                      className="pr-10 text-right h-12"
+                      placeholder="name@bank.com" 
+                      className="banking-input pr-12 text-right h-13"
                       dir="ltr"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -204,14 +186,14 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label htmlFor="password">كلمة المرور</Label>
+                  <Label htmlFor="password" className="text-slate-600 font-bold mr-1">كلمة المرور</Label>
                   <div className="relative">
-                    <Lock className="absolute right-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input 
                       id="password" 
                       type="password" 
                       placeholder="••••••••" 
-                      className="pr-10 text-right h-12"
+                      className="banking-input pr-12 text-right h-13"
                       dir="ltr"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -219,31 +201,31 @@ export default function Home() {
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-primary text-white font-bold h-12 text-lg shadow-lg hover:shadow-primary/20 transition-all" disabled={isLoggingIn}>
-                  {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : (
+                <Button type="submit" className="w-full banking-button premium-gradient text-white h-14 text-lg" disabled={isLoggingIn}>
+                  {isLoggingIn ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                     <>
                       <ArrowLeft className="w-5 h-5 ml-2" />
-                      <span>تسجيل الدخول</span>
+                      <span>دخول النظام</span>
                     </>
                   )}
                 </Button>
               </form>
 
-              <div className="mt-10 pt-6 border-t">
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-4 text-center">دخول سريع للتجربة:</p>
+              <div className="mt-10 pt-8 border-t border-slate-50">
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">خيارات الدخول السريع</p>
                 <div className="grid grid-cols-1 gap-3">
-                  <Button variant="outline" className="justify-between h-auto py-3 px-4 border-2 hover:border-primary/50 hover:bg-primary/5 group" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
-                    <Shield className="h-5 w-5 text-amber-500" />
+                  <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
+                    <Shield className="h-5 w-5 text-accent" />
                     <div className="text-right">
-                      <p className="font-bold text-sm">بلخرم (المدير العام)</p>
-                      <p className="text-[10px] text-muted-foreground">صلاحيات كاملة</p>
+                      <p className="font-bold text-sm text-slate-800">بلخرم (المدير العام)</p>
+                      <p className="text-[10px] text-slate-400">صلاحيات الرقابة والإشراف</p>
                     </div>
                   </Button>
-                  <Button variant="outline" className="justify-between h-auto py-3 px-4 border-2 hover:border-primary/50 hover:bg-primary/5 group" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
-                    <Info className="h-5 w-5 text-blue-500" />
+                  <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
+                    <Info className="h-5 w-5 text-secondary" />
                     <div className="text-right">
-                      <p className="font-bold text-sm">موظف خدمة العملاء</p>
-                      <p className="text-[10px] text-muted-foreground">رفع ومتابعة البلاغات</p>
+                      <p className="font-bold text-sm text-slate-800">موظف خدمة العملاء</p>
+                      <p className="text-[10px] text-slate-400">إدارة البلاغات والمتابعة</p>
                     </div>
                   </Button>
                 </div>
@@ -252,8 +234,8 @@ export default function Home() {
           </Card>
         )}
         
-        <footer className="text-center text-xs text-muted-foreground pt-4">
-          © {new Date().getFullYear()} نظام سند المصرفي | جميع الحقوق محفوظة
+        <footer className="text-center text-[10px] text-slate-400 pt-4 font-medium">
+          © {new Date().getFullYear()} نظام سند المصرفي | النسخة الاحترافية 2.5
         </footer>
       </div>
     </div>

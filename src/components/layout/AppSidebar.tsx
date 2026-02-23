@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -14,10 +13,8 @@ import {
   AlertCircle,
   Archive,
   Clock,
-  Shield,
-  FileText,
-  XCircle,
-  Send
+  Send,
+  XCircle
 } from 'lucide-react';
 import {
   Sidebar,
@@ -39,7 +36,6 @@ export function AppSidebar() {
   const { user } = useAuth();
   const db = useFirestore();
 
-  // جلب البيانات بناءً على دور المستخدم لتحديث العدادات
   const ticketsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     if (user.role === 'Admin') {
@@ -61,7 +57,6 @@ export function AppSidebar() {
 
   const { data: tickets } = useCollection(ticketsQuery);
 
-  // حساب العدادات
   const counts = useMemo(() => {
     if (!tickets) return {};
     return {
@@ -88,7 +83,7 @@ export function AppSidebar() {
       case 'Agent':
         return [
           { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home', count: counts.all },
-          { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
+          { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket', isAction: true },
           { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending', count: counts.Pending },
           { title: 'البلاغات المحالة', icon: Send, action: 'Escalated', count: counts.Escalated },
           { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected },
@@ -97,7 +92,7 @@ export function AppSidebar() {
       case 'Specialist':
         return [
           { title: 'محطة العمل', icon: Inbox, action: 'home', count: counts.all },
-          { title: 'المهام الواردة', icon: Clock, action: 'home', count: counts.New + counts.Pending },
+          { title: 'المهام الواردة', icon: Clock, action: 'home', count: (counts.New || 0) + (counts.Pending || 0) },
           { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home', count: counts.Rejected },
         ];
       case 'Admin':
@@ -112,40 +107,40 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-l border-r-0" side="right">
-      <SidebarHeader className="p-6 border-b bg-primary/5">
-        <div className="flex items-center gap-3">
+    <Sidebar className="border-l border-r-0 bg-white" side="right">
+      <SidebarHeader className="p-8 border-b bg-primary/5">
+        <div className="flex items-center gap-4">
           {logo && (
             <Image 
               src={logo.imageUrl} 
               alt="Sanad Logo" 
-              width={32} 
-              height={32} 
-              className="rounded-lg shadow-sm"
+              width={48} 
+              height={48} 
+              className="rounded-[16px] shadow-lg border-2 border-white"
               data-ai-hint={logo.imageHint}
             />
           )}
-          <span className="font-bold text-2xl text-primary">سند</span>
+          <span className="font-bold text-3xl text-primary tracking-tight">سند</span>
         </div>
       </SidebarHeader>
-      <SidebarContent className="bg-white">
+      <SidebarContent className="bg-white px-3 py-6">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-primary font-bold px-4 py-4 mb-2 text-right text-sm">
-            لوحة التحكم السريع
+          <SidebarGroupLabel className="text-slate-400 font-bold px-4 py-4 mb-4 text-right text-[10px] uppercase tracking-[2px]">
+            التنقل الذكي
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {getNavItems().map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     onClick={() => handleNav(item.action)}
-                    className="flex items-center gap-3 hover:bg-slate-100 h-12 w-full px-4 justify-start text-right"
+                    className={`flex items-center gap-4 h-13 w-full px-5 justify-start text-right rounded-[18px] transition-all duration-300 ${item.isAction ? 'premium-gradient text-white hover:opacity-90 shadow-lg' : 'hover:bg-slate-50 text-slate-600'}`}
                   >
-                    <item.icon className="w-5 h-5 text-slate-500" />
-                    <span className="text-base font-medium">{item.title}</span>
+                    <item.icon className={`w-5 h-5 ${item.isAction ? 'text-white' : 'text-slate-400'}`} />
+                    <span className="text-base font-bold">{item.title}</span>
                   </SidebarMenuButton>
                   {item.count !== undefined && item.count > 0 && (
-                    <SidebarMenuBadge className="left-2 right-auto bg-slate-100 text-slate-600 font-bold border">
+                    <SidebarMenuBadge className={`left-4 right-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-bold border-2 border-white shadow-sm ${item.isAction ? 'bg-white text-primary' : 'bg-slate-100 text-slate-500'}`}>
                       {item.count}
                     </SidebarMenuBadge>
                   )}
@@ -155,8 +150,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-6 border-t bg-slate-50 text-[11px] text-muted-foreground text-center font-medium">
-        نظام سند المصرفي لإدارة البلاغات v2.5
+      <SidebarFooter className="p-8 border-t bg-slate-50/50 text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider">
+        سند المصرفي v2.5
       </SidebarFooter>
     </Sidebar>
   );
