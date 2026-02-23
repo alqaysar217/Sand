@@ -231,7 +231,7 @@ export function AgentView() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in duration-700" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="text-right">
           <h1 className="text-3xl font-extrabold text-primary tracking-tight">صندوق الوارد والعمليات</h1>
@@ -354,7 +354,7 @@ export function AgentView() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4 pt-8 border-t border-slate-100 flex-row-reverse">
+              <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
                 <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="h-14 px-8 rounded-full font-bold">إلغاء</Button>
                 <Button type="submit" className="banking-button premium-gradient text-white h-14 px-12" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : "إرسال البلاغ فوراً"}
@@ -415,19 +415,19 @@ export function AgentView() {
                 <div className="overflow-x-auto">
                   <Table className="border-collapse">
                     <TableHeader>
-                      <TableRow className="bg-primary/5 border-b-2 border-primary/10">
-                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
-                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
-                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
-                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">الحالة</TableHead>
-                        <TableHead className="text-center h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em] pl-10">الإجراءات</TableHead>
+                      <TableRow className="bg-primary border-b-2 border-primary/10">
+                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
+                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
+                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
+                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">الحالة</TableHead>
+                        <TableHead className="text-center h-16 font-black text-white uppercase text-[11px] tracking-[0.1em] pl-10">الإجراءات</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTickets.map((t: any, index: number) => (
                         <TableRow 
                           key={t.id} 
-                          className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+                          className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100/40'}`}
                         >
                           <TableCell className="py-5 font-bold text-primary text-right pr-10">
                              <div className="flex items-center gap-3">
@@ -503,7 +503,7 @@ export function AgentView() {
                 </div>
               </DialogHeader>
               
-              <ScrollArea className="flex-1 px-8 py-6 no-scrollbar">
+              <ScrollArea className="flex-1 px-8 py-6 no-scrollbar" dir="rtl">
                 <div className="space-y-8 pb-10">
                   
                   {/* Status Notifications - High Priority */}
@@ -576,9 +576,9 @@ export function AgentView() {
                     <Card className="rounded-[24px] border-none shadow-sm bg-white">
                       <CardContent className="p-6 text-right">
                         <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">رقم الجوال</Label>
-                        <div className="flex items-center gap-3 justify-start" dir="ltr">
+                        <div className="flex items-center gap-3 justify-start">
                           <Phone className="w-4 h-4 text-primary/40" />
-                          <p className="font-black text-slate-900">{selectedTicket.phoneNumber}</p>
+                          <p className="font-black text-slate-900" dir="ltr">{selectedTicket.phoneNumber}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -690,7 +690,7 @@ export function AgentView() {
               تحذير: سيتم حذف هذا البلاغ من سجلات البنك بشكل قطعي. هذا الإجراء لا يمكن التراجع عنه وسوف تختفي كافة البيانات والمرفقات المرتبطة به.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-4 mt-10">
+          <AlertDialogFooter className="flex gap-4 mt-10">
             <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-600 hover:bg-red-700 h-14 px-10 rounded-full font-black text-lg shadow-xl shadow-red-100">تأكيد الحذف</AlertDialogAction>
             <AlertDialogCancel className="h-14 px-10 rounded-full font-black border-slate-200 hover:bg-slate-50 text-lg">تراجع عن القرار</AlertDialogCancel>
           </AlertDialogFooter>
