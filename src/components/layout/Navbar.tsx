@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -25,6 +26,7 @@ export function Navbar() {
   const deptMap: Record<string, string> = {
     'Cards': 'قسم البطائق',
     'Digital': 'خدمة العملاء',
+    'App': 'مشاكل التطبيق',
     'Support': 'الكول سنتر',
     'Operations': 'غرفة القيادة والرقابة'
   };

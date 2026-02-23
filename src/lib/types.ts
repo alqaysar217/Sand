@@ -1,5 +1,4 @@
 
-
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
 export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
@@ -58,7 +57,7 @@ export interface SystemConfig {
   specialistNames: string[];
   csNames: string[];
   agentNames: string[];
+  appSpecialistNames: string[]; // أخصائيي التطبيق
   intakeMethods: string[];
   issueTypes: string[];
 }
-

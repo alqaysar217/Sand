@@ -35,12 +35,15 @@ export function SpecialistView() {
   const [selectedStaffName, setSelectedStaffName] = useState('');
 
   // تحديد اسم القسم الحالي للموظف للمساعدة في تحديد صلاحيات "الاستلام"
-  const myDeptServiceType = user?.department === 'Cards' ? 'إدارة البطائق' : 'خدمة العملاء';
+  const myDeptServiceType = useMemo(() => {
+    if (user?.department === 'Cards') return 'إدارة البطائق';
+    if (user?.department === 'App') return 'مشاكل التطبيق';
+    return 'خدمة العملاء';
+  }, [user?.department]);
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  // استعلام جلب كافة البلاغات (بدون شرط القسم للسماح بالرؤية الشاملة)
   const allTicketsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
@@ -48,7 +51,6 @@ export function SpecialistView() {
 
   const { data: tickets, isLoading } = useCollection(allTicketsQuery);
 
-  // منطق الفلترة المزدوج (قسم + حالة)
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
     return tickets.filter(t => {
@@ -127,6 +129,13 @@ export function SpecialistView() {
     }
   };
 
+  const currentSpecialistList = useMemo(() => {
+    if (!config) return [];
+    if (user?.department === 'Cards') return config.specialistNames || [];
+    if (user?.department === 'App') return config.appSpecialistNames || [];
+    return config.csNames || [];
+  }, [config, user?.department]);
+
   if (selectedTicket) {
     return (
       <div className="space-y-8 text-right animate-in fade-in" dir="rtl">
@@ -162,7 +171,6 @@ export function SpecialistView() {
                     )}
                  </div>
 
-                 {/* لا يمكن المعالجة إلا إذا كان البلاغ يخص قسم الموظف الحالي */}
                  {selectedTicket.serviceType === myDeptServiceType ? (
                    <div className="space-y-6">
                       <div className="flex justify-between items-center flex-row-reverse">
@@ -366,10 +374,10 @@ export function SpecialistView() {
                   <Label className="font-black text-sm text-slate-600 mr-1">اسم الأخصائي القائم بالمعالجة</Label>
                   <Select value={selectedStaffName} onValueChange={setSelectedStaffName}>
                      <SelectTrigger className="banking-input h-14 text-right font-black border-slate-200">
-                       <SelectValue placeholder={(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.length ? "اختر اسمك من القائمة المعتمدة" : "بانتظار إضافة الأسماء من المدير"} />
+                       <SelectValue placeholder={currentSpecialistList.length ? "اختر اسمك من القائمة المعتمدة" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
                      </SelectTrigger>
                      <SelectContent dir="rtl">
-                        {(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.map((n: string) => <SelectItem key={n} value={n} className="font-bold">{n}</SelectItem>)}
+                        {currentSpecialistList.map((n: string) => <SelectItem key={n} value={n} className="font-bold">{n}</SelectItem>)}
                      </SelectContent>
                   </Select>
                </div>

@@ -43,12 +43,12 @@ export default function DashboardPage() {
 
   // التوجيه بناءً على الدور والقسم
   // الكول سنتر يذهب لـ AgentView (للرفع)
-  // البطائق وخدمة العملاء يذهبون لـ SpecialistView (للمعالجة)
+  // البطائق، خدمة العملاء، ومشاكل التطبيق يذهبون لـ SpecialistView (للمعالجة)
   return (
     <div className="animate-in fade-in duration-700">
       {user.role === 'Admin' && <AdminView />}
       {user.role === 'Agent' && user.department === 'Support' && <AgentView />}
-      {user.role === 'Specialist' && (user.department === 'Cards' || user.department === 'Digital') && <SpecialistView />}
+      {user.role === 'Specialist' && (user.department === 'Cards' || user.department === 'Digital' || user.department === 'App') && <SpecialistView />}
     </div>
   );
 }

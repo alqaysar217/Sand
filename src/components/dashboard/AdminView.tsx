@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, Save, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, MessageSquare, X
+  Share2, MessageSquare, X, Smartphone
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -69,6 +69,7 @@ export function AdminView() {
       specialistNames: [],
       csNames: [],
       agentNames: [],
+      appSpecialistNames: [],
       intakeMethods: [],
       issueTypes: []
     };
@@ -153,7 +154,7 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="staff" className="space-y-6 animate-in fade-in duration-500 mt-0">
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <ConfigSection 
                 title="أخصائيي البطائق" 
                 items={config?.specialistNames || []} 
@@ -167,6 +168,13 @@ export function AdminView() {
                 onSave={(newList: string[]) => handleUpdateConfigList('csNames', newList)} 
                 icon={<MonitorSmartphone className="w-4 h-4" />}
                 placeholder="أضف موظف خدمة عملاء..."
+              />
+              <ConfigSection 
+                title="أخصائيي التطبيق" 
+                items={config?.appSpecialistNames || []} 
+                onSave={(newList: string[]) => handleUpdateConfigList('appSpecialistNames', newList)} 
+                icon={<Smartphone className="w-4 h-4" />}
+                placeholder="أخصائي مشاكل التطبيق..."
               />
               <ConfigSection 
                 title="موظفي الكول سنتر" 
@@ -289,7 +297,6 @@ function StatCard({ icon: Icon, title, value, color }: any) {
             )}>{value}</h3>
           </div>
        </div>
-       {/* زخرفة خلفية بسيطة لزيادة الجاذبية البصرية */}
        {isBgColor && (
          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
             <Icon className="absolute -bottom-4 -left-4 w-24 h-24 rotate-12" />
