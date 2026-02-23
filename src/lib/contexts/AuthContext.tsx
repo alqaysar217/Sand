@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface AuthContextType {
@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         snapshotUnsubscribe.current();
       }
 
+      // مراقبة حية لملف المستخدم
       snapshotUnsubscribe.current = onSnapshot(
         doc(db, 'users', firebaseUser.uid),
         (docSnap) => {
@@ -54,7 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         },
         (err) => {
-          setError("خطأ في جلب البيانات.");
+          console.error("Firestore sync error:", err);
+          setError("خطأ في الاتصال بقاعدة البيانات.");
           setLoading(false);
         }
       );
@@ -75,9 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه فوراً بكلمة المرور الافتراضية للتجربة
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
         try {
+          // إنشاء حساب تجريبي فوراً إذا لم يكن موجوداً
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr: any) {
           throw err;

@@ -19,7 +19,7 @@ export default function DashboardPage() {
 
   const autoValues = useMemo(() => {
     const email = firebaseUser?.email || '';
-    // مطابقة البيانات بناءً على القائمة المرسلة من المستخدم
+    // مطابقة البيانات بناءً على القائمة الرسمية المرسلة من المستخدم
     if (email === 'admin.bank@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
     if (email === 'balkharam.admin@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'بلخرم (المدير العام)' };
     if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
@@ -37,7 +37,6 @@ export default function DashboardPage() {
         setIsActivating(true);
         try {
           await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
-          // لا نحتاج لرسالة توست هنا لسرعة الانتقال
         } catch (err) {
           console.error("Auto activation failed", err);
           toast({ variant: "destructive", title: "خطأ في التفعيل", description: "يرجى تسجيل الخروج والمحاولة مرة أخرى." });
