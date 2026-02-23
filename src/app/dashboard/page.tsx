@@ -17,9 +17,9 @@ export default function DashboardPage() {
   const [isActivating, setIsActivating] = useState(false);
   const { toast } = useToast();
 
+  // نظام ذكي لتعيين الصلاحيات بناءً على القائمة الرسمية المرسلة من العميل
   const autoValues = useMemo(() => {
     const email = firebaseUser?.email || '';
-    // مطابقة البيانات بناءً على القائمة الرسمية المرسلة من المستخدم
     if (email === 'admin.bank@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
     if (email === 'balkharam.admin@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'بلخرم (المدير العام)' };
     if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
@@ -27,19 +27,21 @@ export default function DashboardPage() {
     if (email === 'cards.ops@bank.com') return { role: 'Specialist' as UserRole, dept: 'Cards' as Department, name: 'الأخصائي الفني' };
     if (email === 'cs.digital@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
     
-    return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك' };
+    // قيمة افتراضية في حال وجود إيميل غير مسجل
+    return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك جديد' };
   }, [firebaseUser?.email]);
 
-  // تفعيل فوري وقوي جداً عند أول دخول لكل حساب تجريبي
+  // التنشيط التلقائي الفوري: يتم إنشاء الملف بمجرد اكتشاف أنه مفقود
   useEffect(() => {
     if (error === "MISSING_PROFILE" && firebaseUser && !isActivating && !user) {
       const runActivation = async () => {
         setIsActivating(true);
         try {
           await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
+          toast({ title: "تم تفعيل الهوية المصرفية", description: `مرحباً بك: ${autoValues.name}` });
         } catch (err) {
           console.error("Auto activation failed", err);
-          toast({ variant: "destructive", title: "خطأ في التفعيل", description: "يرجى تسجيل الخروج والمحاولة مرة أخرى." });
+          toast({ variant: "destructive", title: "خطأ في التهيئة", description: "فشل تفعيل الصلاحيات تلقائياً." });
         } finally {
           setIsActivating(false);
         }
@@ -65,40 +67,27 @@ export default function DashboardPage() {
     );
   }
 
-  if (error === "MISSING_PROFILE" && !isActivating) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 gap-6 text-center">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
-        <p className="font-black text-slate-600 text-lg">لم نتمكن من العثور على صلاحياتك، جاري محاولة التنشيط...</p>
-        <Button onClick={logout} variant="outline" className="rounded-full">خروج ومحاولة ثانية</Button>
-      </div>
-    );
-  }
-
-  if (error && error !== "MISSING_PROFILE") return (
-    <div className="max-w-md mx-auto mt-20 text-right" dir="rtl">
-      <Alert variant="destructive" className="rounded-[24px] shadow-xl border-none">
-        <AlertTitle className="font-black text-right mb-2">تنبيه النظام</AlertTitle>
-        <AlertDescription className="font-bold text-right">{error}</AlertDescription>
-      </Alert>
-      <Button className="w-full h-12 rounded-full mt-6 font-black bg-primary shadow-lg" onClick={logout}>العودة للرئيسية</Button>
-    </div>
+  // السماح بالعرض فقط إذا وجد المستخدم والملف الشخصي
+  if (!user && !isActivating) return (
+     <div className="flex flex-col items-center justify-center p-20 gap-4">
+        <Loader2 className="animate-spin h-10 w-10 text-primary" />
+        <p className="font-black text-slate-500">جاري تحميل البيانات الفنية...</p>
+        <Button onClick={logout} variant="outline" className="rounded-full">العودة للرئيسية</Button>
+     </div>
   );
 
-  if (!user) return null;
-
   switch (user.role) {
+    case 'Admin':
+      return <AdminView />;
     case 'Agent':
       return <AgentView />;
     case 'Specialist':
       return <SpecialistView />;
-    case 'Admin':
-      return <AdminView />;
     default:
       return (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
-          <p className="font-black text-slate-400">لم يتم تحديد صلاحياتك بعد.</p>
-          <Button onClick={logout} className="rounded-full">الخروج</Button>
+          <p className="font-black text-slate-400 text-center">لم يتم تحديد صلاحياتك الوظيفية بشكل صحيح.</p>
+          <Button onClick={logout} className="rounded-full">الخروج وإعادة المحاولة</Button>
         </div>
       );
   }

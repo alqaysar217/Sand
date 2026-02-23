@@ -17,21 +17,25 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('password123');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const { login, user, loading, error } = useAuth();
+  const { login, user, loading, firebaseUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   useEffect(() => {
-    // التوجه للوحة القيادة فور تحقق هوية المستخدم أو حاجته للتفعيل
-    if ((user || error === "MISSING_PROFILE") && !loading) {
+    // التوجه فوراً للوحة القيادة بمجرد نجاح تسجيل الدخول فيربيس
+    if (firebaseUser && !loading) {
       router.push('/dashboard');
     }
-  }, [user, error, loading, router]);
+  }, [firebaseUser, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) {
+      toast({ variant: "destructive", title: "تنبيه", description: "يرجى إدخال البريد الإلكتروني أو اختيار حساب تجريبي." });
+      return;
+    }
     setIsLoggingIn(true);
     try {
       await login(email, password);
@@ -39,7 +43,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "خطأ في الدخول",
-        description: "تأكد من البريد الإلكتروني أو حاول لاحقاً.",
+        description: "تأكد من بيانات الاعتماد وحاول مرة أخرى.",
       });
     } finally {
       setIsLoggingIn(false);
