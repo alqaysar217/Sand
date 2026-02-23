@@ -13,12 +13,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Loader2, Inbox, Headset,
   Phone, Share2, MessageSquare, ImageIcon, User, Paperclip, X, Upload,
-  Clock, CheckCircle2, AlertTriangle, FileText, UserCheck, MessageCircle
+  Clock, CheckCircle2, AlertTriangle, FileText, UserCheck, MessageCircle,
+  Trash2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 
 export function AgentView() {
@@ -118,6 +120,13 @@ export function AgentView() {
         setAttachments([]);
       })
       .finally(() => setIsSubmitting(false));
+  };
+
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!db) return;
+    deleteDocumentNonBlocking(doc(db, 'tickets', ticketId));
+    toast({ title: "تم الحذف", description: "تم حذف البلاغ بنجاح." });
+    if (selectedTicket?.id === ticketId) setSelectedTicket(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -317,7 +326,30 @@ export function AgentView() {
                     <TableCell className="text-right font-bold text-slate-500">{t.serviceType}</TableCell>
                     <TableCell className="text-right">{getStatusBadge(t.status)}</TableCell>
                     <TableCell className="text-center pl-8">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black border-primary text-primary">عرض التفاصيل</Button>
+                      <div className="flex items-center justify-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black border-primary text-primary">عرض التفاصيل</Button>
+                        <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
+                                 <Trash2 className="w-4 h-4" />
+                              </Button>
+                           </AlertDialogTrigger>
+                           <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                              <AlertDialogHeader>
+                                 <AlertDialogTitle className="font-black text-right">تأكيد حذف البلاغ</AlertDialogTitle>
+                                 <AlertDialogDescription className="text-right font-bold">
+                                    هل أنت متأكد من رغبتك في حذف البلاغ رقم {t.ticketID}؟ لا يمكن التراجع عن هذا الإجراء.
+                                 </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter className="flex-row-reverse gap-3">
+                                 <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                                 <AlertDialogAction onClick={() => handleDeleteTicket(t.id)} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
+                                    تأكيد الحذف
+                                 </AlertDialogAction>
+                              </AlertDialogFooter>
+                           </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -333,10 +365,10 @@ export function AgentView() {
       )}
 
       <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
-        <DialogContent className="max-w-4xl text-right rounded-[32px] p-0 overflow-hidden no-scrollbar max-h-[90vh]" dir="rtl">
+        <DialogContent className="max-w-4xl text-right rounded-[32px] p-0 overflow-hidden flex flex-col max-h-[90vh]" dir="rtl">
            {selectedTicket && (
-             <div className="flex flex-col h-full">
-                <DialogHeader className="p-8 border-b bg-primary/5 sticky top-0 z-10">
+             <>
+                <DialogHeader className="p-8 border-b bg-primary/5 shrink-0">
                    <div className="flex justify-between items-center w-full">
                       <div className="text-right">
                         <DialogTitle className="text-2xl font-black text-primary">بلاغ رقم {selectedTicket.ticketID}</DialogTitle>
@@ -344,11 +376,25 @@ export function AgentView() {
                           تاريخ الإنشاء: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}
                         </DialogDescription>
                       </div>
-                      {getStatusBadge(selectedTicket.status)}
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(selectedTicket.status)}
+                        <Button 
+                          variant="destructive" 
+                          size="icon" 
+                          className="rounded-full h-9 w-9 shadow-lg" 
+                          onClick={() => {
+                            if(confirm(`هل أنت متأكد من حذف البلاغ ${selectedTicket.ticketID}؟`)) {
+                              handleDeleteTicket(selectedTicket.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                    </div>
                 </DialogHeader>
                 
-                <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1">
+                <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1 min-h-0">
                    {/* بيانات العميل والطلب */}
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card className="banking-card p-6 border-none shadow-md space-y-4">
@@ -402,16 +448,27 @@ export function AgentView() {
                          وصف المشكلة الفنية <FileText className="w-4 h-4" />
                       </h4>
                       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 text-right">
-                         <p className="leading-relaxed font-medium">{selectedTicket.description}</p>
+                         <p className="leading-relaxed font-medium whitespace-pre-wrap">{selectedTicket.description}</p>
                       </div>
 
                       {selectedTicket.attachments?.length > 0 && (
-                        <div className="grid grid-cols-3 gap-4 mt-4">
-                           {selectedTicket.attachments.map((at: any, i: number) => (
-                             <div key={i} className="bg-white border p-2 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                                <img src={at.url} alt="attachment" className="w-full aspect-video object-cover rounded-xl cursor-pointer" onClick={() => window.open(at.url)} />
-                             </div>
-                           ))}
+                        <div className="space-y-3">
+                           <h5 className="text-[10px] font-black text-slate-400 flex items-center gap-1 justify-end uppercase tracking-widest">المرفقات الفنية</h5>
+                           <div className="grid grid-cols-3 gap-4">
+                              {selectedTicket.attachments.map((at: any, i: number) => (
+                                <div key={i} className="bg-white border p-2 rounded-2xl shadow-sm hover:shadow-md transition-shadow group relative">
+                                   <img 
+                                     src={at.url} 
+                                     alt="attachment" 
+                                     className="w-full aspect-video object-cover rounded-xl cursor-pointer" 
+                                     onClick={() => window.open(at.url)} 
+                                   />
+                                   <div className="absolute inset-0 bg-primary/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
+                                      <ImageIcon className="text-white w-6 h-6" />
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
                         </div>
                       )}
                    </div>
@@ -443,7 +500,7 @@ export function AgentView() {
                    )}
 
                    {/* سجل التتبع */}
-                   <div className="space-y-4 pt-4 border-t border-slate-100">
+                   <div className="space-y-4 pt-4 border-t border-slate-100 pb-8">
                       <h4 className="font-black text-slate-400 flex items-center gap-2 justify-end">
                          سجل تتبع العمليات <Clock className="w-4 h-4" />
                       </h4>
@@ -464,10 +521,10 @@ export function AgentView() {
                    </div>
                 </div>
 
-                <div className="p-8 border-t bg-white flex justify-end sticky bottom-0 z-10">
-                   <Button onClick={() => setSelectedTicket(null)} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إإغلاق التفاصيل</Button>
+                <div className="p-8 border-t bg-white flex justify-end shrink-0">
+                   <Button onClick={() => setSelectedTicket(null)} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إغلاق التفاصيل</Button>
                 </div>
-             </div>
+             </>
            )}
         </DialogContent>
       </Dialog>
