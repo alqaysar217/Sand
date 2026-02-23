@@ -12,10 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -202,6 +202,20 @@ export function AdminView() {
     toast({ title: "تم الحذف", description: "تم إزالة الخيار من القائمة" });
   };
 
+  const handleEditConfigItem = async (field: string, oldVal: string, newVal: string) => {
+    if (!db || !configRef || !newVal.trim() || oldVal === newVal) return;
+    
+    const currentList = config?.[field] || [];
+    const newList = currentList.map((item: string) => item === oldVal ? newVal : item);
+    
+    try {
+      await updateDoc(configRef, { [field]: newList });
+      toast({ title: "تم التحديث", description: "تم تعديل الخيار بنجاح" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث الخيار" });
+    }
+  };
+
   return (
     <div className="space-y-8 text-right" dir="rtl">
       <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} dir="rtl" className="w-full">
@@ -372,6 +386,7 @@ export function AdminView() {
                   onValueChange={(v) => setNewItemValues({...newItemValues, intakeMethods: v})}
                   onAdd={() => handleAddConfigItem('intakeMethods')}
                   onRemove={(val) => handleRemoveConfigItem('intakeMethods', val)}
+                  onEdit={(oldVal, newVal) => handleEditConfigItem('intakeMethods', oldVal, newVal)}
                 />
                 <ConfigListManager 
                   title="أنواع المشكلات الفنية" 
@@ -381,6 +396,7 @@ export function AdminView() {
                   onValueChange={(v) => setNewItemValues({...newItemValues, issueTypes: v})}
                   onAdd={() => handleAddConfigItem('issueTypes')}
                   onRemove={(val) => handleRemoveConfigItem('issueTypes', val)}
+                  onEdit={(oldVal, newVal) => handleEditConfigItem('issueTypes', oldVal, newVal)}
                 />
               </CardContent>
             </Card>
@@ -555,7 +571,28 @@ function StaffCategoryCard({ icon: Icon, title, desc, count }: any) {
   );
 }
 
-function ConfigListManager({ title, field, items, value, onValueChange, onAdd, onRemove }: any) {
+function ConfigListManager({ title, items, value, onValueChange, onAdd, onRemove, onEdit }: any) {
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const startEdit = (item: string) => {
+    setEditingItem(item);
+    setEditValue(item);
+  };
+
+  const cancelEdit = () => {
+    setEditingItem(null);
+    setEditValue("");
+  };
+
+  const confirmEdit = () => {
+    if (editingItem && editValue.trim()) {
+      onEdit(editingItem, editValue.trim());
+      setEditingItem(null);
+      setEditValue("");
+    }
+  };
+
   return (
     <div className="space-y-4 bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm">
       <div className="flex justify-between items-center flex-row-reverse mb-2">
@@ -576,12 +613,37 @@ function ConfigListManager({ title, field, items, value, onValueChange, onAdd, o
       </div>
       <div className="flex flex-wrap gap-3 justify-end max-h-[250px] overflow-y-auto p-2 no-scrollbar">
         {items.map((item: string) => (
-          <Badge key={item} variant="outline" className="h-10 pl-2 pr-4 rounded-full flex items-center gap-3 bg-slate-50 border-slate-200 text-slate-700 font-bold hover:bg-red-50 hover:border-red-200 group transition-all">
-            <button onClick={() => onRemove(item)} className="p-1 rounded-full opacity-40 group-hover:opacity-100 hover:bg-red-100 transition-all">
-              <X className="w-3.5 h-3.5 text-red-500" />
-            </button>
-            <span>{item}</span>
-          </Badge>
+          <div key={item} className="flex items-center gap-2">
+            {editingItem === item ? (
+              <div className="flex items-center gap-2 bg-slate-50 border rounded-full p-1 pl-3 transition-all animate-in zoom-in-95">
+                <Button variant="ghost" size="icon" onClick={confirmEdit} className="h-8 w-8 rounded-full text-green-600 hover:bg-green-50">
+                  <Check className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50">
+                  <X className="w-4 h-4" />
+                </Button>
+                <Input 
+                  autoFocus 
+                  value={editValue} 
+                  onChange={(e) => setEditValue(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && confirmEdit()}
+                  className="h-8 w-32 border-none bg-transparent text-right font-bold text-sm focus-visible:ring-0 p-0"
+                />
+              </div>
+            ) : (
+              <Badge variant="outline" className="h-10 pl-2 pr-4 rounded-full flex items-center gap-2 bg-slate-50 border-slate-200 text-slate-700 font-bold hover:shadow-sm group transition-all">
+                <div className="flex items-center gap-1">
+                  <button onClick={() => onRemove(item)} className="p-1 rounded-full opacity-40 group-hover:opacity-100 hover:bg-red-100 hover:text-red-500 transition-all">
+                    <X className="w-3 h-3" />
+                  </button>
+                  <button onClick={() => startEdit(item)} className="p-1 rounded-full opacity-40 group-hover:opacity-100 hover:bg-blue-100 hover:text-blue-500 transition-all">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                </div>
+                <span>{item}</span>
+              </Badge>
+            )}
+          </div>
         ))}
         {items.length === 0 && (
           <div className="w-full text-center py-4 border-2 border-dashed rounded-2xl border-slate-100">
