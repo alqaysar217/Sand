@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -260,16 +261,33 @@ export function AdminView() {
 }
 
 function StatCard({ icon: Icon, title, value, color }: any) {
+  const isBgColor = color.startsWith('bg-');
+  
   return (
-    <Card className={`banking-card border-none shadow-lg overflow-hidden ${color.startsWith('bg') ? color + ' text-white' : 'bg-white'}`}>
+    <Card className={cn(
+      "banking-card border-none shadow-lg overflow-hidden",
+      isBgColor ? `${color} text-white` : "bg-white"
+    )}>
       <CardContent className="pt-6">
          <div className="flex justify-between items-start flex-row-reverse">
-            <div className={`p-3 rounded-2xl ${color.startsWith('bg') ? 'bg-white/20' : 'bg-slate-50'}`}>
-               <Icon className={`w-6 h-6 ${!color.startsWith('bg') ? color : 'text-white'}`} />
+            <div className={cn(
+              "p-3 rounded-2xl",
+              isBgColor ? "bg-white/20" : "bg-slate-50"
+            )}>
+               <Icon className={cn(
+                 "w-6 h-6",
+                 isBgColor ? "text-white" : color
+               )} />
             </div>
             <div className="text-right">
-              <p className={`text-[10px] font-black uppercase ${color.startsWith('bg') ? 'text-white/70' : 'text-slate-400'}`}>{title}</p>
-              <h3 className={`text-3xl font-black mt-1 ${!color.startsWith('bg') ? 'text-slate-900' : 'text-white'}`}>{value}</h3>
+              <p className={cn(
+                "text-[10px] font-black uppercase",
+                isBgColor ? "text-white/70" : "text-slate-400"
+              )}>{title}</p>
+              <h3 className={cn(
+                "text-3xl font-black mt-1",
+                isBgColor ? "text-white" : "text-slate-900"
+              )}>{value}</h3>
             </div>
          </div>
       </CardContent>
