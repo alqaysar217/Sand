@@ -465,7 +465,7 @@ export function AgentView() {
                 </div>
 
                 <div className="p-8 border-t bg-white flex justify-end sticky bottom-0 z-10">
-                   <Button onClick={() => setSelectedTicket(null)} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إغلاق التفاصيل</Button>
+                   <Button onClick={() => setSelectedTicket(null)} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إإغلاق التفاصيل</Button>
                 </div>
              </div>
            )}
