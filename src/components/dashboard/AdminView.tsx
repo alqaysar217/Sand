@@ -22,7 +22,8 @@ import {
   X,
   TrendingUp,
   PieChart as PieChartIcon,
-  BarChart3
+  BarChart3,
+  UserPlus
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -192,14 +193,21 @@ export function AdminView() {
         <TabsContent value="settings" className="space-y-6 animate-in fade-in duration-500 mt-0">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ConfigSection 
+                title="موظفي البطائق (الأخصائيين)" 
+                items={config?.specialistNames || ['علاء', 'محمود', 'عبدالله']} 
+                onSave={newList => handleUpdateConfigList('specialistNames', newList)} 
+                icon={<UserPlus className="w-4 h-4" />}
+              />
+              <ConfigSection 
+                title="موظفي خدمة العملاء/العلاقات" 
+                items={config?.agentNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس']} 
+                onSave={newList => handleUpdateConfigList('agentNames', newList)} 
+                icon={<Users className="w-4 h-4" />}
+              />
+              <ConfigSection 
                 title="الجهات المعنية" 
                 items={config?.serviceTypes || ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق']} 
                 onSave={newList => handleUpdateConfigList('serviceTypes', newList)} 
-              />
-              <ConfigSection 
-                title="أسماء موظفي العلاقات" 
-                items={config?.staffNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس', 'عبدالله باخميس']} 
-                onSave={newList => handleUpdateConfigList('staffNames', newList)} 
               />
               <ConfigSection 
                 title="وسائل استلام البلاغات" 
@@ -282,9 +290,10 @@ interface ConfigSectionProps {
   title: string;
   items: string[];
   onSave: (newList: string[]) => void;
+  icon?: React.ReactNode;
 }
 
-function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
+function ConfigSection({ title, items, onSave, icon }: ConfigSectionProps) {
    const [newItem, setNewItem] = useState('');
    const [editingIndex, setEditingIndex] = useState<number | null>(null);
    const [editingValue, setEditingValue] = useState('');
@@ -318,7 +327,9 @@ function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
    return (
       <Card className="banking-card border-none shadow-xl overflow-hidden">
          <CardHeader className="bg-primary/5 p-6 border-b flex flex-row-reverse items-center justify-between">
-            <CardTitle className="text-lg font-black text-primary">{title}</CardTitle>
+            <CardTitle className="text-lg font-black text-primary flex items-center gap-2">
+               {title} {icon}
+            </CardTitle>
             <Badge variant="outline" className="font-black text-[10px]">{items.length} عنصر</Badge>
          </CardHeader>
          <CardContent className="p-6 space-y-6">

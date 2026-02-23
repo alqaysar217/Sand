@@ -406,8 +406,8 @@ export function SpecialistView() {
                      <SelectValue placeholder="اختر اسمك من القائمة" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
-                     {config?.staffNames?.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>) || (
-                        ['سارة الأخصائية', 'عمر التقني', 'محمد بلخرم'].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)
+                     {config?.specialistNames?.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>) || (
+                        ['علاء', 'محمود', 'عبدالله'].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)
                      )}
                   </SelectContent>
                </Select>

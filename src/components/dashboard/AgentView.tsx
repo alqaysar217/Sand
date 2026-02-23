@@ -206,8 +206,8 @@ export function AgentView() {
                   <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
                     <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر اسم الموظف" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.staffNames?.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>) || (
-                        ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس', 'عبدالله باخميس'].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)
+                      {config?.agentNames?.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>) || (
+                        ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس'].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)
                       )}
                     </SelectContent>
                   </Select>
@@ -568,4 +568,3 @@ export function AgentView() {
     </div>
   );
 }
-
