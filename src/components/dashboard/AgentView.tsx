@@ -220,11 +220,11 @@ export function AgentView() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending': return <Badge className="status-pending rounded-full px-4">قيد المعالجة</Badge>;
-      case 'Resolved': return <Badge className="status-resolved rounded-full px-4">تم الحل</Badge>;
-      case 'Escalated': return <Badge className="status-escalated rounded-full px-4">محال للإدارة</Badge>;
-      case 'Rejected': return <Badge className="status-rejected rounded-full px-4">مرفوض</Badge>;
-      default: return <Badge className="status-new rounded-full px-4">جديد</Badge>;
+      case 'Pending': return <Badge className="status-pending rounded-full px-4 font-bold">قيد المعالجة</Badge>;
+      case 'Resolved': return <Badge className="status-resolved rounded-full px-4 font-bold">تم الحل</Badge>;
+      case 'Escalated': return <Badge className="status-escalated rounded-full px-4 font-bold">محال للإدارة</Badge>;
+      case 'Rejected': return <Badge className="status-rejected rounded-full px-4 font-bold">مرفوض</Badge>;
+      default: return <Badge className="status-new rounded-full px-4 font-bold">جديد</Badge>;
     }
   };
 
@@ -423,7 +423,10 @@ export function AgentView() {
                     </TableHeader>
                     <TableBody>
                       {filteredTickets.map((t: any, index: number) => (
-                        <TableRow key={t.id} className={`transition-all duration-200 border-b border-slate-50/50 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                        <TableRow 
+                          key={t.id} 
+                          className={`transition-all duration-200 border-b border-slate-50/50 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100/40'}`}
+                        >
                           <TableCell className="font-bold text-primary text-right pr-10">
                              <div className="flex items-center gap-3">
                                <span className="bg-primary/5 px-4 py-2 rounded-full text-xs shadow-sm border border-primary/5">{t.ticketID}</span>
