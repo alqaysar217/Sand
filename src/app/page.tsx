@@ -15,7 +15,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function Home() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('password123');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { login, user, loading, error } = useAuth();
   const { toast } = useToast();
@@ -39,7 +39,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "خطأ في الدخول",
-        description: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+        description: "تأكد من البريد الإلكتروني أو حاول لاحقاً.",
       });
     } finally {
       setIsLoggingIn(false);
