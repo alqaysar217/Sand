@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Loader2, Inbox, Headset,
-  Phone, Share2, MessageSquare, Image as ImageIcon, User, Fingerprint, Paperclip, X
+  Phone, Share2, MessageSquare, Image as ImageIcon, User, Paperclip, X, Upload
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -24,15 +24,13 @@ export function AgentView() {
   const { user } = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-
-  // التأكد من أن الكول سنتر هو الوحيد الذي يمكنه الرفع
-  const canRaiseTickets = user?.department === 'Support';
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
@@ -46,7 +44,6 @@ export function AgentView() {
     subIssue: '', 
     description: '', 
     createdByAgentName: '',
-    attachmentUrl: ''
   });
 
   const [attachments, setAttachments] = useState<{url: string, description: string}[]>([]);
@@ -67,10 +64,14 @@ export function AgentView() {
     });
   }, [tickets, searchQuery, activeTab]);
 
-  const handleAddAttachment = () => {
-    if (formData.attachmentUrl.trim()) {
-      setAttachments([...attachments, { url: formData.attachmentUrl, description: 'مرفق فني' }]);
-      setFormData({...formData, attachmentUrl: ''});
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachments([...attachments, { url: reader.result as string, description: file.name }]);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -80,7 +81,10 @@ export function AgentView() {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db) return;
+    if (!user || !db || !formData.createdByAgentName) {
+      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسم الموظف أولاً" });
+      return;
+    }
     setIsSubmitting(true);
     const ticketID = `TIC-${Math.floor(10000 + Math.random() * 90000)}`;
     
@@ -109,7 +113,7 @@ export function AgentView() {
       .then(() => {
         toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}` });
         setShowNewForm(false);
-        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '', attachmentUrl: '' });
+        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
         setAttachments([]);
       })
       .finally(() => setIsSubmitting(false));
@@ -133,7 +137,7 @@ export function AgentView() {
           </h1>
           <p className="text-slate-500 font-bold mt-1">إنشاء وبث البلاغات المصرفية للأقسام الفنية</p>
         </div>
-        {canRaiseTickets && !showNewForm && (
+        {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="banking-button premium-gradient text-white h-14 px-8 shadow-xl">
             <Plus className="w-5 h-5 ml-2" /> فتح بلاغ جديد
           </Button>
@@ -149,16 +153,15 @@ export function AgentView() {
           </CardHeader>
           <CardContent className="p-10">
             <form onSubmit={handleCreateTicket} className="space-y-8">
-              {/* الموظف والجهة المستلمة */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1 text-primary flex items-center gap-2 justify-end">
                     موظف الكول سنتر (الرفع) <User className="w-4 h-4" />
                   </Label>
-                  <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
-                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="اختر اسمك" /></SelectTrigger>
+                  <Select value={formData.createdByAgentName} onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="اختر اسمك من القائمة" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">موظف تجريبي</SelectItem>}
+                      {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">بانتظار إضافة الموظفين من المدير</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
@@ -177,7 +180,6 @@ export function AgentView() {
                 </div>
               </div>
 
-              {/* بيانات العميل */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1">اسم العميل</Label>
@@ -196,14 +198,13 @@ export function AgentView() {
                 </div>
               </div>
 
-              {/* تصنيف المشكلة */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">وسيلة استلام الطلب <Share2 className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="كيف تواصل العميل؟" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>) || <SelectItem value="dev">وسيلة تجريبية</SelectItem>}
+                      {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>) || <SelectItem value="dev">بانتظار الإعداد من المدير</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
@@ -212,45 +213,58 @@ export function AgentView() {
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="تصنيف المشكلة الفنية" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || <SelectItem value="dev">مشكلة تجريبية</SelectItem>}
+                      {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || <SelectItem value="dev">بانتظار الإعداد من المدير</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* الوصف والمرفقات */}
               <div className="space-y-6">
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1">وصف المشكلة بالتفصيل</Label>
-                  <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[150px] text-right border-slate-200 text-base" placeholder="اكتب هنا كافة التفاصيل التي ذكرها العميل..." />
+                  <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[150px] text-right border-slate-200 text-base" placeholder="اكتب هنا كافة التفاصيل..." />
                 </div>
 
                 <div className="space-y-3 text-right">
-                  <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">المرفقات والصور <Paperclip className="w-4 h-4 text-slate-400" /></Label>
-                  <div className="flex gap-2 flex-row-reverse">
-                    <Input value={formData.attachmentUrl} onChange={e => setFormData({...formData, attachmentUrl: e.target.value})} className="banking-input h-12 text-right border-slate-200" placeholder="رابط الصورة أو المستند..." />
-                    <Button type="button" onClick={handleAddAttachment} variant="outline" className="rounded-xl h-12 px-6 border-primary text-primary font-black">إضافة</Button>
-                  </div>
-                  {attachments.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                      {attachments.map((at, idx) => (
-                        <div key={idx} className="relative group bg-slate-50 p-2 rounded-xl border border-slate-100">
-                          <div className="h-20 w-full flex items-center justify-center bg-white rounded-lg overflow-hidden border">
-                             <ImageIcon className="w-8 h-8 text-slate-200" />
+                  <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">المرفقات والصور <ImageIcon className="w-4 h-4 text-slate-400" /></Label>
+                  <div className="flex flex-col gap-4">
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()} 
+                      variant="outline" 
+                      className="rounded-2xl h-16 w-full border-dashed border-2 border-primary/30 text-primary font-black flex items-center justify-center gap-3 hover:bg-primary/5"
+                    >
+                      <Upload className="w-5 h-5" /> اختر صورة من جهازك لإرفاقها بالبلاغ
+                    </Button>
+
+                    {attachments.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                        {attachments.map((at, idx) => (
+                          <div key={idx} className="relative group bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                            <div className="aspect-square w-full rounded-xl overflow-hidden border">
+                               <img src={at.url} alt="preview" className="w-full h-full object-cover" />
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="destructive" 
+                              size="icon" 
+                              onClick={() => handleRemoveAttachment(idx)}
+                              className="absolute -top-2 -right-2 w-7 h-7 rounded-full shadow-lg"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <Button 
-                            type="button" 
-                            variant="destructive" 
-                            size="icon" 
-                            onClick={() => handleRemoveAttachment(idx)}
-                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -305,7 +319,6 @@ export function AgentView() {
         </Card>
       )}
 
-      {/* تفاصيل البلاغ */}
       <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
         <DialogContent className="max-w-3xl text-right rounded-[32px] p-0 overflow-hidden" dir="rtl">
            {selectedTicket && (
@@ -324,32 +337,17 @@ export function AgentView() {
                       <p className="font-mono font-black text-lg">{selectedTicket.cif}</p>
                    </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                   <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black uppercase">وسيلة الاستلام</span>
-                      <p className="font-bold">{selectedTicket.intakeMethod}</p>
-                   </div>
-                   <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black uppercase">نوع المشكلة</span>
-                      <p className="font-bold">{selectedTicket.subIssue}</p>
-                   </div>
-                   <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black uppercase">الجهة المعنية</span>
-                      <p className="font-bold text-primary">{selectedTicket.serviceType}</p>
-                   </div>
-                </div>
                 <div className="bg-slate-50 p-6 rounded-2xl">
                    <span className="text-[10px] text-slate-400 block font-black mb-2 uppercase">تفاصيل المشكلة</span>
                    <p className="font-medium leading-relaxed">{selectedTicket.description}</p>
                 </div>
                 {selectedTicket.attachments?.length > 0 && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <span className="text-[10px] text-slate-400 block font-black uppercase">المرفقات</span>
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-3 gap-4">
                        {selectedTicket.attachments.map((at: any, i: number) => (
-                         <div key={i} className="bg-white border p-3 rounded-xl flex items-center gap-2">
-                            <ImageIcon className="w-4 h-4 text-primary" />
-                            <span className="text-xs font-bold">مرفق {i + 1}</span>
+                         <div key={i} className="bg-white border p-2 rounded-xl">
+                            <img src={at.url} alt="attachment" className="w-full aspect-video object-cover rounded-lg cursor-pointer" onClick={() => window.open(at.url)} />
                          </div>
                        ))}
                     </div>
@@ -365,4 +363,3 @@ export function AgentView() {
     </div>
   );
 }
-

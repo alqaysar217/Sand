@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,9 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  CheckCircle2, UserPlus, MessageSquare, Sparkles, ArrowRight, Loader2, Clock, History, UserCircle, Fingerprint, Inbox, XCircle, Send
+  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
@@ -33,13 +33,11 @@ export function SpecialistView() {
   const [ticketToClaim, setTicketToClaim] = useState<any | null>(null);
   const [selectedStaffName, setSelectedStaffName] = useState('');
 
-  // تحديد المسمى البرمجي للقسم لاستلام البلاغات الموجهة إليه فقط
   const myDeptServiceType = user?.department === 'Cards' ? 'إدارة البطائق' : 'خدمة العملاء';
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  // جلب البلاغات الموجهة لقسم المستخدم فقط
   const myDeptTicketsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'tickets'), where('serviceType', '==', myDeptServiceType), orderBy('createdAt', 'desc'));
@@ -115,6 +113,15 @@ export function SpecialistView() {
                  <div className="bg-slate-50 p-6 rounded-2xl space-y-4">
                     <h4 className="font-black text-slate-800">تفاصيل بلاغ الكول سنتر:</h4>
                     <p className="font-medium text-slate-600">{selectedTicket.description}</p>
+                    {selectedTicket.attachments?.length > 0 && (
+                      <div className="grid grid-cols-3 gap-4 mt-4">
+                        {selectedTicket.attachments.map((at: any, i: number) => (
+                          <div key={i} className="bg-white border p-1 rounded-xl">
+                            <img src={at.url} alt="attachment" className="w-full aspect-video object-cover rounded-lg" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                  </div>
                  <div className="space-y-4">
                     <div className="flex justify-between items-center flex-row-reverse">
@@ -132,14 +139,25 @@ export function SpecialistView() {
               </CardContent>
            </Card>
            <Card className="banking-card">
-              <CardHeader className="p-6 border-b"><CardTitle className="text-lg font-black">سجل التتبع</CardTitle></CardHeader>
+              <CardHeader className="p-6 border-b"><CardTitle className="text-lg font-black">بيانات العميل</CardTitle></CardHeader>
               <CardContent className="p-6 space-y-4">
-                 {selectedTicket.logs?.map((log: any, idx: number) => (
-                    <div key={idx} className="border-r-2 border-slate-100 pr-4 pb-4">
-                       <p className="text-xs font-black text-slate-800">{log.action}</p>
-                       <p className="text-[10px] text-slate-400 mt-1">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
-                    </div>
-                 ))}
+                 <div className="space-y-1">
+                   <p className="text-[10px] text-slate-400 font-bold uppercase">الاسم</p>
+                   <p className="font-black">{selectedTicket.customerName}</p>
+                 </div>
+                 <div className="space-y-1">
+                   <p className="text-[10px] text-slate-400 font-bold uppercase">رقم CIF</p>
+                   <p className="font-mono font-bold">{selectedTicket.cif}</p>
+                 </div>
+                 <div className="pt-4 border-t">
+                    <h4 className="text-xs font-black mb-3">سجل التتبع</h4>
+                    {selectedTicket.logs?.map((log: any, idx: number) => (
+                       <div key={idx} className="border-r-2 border-slate-100 pr-4 pb-4">
+                          <p className="text-xs font-black text-slate-800">{log.action}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
+                       </div>
+                    ))}
+                 </div>
               </CardContent>
            </Card>
         </div>
@@ -206,9 +224,9 @@ export function SpecialistView() {
             <div className="py-6 space-y-4">
                <Label className="font-black text-xs">اسم الموظف القائم بالاستلام</Label>
                <Select value={selectedStaffName} onValueChange={setSelectedStaffName}>
-                  <SelectTrigger className="banking-input h-14 text-right font-black"><SelectValue placeholder="اختر اسمك" /></SelectTrigger>
+                  <SelectTrigger className="banking-input h-14 text-right font-black"><SelectValue placeholder="اختر اسمك من القائمة المعتمدة" /></SelectTrigger>
                   <SelectContent dir="rtl">
-                     {(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">موظف تجريبي</SelectItem>}
+                     {(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">بانتظار إضافة الموظفين من المدير</SelectItem>}
                   </SelectContent>
                </Select>
             </div>
