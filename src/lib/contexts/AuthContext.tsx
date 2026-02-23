@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     } else if (!isUserLoading) {
       setProfile(null);
-      setLoading(false);
       setError(null);
+      setLoading(false);
     }
 
     return () => unsubscribe();
@@ -66,10 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
+      // إذا كان المستخدم غير موجود، نقوم بإنشائه (لأغراض العرض التوضيحي)
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
-        } catch (signUpErr) {
+        } catch (signUpErr: any) {
+          // إذا كان البريد مستخدماً بالفعل بكلمة مرور مختلفة، نحاول الدخول مرة أخرى أو نرفع الخطأ
           throw err;
         }
       } else {
@@ -88,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: role,
         department: dept
       });
-      setError(null);
+      // سيقوم الـ onSnapshot بتحديث الحالة تلقائياً
     } catch (err) {
       console.error("Error setting up profile:", err);
       throw err;

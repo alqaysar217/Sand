@@ -52,7 +52,6 @@ export function SpecialistView() {
     if (!db || !user?.department) return null;
     
     // ربط مسميات الأقسام بالقيم المستخدمة في خدمة العملاء
-    // أخصائي البطائق يجب أن يرى البلاغات التي serviceType لها هو "إدارة البطائق"
     const deptNameMap: Record<string, string> = {
       'Cards': 'إدارة البطائق',
       'Support': 'كول سنتر',
@@ -125,7 +124,7 @@ export function SpecialistView() {
 
     try {
       updateDocumentNonBlocking(ticketRef, updateData);
-      toast({ title: "تم تحديث الحالة", description: `تم تغيير حالة البلاغ إلى ${actionType === 'Resolved' ? 'تم الحل' : actionType === 'Rejected' ? 'مرفوض' : 'محال'}.` });
+      toast({ title: "تم تحديث الحالة", description: `تم تغيير حالة البلاغ بنجاح.` });
       setSelectedTicket(null);
       setResponse('');
     } catch (err) {
@@ -144,7 +143,7 @@ export function SpecialistView() {
         resolutionHistory: ["تفعيل البطاقة المجمدة", "تغيير رمز PIN", "تحديث بيانات KYC"]
       });
       setResponse(result.suggestedResponse);
-      toast({ title: "اقتراح ذكي", description: "تم توليد رد فني مقترح بناءً على تفاصيل البلاغ." });
+      toast({ title: "اقتراح ذكي", description: "تم توليد رد فني مقترح." });
     } catch (e) {
       toast({ variant: "destructive", title: "خطأ AI", description: "فشل مساعد الرد الذكي." });
     } finally {
@@ -376,7 +375,7 @@ export function SpecialistView() {
                     </TableRow>
                   ))}
                   {(!tickets || tickets.length === 0) && (
-                    <TableRow><TableCell colSpan={5} className="text-center py-32 font-black text-slate-400">لا توجد مهام حالياً في قسمك</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-32 font-black text-slate-400">لا توجد مهام حالياً في قسمك (تأكد من وجود بلاغات موجهة لـ {user?.department})</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
