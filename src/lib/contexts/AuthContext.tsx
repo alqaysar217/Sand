@@ -49,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(null);
           } else {
             setProfile(null);
-            // لا نضبط خطأ هنا للسماح بإنشاء الملف الشخصي أول مرة
           }
           setLoading(false);
         },
@@ -75,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
+      // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه تلقائياً للبيئة التجريبية
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr: any) {
@@ -88,13 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setupDemoProfile = async (role: UserRole, dept: Department, name: string) => {
-    if (!firebaseUser || !db) return;
+    if (!auth.currentUser || !db) return;
     try {
-      const userRef = doc(db, 'users', firebaseUser.uid);
+      const userRef = doc(db, 'users', auth.currentUser.uid);
       await setDoc(userRef, {
-        id: firebaseUser.uid,
+        id: auth.currentUser.uid,
         name: name,
-        email: firebaseUser.email,
+        email: auth.currentUser.email,
         role: role,
         department: dept
       }, { merge: true });

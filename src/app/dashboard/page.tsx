@@ -1,6 +1,7 @@
 
 "use client"
 
+import { useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { AgentView } from '@/components/dashboard/AgentView';
 import { SpecialistView } from '@/components/dashboard/SpecialistView';
@@ -13,6 +14,13 @@ export default function DashboardPage() {
   const { user, loading, firebaseUser } = useAuth();
   const router = useRouter();
 
+  // معالجة التوجيه في useEffect لتجنب أخطاء ريندر React
+  useEffect(() => {
+    if (!loading && !firebaseUser) {
+      router.push('/');
+    }
+  }, [firebaseUser, loading, router]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -23,7 +31,6 @@ export default function DashboardPage() {
   }
 
   if (!firebaseUser) {
-    router.push('/');
     return null;
   }
 

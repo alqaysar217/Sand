@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shield, ArrowLeft, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock } from 'lucide-react';
+import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -18,6 +18,7 @@ export default function Home() {
   const [loading, setLoading] = useState<string | null>(null);
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
+  // مطابقة البيانات مع الكشف الرسمي الذي أرسلته
   const employees = [
     { name: 'المدير العام', email: 'admin.bank@bank.com', role: 'Admin', dept: 'Operations', icon: UserCog },
     { name: 'الأخصائي الفني', email: 'cards.ops@bank.com', role: 'Specialist', dept: 'Cards', icon: CreditCard },
@@ -29,9 +30,11 @@ export default function Home() {
     setLoading(emp.email);
     try {
       await login(emp.email, 'password123');
+      // إنشاء الملف الشخصي فوراً لضمان وجود الصلاحيات عند التوجيه
       await setupDemoProfile(emp.role as any, emp.dept as any, emp.name);
       router.push('/dashboard');
     } catch (error) {
+      console.error(error);
       toast({
         variant: "destructive",
         title: "خطأ في الدخول",
@@ -108,8 +111,8 @@ export default function Home() {
                   <span className="text-[10px] font-bold uppercase tracking-widest">نظام محمي وآمن</span>
                </div>
                <p className="text-[10px] text-slate-400 font-bold text-center leading-relaxed">
-                 تخضع كافة العمليات في نظام سند للرقابة المباشرة من قبل المدير العام.<br/>
-                 يرجى استخدام حسابك الشخصي فقط.
+                 تخضع كافة العمليات في نظام سند للرقابة المباشرة من قبل الإدارة.<br/>
+                 يرجى استخدام حسابك المهني فقط.
                </p>
             </div>
           </CardContent>
