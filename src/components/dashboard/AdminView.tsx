@@ -19,11 +19,9 @@ import {
   Edit2,
   Save,
   X,
-  TrendingUp,
-  PieChart as PieChartIcon,
   BarChart3,
+  PieChart as PieChartIcon,
   UserPlus,
-  RefreshCcw,
   ShieldAlert
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
@@ -98,17 +96,12 @@ export function AdminView() {
   const handleUpdateConfigList = async (type: string, newList: string[]) => {
     if (!db) return;
     setIsSaving(true);
-    try {
-      setDocumentNonBlocking(doc(db, 'settings', 'system-config'), {
-        ...config,
-        [type]: newList
-      }, { merge: true });
-      toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح." });
-    } catch (err) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث الإعدادات." });
-    } finally {
-      setIsSaving(false);
-    }
+    setDocumentNonBlocking(doc(db, 'settings', 'system-config'), {
+      ...config,
+      [type]: newList
+    }, { merge: true });
+    toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح." });
+    setIsSaving(false);
   };
 
   const handleClearAllTickets = async () => {
@@ -117,7 +110,7 @@ export function AdminView() {
       tickets.forEach(t => {
         deleteDocumentNonBlocking(doc(db, 'tickets', t.id));
       });
-      toast({ title: "تم المسح بنجاح", description: "النظام الآن جاهز للاختبار بدون بيانات قديمة." });
+      toast({ title: "تم المسح بنجاح", description: "تم تفريغ كافة البلاغات من النظام بنجاح." });
     } catch (err) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل مسح البيانات." });
     }
@@ -242,26 +235,26 @@ export function AdminView() {
                 <Card className="banking-card border-none shadow-xl bg-red-50/30 border border-red-100 overflow-hidden">
                    <CardHeader className="p-6 border-b border-red-100 flex flex-row-reverse items-center justify-between bg-red-50/50">
                       <CardTitle className="text-red-700 font-black flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5" /> إجراءات النظام المتقدمة (للاختبار)
+                        <ShieldAlert className="w-5 h-5" /> إجراءات النظام المتقدمة (تفريغ البيانات)
                       </CardTitle>
                    </CardHeader>
                    <CardContent className="p-8">
                       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                          <div className="text-right">
-                            <h4 className="font-black text-slate-800">مسح كافة البلاغات من النظام</h4>
-                            <p className="text-xs text-slate-500 font-bold mt-1">سيتم حذف جميع بلاغات العملاء المسجلة في قاعدة البيانات نهائياً.</p>
+                            <h4 className="font-black text-slate-800">مسح كافة البلاغات السابقة من جميع الأقسام</h4>
+                            <p className="text-xs text-slate-500 font-bold mt-1">سيتم حذف جميع بلاغات العملاء (الجديدة، المعالجة، المحالة، والمرفوضة) نهائياً لبدء اختبار جديد ونظيف.</p>
                          </div>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                                <Button variant="destructive" className="rounded-full px-8 h-12 font-black shadow-lg shadow-red-500/20">
-                                  <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البيانات
+                                  <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات
                                </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="font-black text-right text-red-700">تنبيه أمني خطير</AlertDialogTitle>
+                                  <AlertDialogTitle className="font-black text-right text-red-700">تنبيه: مسح شامل للبيانات</AlertDialogTitle>
                                   <AlertDialogDescription className="text-right font-bold text-slate-500">
-                                     أنت على وشك حذف كافة البلاغات من النظام. هذا الإجراء سيقوم بتفريغ قاعدة البيانات تماماً لتبدأ الاختبار من الصفر. لا يمكن التراجع عن هذا الفعل.
+                                     أنت على وشك حذف كافة البلاغات المسجلة في جميع الأقسام (خدمة العملاء، الكول سنتر، والبطائق). هذا الإجراء سيقوم بتفريغ النظام تماماً ولا يمكن التراجع عنه.
                                   </AlertDialogDescription>
                                </AlertDialogHeader>
                                <AlertDialogFooter className="flex-row-reverse gap-3">

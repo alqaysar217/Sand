@@ -2,33 +2,13 @@ import { UserProfile, Ticket } from './types';
 
 export const MOCK_USERS: UserProfile[] = [
   {
-    uid: 'agent-1',
-    name: 'أحمد العميل',
-    email: 'ahmed@bank.com',
-    role: 'Agent',
-    department: 'Operations',
-  },
-  {
-    uid: 'specialist-cards',
-    name: 'سارة الأخصائية',
-    email: 'sarah@bank.com',
-    role: 'Specialist',
-    department: 'Cards',
-  },
-  {
-    uid: 'specialist-app',
-    name: 'عمر التقني',
-    email: 'omar@bank.com',
-    role: 'Specialist',
-    department: 'App',
-  },
-  {
-    uid: 'admin-1',
-    name: 'خالد المدير',
-    email: 'khalid@bank.com',
+    id: 'dev-admin',
+    name: 'المدير العام',
+    email: 'admin.bank@bank.com',
     role: 'Admin',
     department: 'Operations',
   }
 ];
 
+// تفريغ كافة البلاغات التجريبية لضمان بداية اختبار نظيفة
 export const MOCK_TICKETS: Ticket[] = [];
