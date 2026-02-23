@@ -144,13 +144,16 @@ export function AgentView() {
     });
   }, [tickets, searchQuery, activeTab]);
 
-  // عدادات الحالات
+  // عدادات الحالات الشاملة
   const counters = useMemo(() => {
-    if (!tickets) return { escalated: 0, resolved: 0, pending: 0 };
+    if (!tickets) return { all: 0, new: 0, pending: 0, escalated: 0, resolved: 0, rejected: 0 };
     return {
+      all: tickets.length,
+      new: tickets.filter(t => t.status === 'New').length,
+      pending: tickets.filter(t => t.status === 'Pending').length,
       escalated: tickets.filter(t => t.status === 'Escalated').length,
       resolved: tickets.filter(t => t.status === 'Resolved').length,
-      pending: tickets.filter(t => t.status === 'Pending').length,
+      rejected: tickets.filter(t => t.status === 'Rejected').length,
     };
   }, [tickets]);
 
@@ -370,13 +373,31 @@ export function AgentView() {
                 </div>
               </div>
               <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
-                <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100">
-                  <TabsTrigger value="all">الكل</TabsTrigger>
-                  <TabsTrigger value="New">الجديدة</TabsTrigger>
-                  <TabsTrigger value="Pending" className="data-[state=active]:bg-amber-100">قيد العمل</TabsTrigger>
-                  <TabsTrigger value="Escalated" className="data-[state=active]:bg-red-100">المحالة ({counters.escalated})</TabsTrigger>
-                  <TabsTrigger value="Resolved" className="data-[state=active]:bg-green-100">الأرشيف</TabsTrigger>
-                  <TabsTrigger value="Rejected" className="data-[state=active]:bg-gray-200">المرفوضة</TabsTrigger>
+                <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100 gap-1">
+                  <TabsTrigger value="all" className="relative">
+                    <span>الكل</span>
+                    {counters.all > 0 && <span className="absolute -top-1 -left-1 bg-slate-500 text-white text-[9px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 border border-white shadow-sm font-bold">{counters.all}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="New" className="relative">
+                    <span>الجديدة</span>
+                    {counters.new > 0 && <span className="absolute -top-1 -left-1 bg-blue-600 text-white text-[9px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 border border-white shadow-sm font-bold">{counters.new}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="Pending" className="relative data-[state=active]:bg-amber-100">
+                    <span>قيد العمل</span>
+                    {counters.pending > 0 && <span className="absolute -top-1 -left-1 bg-amber-500 text-black text-[9px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 border border-white shadow-sm font-bold">{counters.pending}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="Escalated" className="relative data-[state=active]:bg-red-100">
+                    <span>المحالة</span>
+                    {counters.escalated > 0 && <span className="absolute -top-1 -left-1 bg-red-600 text-white text-[9px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 border border-white shadow-sm font-bold">{counters.escalated}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="Resolved" className="relative data-[state=active]:bg-green-100">
+                    <span>الأرشيف</span>
+                    {counters.resolved > 0 && <span className="absolute -top-1 -left-1 bg-green-600 text-white text-[9px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 border border-white shadow-sm font-bold">{counters.resolved}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="Rejected" className="relative data-[state=active]:bg-gray-200">
+                    <span>المرفوضة</span>
+                    {counters.rejected > 0 && <span className="absolute -top-1 -left-1 bg-gray-600 text-white text-[9px] min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 border border-white shadow-sm font-bold">{counters.rejected}</span>}
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
