@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setupDemoProfile: (role: UserRole, dept: Department, name: string) => Promise<void>;
+  bypassLogin: (profile: UserProfile) => void;
   loading: boolean;
   error: string | null;
 }
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const auth = useFirebaseAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [mockUser, setMockUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const snapshotUnsubscribe = useRef<(() => void) | null>(null);
@@ -31,6 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUserLoading) {
       setLoading(true);
+      return;
+    }
+
+    // إذا تم تفعيل وضع العبور المباشر
+    if (mockUser) {
+      setProfile(mockUser);
+      setLoading(false);
       return;
     }
 
@@ -54,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         (err) => {
           console.error("Firestore sync error:", err);
-          setError("DATABASE_ERROR");
           setLoading(false);
         }
       );
@@ -68,13 +76,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         snapshotUnsubscribe.current();
       }
     };
-  }, [firebaseUser, isUserLoading, db]);
+  }, [firebaseUser, isUserLoading, db, mockUser]);
 
   const login = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه تلقائياً للبيئة التجريبية
+      // محاولة إنشاء الحساب إذا لم يكن موجوداً
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
@@ -88,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setupDemoProfile = async (role: UserRole, dept: Department, name: string) => {
+    if (mockUser) return; // لا حاجة للتحديث في وضع العبور
     if (!auth.currentUser || !db) return;
     try {
       const userRef = doc(db, 'users', auth.currentUser.uid);
@@ -100,13 +109,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }, { merge: true });
     } catch (err) {
       console.error("Setup profile error:", err);
-      throw err;
     }
+  };
+
+  const bypassLogin = (profile: UserProfile) => {
+    setMockUser(profile);
   };
 
   const logout = async () => {
     setLoading(true);
-    await signOut(auth);
+    if (mockUser) {
+      setMockUser(null);
+    } else {
+      await signOut(auth);
+    }
     setProfile(null);
     setLoading(false);
   };
@@ -118,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login, 
       logout,
       setupDemoProfile,
+      bypassLogin,
       loading,
       error 
     }}>

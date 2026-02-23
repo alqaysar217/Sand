@@ -5,12 +5,21 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { Navbar } from "@/components/layout/Navbar"
 import { Toaster } from "@/components/ui/toaster"
+import { useAuth } from "@/lib/contexts/AuthContext"
+import { Loader2 } from "lucide-react"
 
-/**
- * تم تعديل التخطيط لتعطيل نظام الحماية تماماً.
- * هذا يسمح للمستخدم بالوصول للوحة القيادة حتى لو فشل الاتصال بـ Firebase.
- */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white gap-4">
+        <Loader2 className="h-12 w-12 text-primary animate-spin" />
+        <p className="font-black text-slate-400">جاري تحميل محطة العمل...</p>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

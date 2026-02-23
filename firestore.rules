@@ -2,7 +2,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // السماح بالوصول الكامل لجميع المستخدمين المسجلين وغير المسجلين مؤقتاً لضمان استقرار التطوير
+    // السماح بالوصول الكامل لضمان استقرار العرض في بيئة التطوير وتجاوز أخطاء الصلاحيات
     match /{document=**} {
       allow read, write: if true;
     }
