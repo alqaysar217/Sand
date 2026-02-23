@@ -2,8 +2,8 @@
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
 export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
-export type ServiceType = 'Cards' | 'Digital' | 'AppAdmin' | 'CallCenter' | string;
-export type IntakeMethod = 'WhatsApp' | 'Call' | 'Branch';
+export type ServiceType = 'كول سنتر' | 'إدارة البطائق' | 'مشاكل التطبيق' | string;
+export type IntakeMethod = 'واتساب' | 'اتصال' | 'من خلال الفروع' | string;
 
 export interface UserProfile {
   id: string;
@@ -57,4 +57,5 @@ export interface SystemConfig {
   serviceTypes: string[];
   intakeMethods: string[];
   issueTypes: string[];
+  staffNames: string[];
 }

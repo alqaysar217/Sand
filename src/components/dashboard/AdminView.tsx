@@ -1,38 +1,33 @@
 
 "use client"
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { 
   Users, 
-  Download, 
   AlertTriangle, 
   Clock, 
   FileSpreadsheet,
   Plus,
   Loader2,
-  Settings,
   ShieldCheck,
   Trash2,
-  Save,
-  UserPlus
+  CheckCircle2
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['#002D62', '#005EB8', '#ECAC17', '#2ECC71', '#E74C3C', '#9B59B6'];
+const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
 export function AdminView() {
   const db = useFirestore();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
-  const [newItem, setNewItem] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // جلب إعدادات النظام
@@ -70,7 +65,7 @@ export function AdminView() {
     };
   }, [tickets]);
 
-  const handleUpdateConfig = async (type: 'serviceTypes' | 'intakeMethods' | 'issueTypes', action: 'add' | 'delete', value: string) => {
+  const handleUpdateConfig = async (type: 'serviceTypes' | 'intakeMethods' | 'issueTypes' | 'staffNames', action: 'add' | 'delete', value: string) => {
     if (!config || !db) return;
     setIsSaving(true);
     const updatedList = action === 'add' 
@@ -82,7 +77,6 @@ export function AdminView() {
       [type]: updatedList
     }, { merge: true });
     
-    setNewItem('');
     setIsSaving(false);
   };
 
@@ -93,70 +87,28 @@ export function AdminView() {
           <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
              <ShieldCheck className="w-8 h-8" /> لوحة قيادة المدير العام
           </h1>
-          <p className="text-slate-500 font-bold mt-1">الإشراف الفني وإدارة إعدادات النظام والموظفين</p>
+          <p className="text-slate-500 font-bold mt-1">إدارة قوائم النظام والموظفين والعمليات</p>
         </div>
         <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} dir="rtl">
           <TabsList className="bg-slate-100 p-1 rounded-full h-auto">
             <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة القوائم</TabsTrigger>
             <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الموظفين</TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إعدادات النظام</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
       <TabsContent value="stats" className="space-y-6 animate-in fade-in duration-500">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-primary text-white banking-card border-none shadow-lg">
-            <CardContent className="pt-6">
-               <div className="flex justify-between items-start flex-row-reverse">
-                  <FileSpreadsheet className="w-8 h-8 opacity-40" />
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/70">إجمالي البلاغات</p>
-                    <h3 className="text-3xl font-black">{stats.total}</h3>
-                  </div>
-               </div>
-            </CardContent>
-          </Card>
-          <Card className="banking-card border-none shadow-lg">
-            <CardContent className="pt-6">
-               <div className="flex justify-between items-start flex-row-reverse">
-                  <Clock className="w-8 h-8 text-amber-500 opacity-40" />
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">قيد العمل</p>
-                    <h3 className="text-3xl font-black text-amber-500">{stats.pending}</h3>
-                  </div>
-               </div>
-            </CardContent>
-          </Card>
-          <Card className="banking-card border-none shadow-lg">
-            <CardContent className="pt-6">
-               <div className="flex justify-between items-start flex-row-reverse">
-                  <CheckCircle2 className="w-8 h-8 text-green-600 opacity-40" />
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">تم الحل</p>
-                    <h3 className="text-3xl font-black text-green-600">{stats.resolved}</h3>
-                  </div>
-               </div>
-            </CardContent>
-          </Card>
-          <Card className="banking-card border-none shadow-lg">
-            <CardContent className="pt-6">
-               <div className="flex justify-between items-start flex-row-reverse">
-                  <AlertTriangle className="w-8 h-8 text-red-600 opacity-40" />
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">بلاغات جديدة</p>
-                    <h3 className="text-3xl font-black text-red-600">{stats.new}</h3>
-                  </div>
-               </div>
-            </CardContent>
-          </Card>
+          <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
+          <StatCard icon={Clock} title="قيد العمل" value={stats.pending} color="text-amber-500" />
+          <StatCard icon={CheckCircle2} title="تم الحل" value={stats.resolved} color="text-green-600" />
+          <StatCard icon={AlertTriangle} title="بلاغات جديدة" value={stats.new} color="text-red-600" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
            <Card className="banking-card border-none shadow-xl">
-              <CardHeader className="text-right border-b bg-slate-50/50 p-6">
-                 <CardTitle className="text-xl font-black">حجم العمل لكل قسم</CardTitle>
-              </CardHeader>
+              <CardHeader className="text-right border-b bg-slate-50/50 p-6"><CardTitle className="text-xl font-black">حجم العمل لكل قسم</CardTitle></CardHeader>
               <CardContent className="p-6 h-[300px]">
                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={stats.deptData}>
@@ -170,9 +122,7 @@ export function AdminView() {
               </CardContent>
            </Card>
            <Card className="banking-card border-none shadow-xl">
-              <CardHeader className="text-right border-b bg-slate-50/50 p-6">
-                 <CardTitle className="text-xl font-black">توزيع الحالات</CardTitle>
-              </CardHeader>
+              <CardHeader className="text-right border-b bg-slate-50/50 p-6"><CardTitle className="text-xl font-black">توزيع الحالات</CardTitle></CardHeader>
               <CardContent className="p-6 h-[300px]">
                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -187,11 +137,19 @@ export function AdminView() {
         </div>
       </TabsContent>
 
+      <TabsContent value="settings" className="space-y-6 animate-in fade-in duration-500">
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ConfigSection title="الجهات المعنية" items={config?.serviceTypes || ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق']} onAdd={v => handleUpdateConfig('serviceTypes', 'add', v)} onDelete={v => handleUpdateConfig('serviceTypes', 'delete', v)} />
+            <ConfigSection title="أسماء موظفي العلاقات" items={config?.staffNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس', 'عبدالله باخميس']} onAdd={v => handleUpdateConfig('staffNames', 'add', v)} onDelete={v => handleUpdateConfig('staffNames', 'delete', v)} />
+            <ConfigSection title="وسائل استلام البلاغات" items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} onAdd={v => handleUpdateConfig('intakeMethods', 'add', v)} onDelete={v => handleUpdateConfig('intakeMethods', 'delete', v)} />
+            <ConfigSection title="أنواع المشاكل" items={config?.issueTypes || ['تغيير رمز pin أو تأخره', 'الاستعلام عن حوالة']} onAdd={v => handleUpdateConfig('issueTypes', 'add', v)} onDelete={v => handleUpdateConfig('issueTypes', 'delete', v)} />
+         </div>
+      </TabsContent>
+
       <TabsContent value="users" className="animate-in fade-in duration-500">
          <Card className="banking-card border-none shadow-xl">
             <CardHeader className="p-8 border-b bg-white flex flex-row-reverse justify-between items-center">
-               <CardTitle className="text-2xl font-black text-primary">إدارة الموظفين والصلاحيات</CardTitle>
-               <Button className="rounded-full px-8 font-black bg-primary"><UserPlus className="ml-2 w-4 h-4" /> إضافة موظف</Button>
+               <CardTitle className="text-2xl font-black text-primary">إدارة الموظفين</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                <Table>
@@ -201,7 +159,6 @@ export function AdminView() {
                         <TableHead className="text-right font-black">البريد الإلكتروني</TableHead>
                         <TableHead className="text-right font-black">الدور</TableHead>
                         <TableHead className="text-right font-black">القسم</TableHead>
-                        <TableHead className="text-center font-black">الإجراءات</TableHead>
                      </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -211,9 +168,6 @@ export function AdminView() {
                            <TableCell className="text-right">{u.email}</TableCell>
                            <TableCell className="text-right"><Badge variant="outline" className="font-black text-primary">{u.role}</Badge></TableCell>
                            <TableCell className="text-right">{u.department}</TableCell>
-                           <TableCell className="text-center">
-                              <Button variant="ghost" size="icon" className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
-                           </TableCell>
                         </TableRow>
                      ))}
                   </TableBody>
@@ -221,19 +175,27 @@ export function AdminView() {
             </CardContent>
          </Card>
       </TabsContent>
-
-      <TabsContent value="settings" className="space-y-6 animate-in fade-in duration-500">
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ConfigSection title="الجهات المعنية" type="serviceTypes" items={config?.serviceTypes || []} onAdd={v => handleUpdateConfig('serviceTypes', 'add', v)} onDelete={v => handleUpdateConfig('serviceTypes', 'delete', v)} />
-            <ConfigSection title="وسائل الاستلام" type="intakeMethods" items={config?.intakeMethods || []} onAdd={v => handleUpdateConfig('intakeMethods', 'add', v)} onDelete={v => handleUpdateConfig('intakeMethods', 'delete', v)} />
-            <ConfigSection title="أنواع المشاكل" type="issueTypes" items={config?.issueTypes || []} onAdd={v => handleUpdateConfig('issueTypes', 'add', v)} onDelete={v => handleUpdateConfig('issueTypes', 'delete', v)} />
-         </div>
-      </TabsContent>
     </div>
   );
 }
 
-function ConfigSection({ title, items, onAdd, onDelete }: { title: string, items: string[], onAdd: (v: string) => void, onDelete: (v: string) => void, type: string }) {
+function StatCard({ icon: Icon, title, value, color }: any) {
+  return (
+    <Card className={`banking-card border-none shadow-lg ${color.startsWith('bg') ? color + ' text-white' : ''}`}>
+      <CardContent className="pt-6">
+         <div className="flex justify-between items-start flex-row-reverse">
+            <Icon className={`w-8 h-8 opacity-40 ${!color.startsWith('bg') ? color : ''}`} />
+            <div className="text-right">
+              <p className={`text-[10px] font-black uppercase tracking-widest ${color.startsWith('bg') ? 'text-white/70' : 'text-slate-400'}`}>{title}</p>
+              <h3 className={`text-3xl font-black ${!color.startsWith('bg') ? color : ''}`}>{value}</h3>
+            </div>
+         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConfigSection({ title, items, onAdd, onDelete }: { title: string, items: string[], onAdd: (v: string) => void, onDelete: (v: string) => void }) {
    const [val, setVal] = useState('');
    return (
       <Card className="banking-card border-none shadow-xl">
@@ -243,7 +205,7 @@ function ConfigSection({ title, items, onAdd, onDelete }: { title: string, items
                <Input value={val} onChange={e => setVal(e.target.value)} placeholder="إضافة جديد..." className="banking-input text-right" />
                <Button size="icon" onClick={() => { if(val) onAdd(val); setVal(''); }} className="bg-primary rounded-xl"><Plus className="w-4 h-4" /></Button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
                {items.map(item => (
                   <div key={item} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl flex-row-reverse">
                      <span className="font-bold text-sm">{item}</span>
