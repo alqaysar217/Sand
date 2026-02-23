@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { 
   LayoutDashboard, 
   PlusSquare, 
-  History, 
   Inbox, 
   BarChart3, 
   Users, 
@@ -13,7 +12,9 @@ import {
   Archive,
   Clock,
   Shield,
-  FileText
+  FileText,
+  XCircle,
+  Send
 } from 'lucide-react';
 import {
   Sidebar,
@@ -36,7 +37,7 @@ export function AppSidebar() {
 
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
-  // إرسال حدث مخصص للتحكم في الواجهة بدلاً من إعادة تحميل الصفحة
+  // إرسال حدث مخصص للتحكم في الواجهة
   const handleNav = (action: string) => {
     window.dispatchEvent(new CustomEvent('sidebar-nav', { detail: action }));
   };
@@ -45,10 +46,12 @@ export function AppSidebar() {
     switch (user.role) {
       case 'Agent':
         return [
-          { title: 'الرئيسية (السجل)', icon: LayoutDashboard, action: 'home' },
+          { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home' },
           { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
-          { title: 'البلاغات المحالة', icon: History, action: 'home' },
-          { title: 'الأرشيف المحلول', icon: Archive, action: 'home' },
+          { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending' },
+          { title: 'البلاغات المحالة', icon: Send, action: 'Escalated' },
+          { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected' },
+          { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved' },
         ];
       case 'Specialist':
         return [
@@ -107,7 +110,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-6 border-t bg-slate-50 text-[11px] text-muted-foreground text-center font-medium">
-        نظام سند المصرفي لإدارة البلاغات v2.0
+        نظام سند المصرفي لإدارة البلاغات v2.5
       </SidebarFooter>
     </Sidebar>
   );
