@@ -105,7 +105,7 @@ export function AdminView() {
         </div>
 
         <TabsContent value="stats" className="space-y-6 animate-in fade-in duration-500 mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
             <StatCard icon={Clock} title="قيد العمل" value={stats.pending} color="text-amber-500" />
             <StatCard icon={CheckCircle2} title="تم الحل" value={stats.resolved} color="text-green-600" />
@@ -264,34 +264,38 @@ function StatCard({ icon: Icon, title, value, color }: any) {
   const isBgColor = color.startsWith('bg-');
   
   return (
-    <Card className={cn(
-      "banking-card border-none shadow-lg overflow-hidden",
-      isBgColor ? `${color} text-white` : "bg-white"
+    <div className={cn(
+      "relative rounded-[24px] p-6 shadow-xl overflow-hidden transition-all duration-300",
+      isBgColor ? `${color} text-white` : "bg-white border border-slate-100"
     )}>
-      <CardContent className="pt-6">
-         <div className="flex justify-between items-start flex-row-reverse">
-            <div className={cn(
-              "p-3 rounded-2xl",
-              isBgColor ? "bg-white/20" : "bg-slate-50"
-            )}>
-               <Icon className={cn(
-                 "w-6 h-6",
-                 isBgColor ? "text-white" : color
-               )} />
-            </div>
-            <div className="text-right">
-              <p className={cn(
-                "text-[10px] font-black uppercase",
-                isBgColor ? "text-white/70" : "text-slate-400"
-              )}>{title}</p>
-              <h3 className={cn(
-                "text-3xl font-black mt-1",
-                isBgColor ? "text-white" : "text-slate-900"
-              )}>{value}</h3>
-            </div>
+       <div className="relative z-10 flex justify-between items-start flex-row-reverse">
+          <div className={cn(
+            "p-3 rounded-2xl flex items-center justify-center",
+            isBgColor ? "bg-white/20" : "bg-slate-50"
+          )}>
+             <Icon className={cn(
+               "w-6 h-6",
+               isBgColor ? "text-white" : color
+             )} />
+          </div>
+          <div className="text-right">
+            <p className={cn(
+              "text-[10px] font-black uppercase tracking-wider mb-1",
+              isBgColor ? "text-white/80" : "text-slate-400"
+            )}>{title}</p>
+            <h3 className={cn(
+              "text-3xl font-black",
+              isBgColor ? "text-white" : "text-slate-900"
+            )}>{value}</h3>
+          </div>
+       </div>
+       {/* زخرفة خلفية بسيطة لزيادة الجاذبية البصرية */}
+       {isBgColor && (
+         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
+            <Icon className="absolute -bottom-4 -left-4 w-24 h-24 rotate-12" />
          </div>
-      </CardContent>
-    </Card>
+       )}
+    </div>
   );
 }
 
