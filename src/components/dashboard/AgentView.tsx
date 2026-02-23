@@ -16,7 +16,7 @@ import {
   MessageSquare, Phone, MapPin, ExternalLink,
   Upload, User, X, Trash2, CheckCircle2, AlertCircle, Clock,
   BellRing, FileText, Reply, History, Building2, UserCircle, Fingerprint, Share2, Settings2, Paperclip,
-  Inbox
+  Inbox, Calendar
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle
@@ -37,6 +37,7 @@ import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, d
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 const SERVICE_ENTITIES = [
   { id: 'CallCenter', label: 'الكول سنتر' },
@@ -414,19 +415,19 @@ export function AgentView() {
                 <div className="overflow-x-auto">
                   <Table className="border-collapse">
                     <TableHeader>
-                      <TableRow className="bg-primary hover:bg-primary border-none">
-                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
-                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
-                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
-                        <TableHead className="text-right h-16 font-black text-white uppercase text-[11px] tracking-[0.1em]">الحالة</TableHead>
-                        <TableHead className="text-center h-16 font-black text-white uppercase text-[11px] tracking-[0.1em] pl-10">الإجراءات</TableHead>
+                      <TableRow className="bg-primary/5 border-b-2 border-primary/10">
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em] pr-10">رقم البلاغ</TableHead>
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">الجهة المعنية</TableHead>
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">بيانات العميل</TableHead>
+                        <TableHead className="text-right h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em]">الحالة</TableHead>
+                        <TableHead className="text-center h-16 font-black text-primary/80 uppercase text-[11px] tracking-[0.1em] pl-10">الإجراءات</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTickets.map((t: any, index: number) => (
                         <TableRow 
                           key={t.id} 
-                          className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                          className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
                         >
                           <TableCell className="py-5 font-bold text-primary text-right pr-10">
                              <div className="flex items-center gap-3">
@@ -477,41 +478,47 @@ export function AgentView() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className="max-w-4xl text-right p-0 border-none rounded-[32px] overflow-hidden shadow-2xl bg-[#F4F6FA]" dir="rtl">
+        <DialogContent className="max-w-4xl text-right p-0 border-none rounded-[32px] overflow-hidden shadow-2xl bg-[#F6F9FA]" dir="rtl">
           {selectedTicket && (
             <div className="flex flex-col h-[85vh]">
               <DialogHeader className="p-8 border-b bg-white space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="bg-slate-50 p-4 rounded-[24px] shadow-sm flex items-center gap-4 border border-slate-100">
-                    <div className="p-3 bg-primary/10 rounded-full"><History className="w-6 h-6 text-primary" /></div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 bg-primary/5 rounded-[20px] border border-primary/10">
+                      <History className="w-8 h-8 text-primary" />
+                    </div>
                     <div className="text-right">
-                      <DialogTitle className="text-2xl text-slate-800 font-black">
-                        مراجعة البلاغ {selectedTicket.ticketID}
+                      <DialogTitle className="text-2xl text-slate-900 font-black">
+                        تفاصيل البلاغ {selectedTicket.ticketID}
                       </DialogTitle>
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
-                        تاريخ الإنشاء: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 text-slate-400">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                          {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="pt-2">{getStatusBadge(selectedTicket.status)}</div>
+                  <div className="scale-110">{getStatusBadge(selectedTicket.status)}</div>
                 </div>
               </DialogHeader>
               
               <ScrollArea className="flex-1 px-8 py-6 no-scrollbar">
                 <div className="space-y-8 pb-10">
-                  {/* Status Specific Response Cards */}
+                  
+                  {/* Status Notifications - High Priority */}
                   {selectedTicket.status === 'Resolved' && (
-                    <div className="bg-white border border-green-100 p-8 rounded-[32px] space-y-5 shadow-sm animate-in zoom-in-95 duration-500">
-                      <div className="flex items-center gap-3 text-green-700 font-black text-xl">
-                        <div className="p-2 bg-green-50 rounded-full"><CheckCircle2 className="w-6 h-6" /></div>
-                        <span>الحل الفني المعتمد</span>
+                    <div className="bg-green-50/50 border border-green-100 p-8 rounded-[32px] space-y-4 animate-in zoom-in-95 duration-500">
+                      <div className="flex items-center gap-3 text-green-700 font-black">
+                        <CheckCircle2 className="w-6 h-6" />
+                        <span className="text-xl">تم اعتماد الحل الفني</span>
                       </div>
-                      <div className="bg-green-50/30 p-8 rounded-[24px] border border-green-50 shadow-inner">
-                        <p className="text-lg leading-relaxed text-slate-700 text-right font-medium">
+                      <div className="bg-white p-6 rounded-[24px] border border-green-50 shadow-sm">
+                        <p className="text-lg leading-relaxed text-slate-700 font-medium">
                           {selectedTicket.specialistResponse}
                         </p>
                       </div>
-                      <div className="flex justify-between items-center text-xs text-green-600 font-black uppercase tracking-wider px-2">
+                      <div className="flex justify-between items-center text-[10px] text-green-600 font-black uppercase tracking-widest px-2">
                          <span>الموظف المجيب: {selectedTicket.assignedToSpecialistName}</span>
                          <span>توقيت الحل: {new Date(selectedTicket.resolvedAt).toLocaleString('ar-SA')}</span>
                       </div>
@@ -519,102 +526,136 @@ export function AgentView() {
                   )}
 
                   {selectedTicket.status === 'Rejected' && (
-                    <div className="bg-white border border-slate-200 p-8 rounded-[32px] space-y-5 shadow-sm">
-                      <div className="flex items-center gap-3 text-slate-700 font-black text-xl">
-                        <div className="p-2 bg-slate-50 rounded-full"><AlertCircle className="w-6 h-6" /></div>
-                        <span>سبب رفض البلاغ</span>
+                    <div className="bg-slate-100/50 border border-slate-200 p-8 rounded-[32px] space-y-4">
+                      <div className="flex items-center gap-3 text-slate-800 font-black">
+                        <AlertCircle className="w-6 h-6" />
+                        <span className="text-xl">سبب رفض البلاغ</span>
                       </div>
-                      <div className="bg-slate-50 p-8 rounded-[24px] border border-slate-100 shadow-inner">
-                        <p className="text-lg leading-relaxed text-slate-600 text-right font-medium">
-                          {selectedTicket.rejectionReason || 'تم الرفض لعدم اكتمال المتطلبات التقنية'}
+                      <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm">
+                        <p className="text-lg leading-relaxed text-slate-600 font-medium">
+                          {selectedTicket.rejectionReason || 'تم الرفض لعدم اكتمال المتطلبات التقنية أو الحاجة لمزيد من المعلومات.'}
                         </p>
                       </div>
                     </div>
                   )}
 
                   {selectedTicket.status === 'Escalated' && (
-                    <div className="bg-white border border-red-100 p-8 rounded-[32px] space-y-5 shadow-sm">
-                      <div className="flex items-center gap-3 text-red-700 font-black text-xl">
-                        <div className="p-2 bg-red-50 rounded-full"><Reply className="w-6 h-6" /></div>
-                        <span>تقرير إحالة البلاغ للمتابعة</span>
+                    <div className="bg-amber-50/50 border border-amber-100 p-8 rounded-[32px] space-y-4">
+                      <div className="flex items-center gap-3 text-amber-800 font-black">
+                        <Reply className="w-6 h-6" />
+                        <span className="text-xl">تقرير إحالة البلاغ</span>
                       </div>
-                      <div className="bg-red-50/30 p-8 rounded-[24px] border border-red-50 shadow-inner">
-                        <p className="text-lg leading-relaxed text-red-900 text-right font-medium">
-                          {selectedTicket.escalationNote || 'تمت إحالة البلاغ لمراجعة الإدارة العليا'}
+                      <div className="bg-white p-6 rounded-[24px] border border-amber-100 shadow-sm">
+                        <p className="text-lg leading-relaxed text-amber-900 font-medium">
+                          {selectedTicket.escalationNote || 'تمت إحالة البلاغ لمراجعة الإدارة المختصة لاتخاذ القرار المناسب.'}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  {/* Customer Info Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                    <div className="text-right space-y-2">
-                      <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">العميل</Label>
-                      <p className="font-black text-slate-800 text-lg">{selectedTicket.customerName}</p>
-                    </div>
-                    <div className="text-right space-y-2">
-                      <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">رقم الحساب (CIF)</Label>
-                      <p className="font-mono font-black text-primary text-xl">{selectedTicket.cif}</p>
-                    </div>
-                    <div className="text-right space-y-2">
-                      <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">رقم التواصل</Label>
-                      <p className="font-black text-slate-800 text-lg" dir="ltr">{selectedTicket.phoneNumber}</p>
-                    </div>
-                    <div className="text-right space-y-2">
-                      <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">قناة الاستلام</Label>
-                      <p className="font-bold text-slate-600">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
-                    </div>
-                    <div className="text-right space-y-2">
-                      <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">تصنيف الخدمة</Label>
-                      <div className="mt-1"><Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 font-bold">{selectedTicket.subIssue}</Badge></div>
-                    </div>
-                    <div className="text-right space-y-2">
-                      <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block">الجهة المعنية</Label>
-                      <p className="font-black text-secondary text-lg">{getEntityLabel(selectedTicket.serviceType)}</p>
-                    </div>
+                  {/* Customer Data Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="rounded-[24px] border-none shadow-sm bg-white">
+                      <CardContent className="p-6 text-right">
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">العميل</Label>
+                        <div className="flex items-center gap-3 justify-start">
+                          <UserCircle className="w-5 h-5 text-primary/40" />
+                          <p className="font-black text-slate-900">{selectedTicket.customerName}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[24px] border-none shadow-sm bg-white">
+                      <CardContent className="p-6 text-right">
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">رقم الحساب (CIF)</Label>
+                        <div className="flex items-center gap-3 justify-start">
+                          <Fingerprint className="w-5 h-5 text-primary/40" />
+                          <p className="font-mono font-black text-primary">{selectedTicket.cif}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[24px] border-none shadow-sm bg-white">
+                      <CardContent className="p-6 text-right">
+                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">رقم الجوال</Label>
+                        <div className="flex items-center gap-3 justify-start" dir="ltr">
+                          <Phone className="w-4 h-4 text-primary/40" />
+                          <p className="font-black text-slate-900">{selectedTicket.phoneNumber}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
-                  {/* Problem Description */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="rounded-[24px] border-none shadow-sm bg-white">
+                      <CardContent className="p-6 text-right flex items-center justify-between">
+                        <div>
+                          <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">قناة الاستلام</Label>
+                          <p className="font-bold text-slate-700">{getIntakeLabel(selectedTicket.intakeMethod)}</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-full"><Share2 className="w-5 h-5 text-slate-400" /></div>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[24px] border-none shadow-sm bg-white">
+                      <CardContent className="p-6 text-right flex items-center justify-between">
+                        <div>
+                          <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 block">الجهة المعنية</Label>
+                          <p className="font-black text-secondary">{getEntityLabel(selectedTicket.serviceType)}</p>
+                        </div>
+                        <div className="p-3 bg-secondary/5 rounded-full"><Building2 className="w-5 h-5 text-secondary/40" /></div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Problem Description Section */}
                   <div className="space-y-4">
-                    <Label className="font-black text-slate-800 text-lg flex items-center gap-3 justify-start px-2"> 
-                      <div className="p-2 bg-primary/10 rounded-full"><FileText className="w-5 h-5 text-primary" /></div>
-                      شرح المشكلة وتفاصيل البلاغ 
-                    </Label>
-                    <div className="bg-white border border-slate-100 p-8 rounded-[32px] text-lg leading-relaxed whitespace-pre-wrap shadow-sm text-right text-slate-600 font-medium">{selectedTicket.description}</div>
+                    <div className="flex items-center gap-2 px-2">
+                       <MessageSquare className="w-5 h-5 text-primary" />
+                       <h3 className="font-black text-lg text-slate-900">وصف وتفاصيل المشكلة</h3>
+                    </div>
+                    <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 text-lg leading-relaxed text-slate-600 font-medium text-right whitespace-pre-wrap">
+                      {selectedTicket.description}
+                    </div>
                   </div>
 
                   {/* Timeline Logs */}
-                  <div className="space-y-4 pt-4">
-                    <Label className="font-black text-slate-800 text-lg flex items-center gap-3 justify-start px-2"> 
-                      <div className="p-2 bg-primary/10 rounded-full"><History className="w-5 h-5 text-primary" /></div>
-                      سجل الحركات (Timeline) 
-                    </Label>
-                    <div className="space-y-4 mr-2">
+                  <div className="space-y-6 pt-4">
+                    <div className="flex items-center gap-2 px-2">
+                       <Clock className="w-5 h-5 text-primary" />
+                       <h3 className="font-black text-lg text-slate-900">سجل حركات البلاغ (Timeline)</h3>
+                    </div>
+                    <div className="mr-6 space-y-0">
                       {selectedTicket.logs?.map((log: any, idx: number) => (
-                        <div key={idx} className="relative pr-10 pb-6 border-r-2 border-slate-200 last:border-0 last:pb-0">
-                          <div className="absolute top-0 -right-[11px] w-5 h-5 rounded-full bg-primary border-4 border-white shadow-md"></div>
-                          <div className="bg-white p-6 rounded-[24px] flex items-center justify-between shadow-sm border border-slate-50">
-                            <span className="font-black text-slate-800 text-sm">{log.action} <span className="text-slate-400 font-bold ml-2">({log.userName})</span></span>
-                            <span className="text-[10px] text-slate-400 font-black tracking-widest uppercase">{new Date(log.timestamp).toLocaleString('ar-SA')}</span>
+                        <div key={idx} className="relative pr-10 pb-10 border-r-2 border-slate-100 last:border-0 last:pb-0">
+                          <div className="absolute top-0 -right-[11px] w-5 h-5 rounded-full bg-white border-4 border-primary shadow-sm z-10"></div>
+                          <div className="bg-white p-5 rounded-[24px] shadow-sm border border-slate-50 flex items-center justify-between">
+                            <div className="text-right">
+                              <p className="font-black text-slate-800 text-sm">{log.action}</p>
+                              <p className="text-[10px] text-slate-400 font-bold mt-1">بواسطة: {log.userName}</p>
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-full">
+                              {new Date(log.timestamp).toLocaleString('ar-SA')}
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Attachments Display */}
+                  {/* Attachments Section */}
                   {selectedTicket.attachments?.length > 0 && (
                     <div className="space-y-4 pt-4">
-                      <Label className="font-black text-slate-800 block text-right px-2">المرفقات التوضيحية</Label>
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="flex items-center gap-2 px-2">
+                         <Paperclip className="w-5 h-5 text-primary" />
+                         <h3 className="font-black text-lg text-slate-900">المرفقات والوثائق</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {selectedTicket.attachments.map((att: any, idx: number) => (
-                          <div key={idx} className="banking-card overflow-hidden group shadow-md border-none rounded-[28px] bg-white">
+                          <div key={idx} className="group rounded-[28px] overflow-hidden bg-white shadow-sm border border-slate-100 hover:shadow-md transition-all">
                             <img src={att.url} className="aspect-video object-cover w-full group-hover:scale-105 transition-transform duration-700" />
-                            <div className="p-5 bg-white flex justify-between items-center border-t border-slate-50">
-                               <a href={att.url} target="_blank" rel="noreferrer" className="text-xs text-primary font-black hover:underline flex items-center gap-2">
-                                 <ExternalLink className="w-4 h-4" /> فتح الصورة
+                            <div className="p-4 bg-white flex justify-between items-center border-t border-slate-50">
+                               <a href={att.url} target="_blank" rel="noreferrer" className="text-xs text-primary font-black flex items-center gap-2 hover:underline">
+                                 <ExternalLink className="w-4 h-4" /> عرض الملف
                                </a>
-                               <span className="text-xs text-slate-400 font-black uppercase tracking-widest">{att.description}</span>
+                               <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{att.description}</span>
                             </div>
                           </div>
                         ))}
@@ -624,11 +665,16 @@ export function AgentView() {
                 </div>
               </ScrollArea>
 
-              <div className="p-8 border-t bg-white flex justify-between items-center shadow-inner">
-                <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="h-14 px-10 rounded-full font-black text-slate-600 hover:bg-slate-50">إغلاق النافذة</Button>
-                <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="rounded-full h-12 px-8 font-black shadow-xl shadow-red-100 hover:scale-105 transition-transform">
-                  <Trash2 className="w-5 h-5 ml-2" /> إلغاء البلاغ نهائياً
+              {/* Dialog Footer Actions */}
+              <div className="p-8 border-t bg-white flex justify-between items-center">
+                <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="h-14 px-10 rounded-full font-black text-slate-500 hover:bg-slate-50">
+                  إغلاق النافذة
                 </Button>
+                <div className="flex gap-4">
+                  <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="rounded-full h-12 px-8 font-black shadow-lg shadow-red-100/50 hover:scale-105 transition-transform">
+                    <Trash2 className="w-5 h-5 ml-2" /> حذف البلاغ نهائياً
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -639,14 +685,14 @@ export function AgentView() {
         <AlertDialogContent dir="rtl" className="text-right border-none rounded-[32px] p-10 shadow-2xl">
           <AlertDialogHeader>
             <div className="p-4 bg-red-50 rounded-full w-fit mx-auto mb-6"><AlertCircle className="w-12 h-12 text-red-600" /></div>
-            <AlertDialogTitle className="text-right text-3xl font-black text-slate-800">تأكيد إلغاء البلاغ</AlertDialogTitle>
+            <AlertDialogTitle className="text-right text-3xl font-black text-slate-800">تأكيد الحذف النهائي</AlertDialogTitle>
             <AlertDialogDescription className="text-red-500 font-bold text-right mt-4 text-lg leading-relaxed">
-              تحذير: سيتم حذف هذا البلاغ نهائياً من سجلات البنك. لا يمكن التراجع عن هذا الإجراء تحت أي ظرف.
+              تحذير: سيتم حذف هذا البلاغ من سجلات البنك بشكل قطعي. هذا الإجراء لا يمكن التراجع عنه وسوف تختفي كافة البيانات والمرفقات المرتبطة به.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-4 mt-10">
             <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-600 hover:bg-red-700 h-14 px-10 rounded-full font-black text-lg shadow-xl shadow-red-100">تأكيد الحذف</AlertDialogAction>
-            <AlertDialogCancel className="h-14 px-10 rounded-full font-black border-slate-200 hover:bg-slate-50 text-lg">تراجع</AlertDialogCancel>
+            <AlertDialogCancel className="h-14 px-10 rounded-full font-black border-slate-200 hover:bg-slate-50 text-lg">تراجع عن القرار</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
