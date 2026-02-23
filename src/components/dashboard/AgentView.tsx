@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Loader2, Inbox, Headset,
-  Phone, Share2, MessageSquare
+  Phone, Share2, MessageSquare, Image as ImageIcon, User, Fingerprint, Paperclip, X
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -34,19 +34,6 @@ export function AgentView() {
   // التأكد من أن الكول سنتر هو الوحيد الذي يمكنه الرفع
   const canRaiseTickets = user?.department === 'Support';
 
-  useEffect(() => {
-    const handleSync = (e: any) => {
-      const action = e.detail;
-      if (action === 'new-ticket' && canRaiseTickets) setShowNewForm(true);
-      else if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected'].includes(action)) {
-        setShowNewForm(false);
-        setActiveTab(action);
-      }
-    };
-    window.addEventListener('sidebar-nav', handleSync);
-    return () => window.removeEventListener('sidebar-nav', handleSync);
-  }, [canRaiseTickets]);
-
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
@@ -58,8 +45,11 @@ export function AgentView() {
     intakeMethod: '', 
     subIssue: '', 
     description: '', 
-    createdByAgentName: '' 
+    createdByAgentName: '',
+    attachmentUrl: ''
   });
+
+  const [attachments, setAttachments] = useState<{url: string, description: string}[]>([]);
 
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
@@ -76,6 +66,17 @@ export function AgentView() {
       return matchesSearch && matchesStatus;
     });
   }, [tickets, searchQuery, activeTab]);
+
+  const handleAddAttachment = () => {
+    if (formData.attachmentUrl.trim()) {
+      setAttachments([...attachments, { url: formData.attachmentUrl, description: 'مرفق فني' }]);
+      setFormData({...formData, attachmentUrl: ''});
+    }
+  };
+
+  const handleRemoveAttachment = (idx: number) => {
+    setAttachments(attachments.filter((_, i) => i !== idx));
+  };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,15 +97,20 @@ export function AgentView() {
       description: formData.description,
       createdByAgentId: user.id,
       createdByAgentName: formData.createdByAgentName,
-      attachments: [],
-      logs: [{ action: `تم رفع البلاغ من الكول سنتر بواسطة: ${formData.createdByAgentName}`, timestamp: new Date().toISOString(), userName: formData.createdByAgentName }]
+      attachments: attachments,
+      logs: [{ 
+        action: `تم رفع البلاغ وتوجيهه إلى ${formData.serviceType} بواسطة: ${formData.createdByAgentName}`, 
+        timestamp: new Date().toISOString(), 
+        userName: formData.createdByAgentName 
+      }]
     };
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
       .then(() => {
         toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}` });
         setShowNewForm(false);
-        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
+        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '', attachmentUrl: '' });
+        setAttachments([]);
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -125,7 +131,7 @@ export function AgentView() {
           <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
              <Headset className="w-8 h-8" /> محطة عمل الكول سنتر
           </h1>
-          <p className="text-slate-500 font-bold mt-1">توجيه بلاغات العملاء للأقسام الفنية المختصة</p>
+          <p className="text-slate-500 font-bold mt-1">إنشاء وبث البلاغات المصرفية للأقسام الفنية</p>
         </div>
         {canRaiseTickets && !showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="banking-button premium-gradient text-white h-14 px-8 shadow-xl">
@@ -135,70 +141,124 @@ export function AgentView() {
       </div>
 
       {showNewForm ? (
-        <Card className="banking-card max-w-4xl shadow-2xl border-none mx-auto overflow-hidden">
-          <CardHeader className="bg-slate-50 p-8 border-b">
-            <CardTitle className="text-primary text-2xl font-black">نموذج استلام وبث بلاغ</CardTitle>
+        <Card className="banking-card max-w-5xl shadow-2xl border-none mx-auto overflow-hidden">
+          <CardHeader className="bg-primary/5 p-8 border-b">
+            <CardTitle className="text-primary text-2xl font-black flex items-center gap-2 justify-end">
+               نموذج استلام ورفع طلب مصرفي <Plus className="w-6 h-6" />
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
-            <form onSubmit={handleCreateTicket} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1">موظف الكول سنتر (الرفع)</Label>
+          <CardContent className="p-10">
+            <form onSubmit={handleCreateTicket} className="space-y-8">
+              {/* الموظف والجهة المستلمة */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1 text-primary flex items-center gap-2 justify-end">
+                    موظف الكول سنتر (الرفع) <User className="w-4 h-4" />
+                  </Label>
                   <Select onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر اسم الموظف" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="اختر اسمك" /></SelectTrigger>
                     <SelectContent dir="rtl">
                       {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>) || <SelectItem value="dev">موظف تجريبي</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1">توجيه البلاغ إلى القسم المختص</Label>
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1 text-primary flex items-center gap-2 justify-end">
+                    توجيه البلاغ إلى القسم المختص <Share2 className="w-4 h-4" />
+                  </Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر القسم المستلم" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="اختر الجهة المستلمة" /></SelectTrigger>
                     <SelectContent dir="rtl">
-                      <SelectItem value="إدارة البطائق">قسم البطائق</SelectItem>
-                      <SelectItem value="خدمة العملاء">قسم خدمة العملاء</SelectItem>
+                      <SelectItem value="إدارة البطائق">قسم البطائق (Cards)</SelectItem>
+                      <SelectItem value="مشاكل التطبيق">التطبيق الإلكتروني (Mobile App)</SelectItem>
+                      <SelectItem value="خدمة العملاء">خدمة العملاء (Digital CS)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1">اسم العميل</Label>
-                  <Input required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="banking-input h-12 text-right" />
+              </div>
+
+              {/* بيانات العميل */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1">اسم العميل</Label>
+                  <Input required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="banking-input h-14 text-right border-slate-200" placeholder="الاسم الكامل للعميل" />
                 </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1">رقم CIF</Label>
-                  <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-12 font-mono text-right" />
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1">رقم CIF</Label>
+                  <Input required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="banking-input h-14 font-mono text-right border-slate-200" placeholder="رقم العميل الموحد" />
                 </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1 flex items-center gap-1 justify-end"><Share2 className="w-3 h-3" /> وسيلة استلام الطلب</Label>
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1">رقم الهاتف</Label>
+                  <div className="relative">
+                     <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                     <Input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-14 text-right pr-12 border-slate-200" placeholder="00966..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* تصنيف المشكلة */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">وسيلة استلام الطلب <Share2 className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="كيف تواصل العميل؟" /></SelectTrigger>
                     <SelectContent dir="rtl">
                       {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>) || <SelectItem value="dev">وسيلة تجريبية</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 text-right">
-                  <Label className="font-black text-xs mr-1 flex items-center gap-1 justify-end"><MessageSquare className="w-3 h-3" /> نوع المشكلة</Label>
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">نوع المشكلة <MessageSquare className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
-                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="تصنيف المشكلة الفنية" /></SelectTrigger>
                     <SelectContent dir="rtl">
                       {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || <SelectItem value="dev">مشكلة تجريبية</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 text-right">
-                   <Label className="font-black text-xs mr-1 flex items-center gap-1 justify-end"><Phone className="w-3 h-3" /> رقم هاتف العميل</Label>
-                   <Input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-12 text-right" />
+              </div>
+
+              {/* الوصف والمرفقات */}
+              <div className="space-y-6">
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1">وصف المشكلة بالتفصيل</Label>
+                  <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[150px] text-right border-slate-200 text-base" placeholder="اكتب هنا كافة التفاصيل التي ذكرها العميل..." />
+                </div>
+
+                <div className="space-y-3 text-right">
+                  <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">المرفقات والصور <Paperclip className="w-4 h-4 text-slate-400" /></Label>
+                  <div className="flex gap-2 flex-row-reverse">
+                    <Input value={formData.attachmentUrl} onChange={e => setFormData({...formData, attachmentUrl: e.target.value})} className="banking-input h-12 text-right border-slate-200" placeholder="رابط الصورة أو المستند..." />
+                    <Button type="button" onClick={handleAddAttachment} variant="outline" className="rounded-xl h-12 px-6 border-primary text-primary font-black">إضافة</Button>
+                  </div>
+                  {attachments.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                      {attachments.map((at, idx) => (
+                        <div key={idx} className="relative group bg-slate-50 p-2 rounded-xl border border-slate-100">
+                          <div className="h-20 w-full flex items-center justify-center bg-white rounded-lg overflow-hidden border">
+                             <ImageIcon className="w-8 h-8 text-slate-200" />
+                          </div>
+                          <Button 
+                            type="button" 
+                            variant="destructive" 
+                            size="icon" 
+                            onClick={() => handleRemoveAttachment(idx)}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="space-y-2 text-right">
-                <Label className="font-black text-xs mr-1">تفاصيل البلاغ كاملة</Label>
-                <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" />
-              </div>
-              <div className="flex justify-end gap-3 pt-6 border-t">
-                <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="rounded-full font-black">إلغاء</Button>
-                <Button type="submit" className="banking-button premium-gradient text-white h-12 px-12" disabled={isSubmitting}>إرسال البلاغ فوراً</Button>
+
+              <div className="flex justify-end gap-4 pt-8 border-t">
+                <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="rounded-full font-black px-8">إلغاء</Button>
+                <Button type="submit" className="banking-button premium-gradient text-white h-14 px-16 shadow-2xl" disabled={isSubmitting}>
+                   {isSubmitting ? <Loader2 className="animate-spin" /> : "إرسال البلاغ للأقسام الفنية"}
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -229,13 +289,13 @@ export function AgentView() {
               </TableHeader>
               <TableBody>
                 {filteredTickets?.map((t, idx) => (
-                  <TableRow key={t.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                  <TableRow key={t.id} className={`border-b transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                     <TableCell className="font-black pr-8 text-right"><Badge variant="outline">{t.ticketID}</Badge></TableCell>
                     <TableCell className="text-right font-bold">{t.customerName}</TableCell>
                     <TableCell className="text-right font-bold text-slate-500">{t.serviceType}</TableCell>
                     <TableCell className="text-right">{getStatusBadge(t.status)}</TableCell>
                     <TableCell className="text-center pl-8">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black">عرض التفاصيل</Button>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black border-primary text-primary">عرض التفاصيل</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -256,36 +316,47 @@ export function AgentView() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                    <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black">اسم العميل</span>
-                      <p className="font-black">{selectedTicket.customerName}</p>
+                      <span className="text-[10px] text-slate-400 block font-black uppercase">اسم العميل</span>
+                      <p className="font-black text-lg">{selectedTicket.customerName}</p>
                    </div>
                    <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black">رقم CIF</span>
-                      <p className="font-mono font-black">{selectedTicket.cif}</p>
+                      <span className="text-[10px] text-slate-400 block font-black uppercase">رقم CIF</span>
+                      <p className="font-mono font-black text-lg">{selectedTicket.cif}</p>
                    </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                    <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black">وسيلة الاستلام</span>
+                      <span className="text-[10px] text-slate-400 block font-black uppercase">وسيلة الاستلام</span>
                       <p className="font-bold">{selectedTicket.intakeMethod}</p>
                    </div>
                    <div className="bg-slate-50 p-4 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block font-black">نوع المشكلة</span>
+                      <span className="text-[10px] text-slate-400 block font-black uppercase">نوع المشكلة</span>
                       <p className="font-bold">{selectedTicket.subIssue}</p>
+                   </div>
+                   <div className="bg-slate-50 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-400 block font-black uppercase">الجهة المعنية</span>
+                      <p className="font-bold text-primary">{selectedTicket.serviceType}</p>
                    </div>
                 </div>
                 <div className="bg-slate-50 p-6 rounded-2xl">
-                   <span className="text-[10px] text-slate-400 block font-black mb-2">تفاصيل المشكلة</span>
-                   <p className="font-medium">{selectedTicket.description}</p>
+                   <span className="text-[10px] text-slate-400 block font-black mb-2 uppercase">تفاصيل المشكلة</span>
+                   <p className="font-medium leading-relaxed">{selectedTicket.description}</p>
                 </div>
-                {selectedTicket.specialistResponse && (
-                  <div className="bg-green-50 border border-green-100 p-6 rounded-2xl">
-                     <span className="text-[10px] text-green-600 block font-black mb-2">الرد الفني المعتمد</span>
-                     <p className="font-bold text-green-800">{selectedTicket.specialistResponse}</p>
+                {selectedTicket.attachments?.length > 0 && (
+                  <div className="space-y-3">
+                    <span className="text-[10px] text-slate-400 block font-black uppercase">المرفقات</span>
+                    <div className="flex gap-3">
+                       {selectedTicket.attachments.map((at: any, i: number) => (
+                         <div key={i} className="bg-white border p-3 rounded-xl flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4 text-primary" />
+                            <span className="text-xs font-bold">مرفق {i + 1}</span>
+                         </div>
+                       ))}
+                    </div>
                   </div>
                 )}
-                <div className="flex justify-end">
-                   <Button onClick={() => setSelectedTicket(null)} className="rounded-full font-black px-10">إغلاق</Button>
+                <div className="flex justify-end pt-4">
+                   <Button onClick={() => setSelectedTicket(null)} className="rounded-full font-black px-12 h-12">إغلاق</Button>
                 </div>
              </div>
            )}
@@ -294,3 +365,4 @@ export function AgentView() {
     </div>
   );
 }
+

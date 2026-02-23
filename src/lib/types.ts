@@ -1,8 +1,9 @@
 
+
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
 export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
-export type ServiceType = 'كول سنتر' | 'إدارة البطائق' | 'مشاكل التطبيق' | string;
+export type ServiceType = 'إدارة البطائق' | 'مشاكل التطبيق' | 'خدمة العملاء' | string;
 export type IntakeMethod = 'واتساب' | 'اتصال' | 'من خلال الفروع' | string;
 
 export interface UserProfile {
@@ -33,7 +34,7 @@ export interface Ticket {
   customerName: string;
   cif: string;
   phoneNumber: string;
-  serviceType: ServiceType; // الجهه المعنية
+  serviceType: ServiceType; // الجهة المعنية
   subIssue: string; // نوع المشكلة
   intakeMethod: IntakeMethod; // وسيلة استلام البلاغ
   description: string; // تفاصيل المشكلة
@@ -54,8 +55,10 @@ export interface Ticket {
 
 // إعدادات النظام القابلة للإدارة من المدير
 export interface SystemConfig {
-  serviceTypes: string[];
+  specialistNames: string[];
+  csNames: string[];
+  agentNames: string[];
   intakeMethods: string[];
   issueTypes: string[];
-  staffNames: string[];
 }
+

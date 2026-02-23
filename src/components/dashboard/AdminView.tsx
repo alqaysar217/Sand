@@ -88,10 +88,10 @@ export function AdminView() {
             <p className="text-slate-500 font-bold mt-1">الرقابة المركزية وإدارة خيارات ومعايير النظام</p>
           </div>
           <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
-            <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات الحقيقية</TabsTrigger>
+            <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
             <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة الموظفين</TabsTrigger>
-            <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة خيارات النظام</TabsTrigger>
-            <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">حسابات النظام</TabsTrigger>
+            <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">خيارات النظام</TabsTrigger>
+            <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الحسابات</TabsTrigger>
           </TabsList>
         </div>
 
@@ -111,22 +111,15 @@ export function AdminView() {
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 h-[350px]">
-                   {stats.total > 0 ? (
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={stats.deptData}>
-                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                           <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
-                           <YAxis orientation="right" fontSize={12} fontWeight="bold" />
-                           <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
-                           <Bar dataKey="tickets" name="عدد البلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} />
-                        </BarChart>
-                     </ResponsiveContainer>
-                   ) : (
-                     <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
-                        <BarChart3 className="w-12 h-12 opacity-20" />
-                        <p className="font-bold">لا توجد بلاغات مسجلة حالياً</p>
-                     </div>
-                   )}
+                   <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.deptData}>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                         <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
+                         <YAxis orientation="right" fontSize={12} fontWeight="bold" />
+                         <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
+                         <Bar dataKey="tickets" name="عدد البلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                   </ResponsiveContainer>
                 </CardContent>
              </Card>
              <Card className="banking-card border-none shadow-xl">
@@ -136,22 +129,15 @@ export function AdminView() {
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 h-[350px]">
-                   {stats.total > 0 ? (
-                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                           <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value">
-                              {stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                           </Pie>
-                           <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
-                           <Legend verticalAlign="bottom" height={36} />
-                        </PieChart>
-                     </ResponsiveContainer>
-                   ) : (
-                     <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
-                        <PieChartIcon className="w-12 h-12 opacity-20" />
-                        <p className="font-bold">النظام فارغ حالياً</p>
-                     </div>
-                   )}
+                   <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                         <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value">
+                            {stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                         </Pie>
+                         <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
+                         <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                   </ResponsiveContainer>
                 </CardContent>
              </Card>
           </div>
@@ -195,81 +181,63 @@ export function AdminView() {
                 icon={<MessageSquare className="w-4 h-4" />}
               />
            </div>
-           
-           <div className="mt-8">
-              <Card className="banking-card border-none shadow-xl bg-red-50/30 border border-red-100 overflow-hidden">
-                 <CardHeader className="p-6 border-b border-red-100 flex flex-row-reverse items-center justify-between bg-red-50/50">
-                    <CardTitle className="text-red-700 font-black flex items-center gap-2">
-                      <ShieldAlert className="w-5 h-5" /> تفريغ النظام بالكامل
-                    </CardTitle>
-                 </CardHeader>
-                 <CardContent className="p-8">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                       <div className="text-right">
-                          <h4 className="font-black text-slate-800">مسح كافة البلاغات المخزنة</h4>
-                          <p className="text-xs text-slate-500 font-bold mt-1">سيتم حذف جميع البلاغات نهائياً لبدء اختبار جديد ونظيف.</p>
-                       </div>
-                       <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="rounded-full px-8 h-12 font-black">
-                                <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات فوراً
-                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
-                             <AlertDialogHeader>
-                                <AlertDialogTitle className="font-black text-right text-red-700">تأكيد المسح الشامل</AlertDialogTitle>
-                                <AlertDialogDescription className="text-right font-bold text-slate-500">
-                                   سيتم حذف جميع البلاغات من كافة الأقسام نهائياً.
-                                </AlertDialogDescription>
-                             </AlertDialogHeader>
-                             <AlertDialogFooter className="flex-row-reverse gap-3">
-                                <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleClearAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
-                                   تأكيد المسح
-                                </AlertDialogAction>
-                             </AlertDialogFooter>
-                          </AlertDialogContent>
-                       </AlertDialog>
-                    </div>
-                 </CardContent>
-              </Card>
+           <div className="mt-8 border-t pt-8">
+              <AlertDialog>
+                 <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="rounded-full px-8 h-12 font-black">
+                       <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البلاغات من النظام
+                    </Button>
+                 </AlertDialogTrigger>
+                 <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                    <AlertDialogHeader>
+                       <AlertDialogTitle className="font-black text-right">تأكيد المسح الشامل</AlertDialogTitle>
+                       <AlertDialogDescription className="text-right font-bold">
+                          سيتم حذف جميع البلاغات المسجلة في كافة الأقسام نهائياً. لا يمكن التراجع عن هذه الخطوة.
+                       </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-row-reverse gap-3">
+                       <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                       <AlertDialogAction onClick={handleClearAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
+                          تأكيد المسح
+                       </AlertDialogAction>
+                    </AlertDialogFooter>
+                 </AlertDialogContent>
+              </AlertDialog>
            </div>
         </TabsContent>
 
         <TabsContent value="users" className="animate-in fade-in duration-500 mt-0">
            <Card className="banking-card border-none shadow-xl overflow-hidden">
               <CardHeader className="p-8 border-b">
-                 <CardTitle className="text-2xl font-black text-primary">حسابات الموظفين المسجلين</CardTitle>
+                 <CardTitle className="text-2xl font-black text-primary">حسابات النظام المسجلة</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                 <div className="overflow-x-auto">
-                    <Table>
-                       <TableHeader className="bg-primary">
-                          <TableRow className="hover:bg-primary border-none">
-                             <TableHead className="text-right font-black text-white h-14 pr-8">الاسم</TableHead>
-                             <TableHead className="text-right font-black text-white h-14">البريد الإلكتروني</TableHead>
-                             <TableHead className="text-right font-black text-white h-14">الدور الوظيفي</TableHead>
-                             <TableHead className="text-right font-black text-white h-14 pl-8">القسم</TableHead>
+                 <Table>
+                    <TableHeader className="bg-primary">
+                       <TableRow className="hover:bg-primary border-none">
+                          <TableHead className="text-right font-black text-white h-14 pr-8">الاسم</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">البريد الإلكتروني</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">الدور</TableHead>
+                          <TableHead className="text-right font-black text-white h-14 pl-8">القسم</TableHead>
+                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                       {appUsers?.map((u, idx) => (
+                          <TableRow key={u.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                             <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
+                             <TableCell className="text-right">{u.email}</TableCell>
+                             <TableCell className="text-right">
+                                <Badge className={`rounded-full px-4 font-black ${
+                                   u.role === 'Admin' ? 'bg-red-500' : u.role === 'Specialist' ? 'bg-primary' : 'bg-secondary'
+                                }`}>
+                                   {u.role}
+                                </Badge>
+                             </TableCell>
+                             <TableCell className="text-right font-bold text-slate-500 pl-8">{u.department}</TableCell>
                           </TableRow>
-                       </TableHeader>
-                       <TableBody>
-                          {appUsers?.map((u, idx) => (
-                             <TableRow key={u.id} className={`border-b transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                                <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
-                                <TableCell className="text-right">{u.email}</TableCell>
-                                <TableCell className="text-right">
-                                   <Badge className={`rounded-full px-4 font-black ${
-                                      u.role === 'Admin' ? 'bg-red-500' : u.role === 'Specialist' ? 'bg-primary' : 'bg-secondary'
-                                   }`}>
-                                      {u.role === 'Admin' ? 'مدير' : u.role === 'Specialist' ? 'أخصائي معالجة' : 'موظف رفع'}
-                                   </Badge>
-                                </TableCell>
-                                <TableCell className="text-right font-bold text-slate-500 pl-8">{u.department}</TableCell>
-                             </TableRow>
-                          ))}
-                       </TableBody>
-                    </Table>
-                 </div>
+                       ))}
+                    </TableBody>
+                 </Table>
               </CardContent>
            </Card>
         </TabsContent>
@@ -298,8 +266,6 @@ function StatCard({ icon: Icon, title, value, color }: any) {
 
 function ConfigSection({ title, items, onSave, icon }: any) {
    const [newItem, setNewItem] = useState('');
-   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-   const [editingValue, setEditingValue] = useState('');
 
    const handleAdd = () => {
       if (newItem.trim()) {
@@ -310,15 +276,6 @@ function ConfigSection({ title, items, onSave, icon }: any) {
 
    const handleDelete = (index: number) => {
       onSave(items.filter((_: any, i: number) => i !== index));
-   };
-
-   const handleSaveEdit = () => {
-      if (editingIndex !== null && editingValue.trim()) {
-         const newList = [...items];
-         newList[editingIndex] = editingValue.trim();
-         onSave(newList);
-         setEditingIndex(null);
-      }
    };
 
    return (
@@ -336,21 +293,9 @@ function ConfigSection({ title, items, onSave, icon }: any) {
             </div>
             <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
                {items.map((item: string, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl flex-row-reverse bg-slate-50 border border-transparent">
-                     {editingIndex === idx ? (
-                        <div className="flex items-center gap-2 w-full flex-row-reverse">
-                           <Input value={editingValue} onChange={e => setEditingValue(e.target.value)} className="h-9 banking-input text-right" autoFocus />
-                           <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="text-green-600"><Save className="w-4 h-4" /></Button>
-                        </div>
-                     ) : (
-                        <>
-                           <span className="font-bold text-sm">{item}</span>
-                           <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => { setEditingIndex(idx); setEditingValue(item); }} className="text-primary"><Edit2 className="w-3.5 h-3.5" /></Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(idx)} className="text-red-500"><Trash2 className="w-3.5 h-3.5" /></Button>
-                           </div>
-                        </>
-                     )}
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl flex-row-reverse bg-slate-50">
+                     <span className="font-bold text-sm">{item}</span>
+                     <Button variant="ghost" size="icon" onClick={() => handleDelete(idx)} className="text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                ))}
             </div>
