@@ -27,7 +27,10 @@ import {
   Paperclip,
   ExternalLink,
   Eye,
-  FileText
+  FileText,
+  XCircle,
+  Send,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -42,18 +45,25 @@ export function SpecialistView() {
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [response, setResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
+  // جلب البلاغات الموجهة لقسم الأخصائي
   const deptTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.department) return null;
+    const deptName = user.department === 'Cards' ? 'إدارة البطائق' : 
+                   user.department === 'Support' ? 'كول سنتر' : 
+                   user.department === 'App' ? 'مشاكل التطبيق' : user.department;
+    
     return query(
       collection(db, 'tickets'),
-      where('serviceType', '==', user.department === 'Cards' ? 'إدارة البطائق' : user.department),
+      where('serviceType', '==', deptName),
       orderBy('createdAt', 'desc')
     );
   }, [db, user?.department]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection(deptTicketsQuery);
 
+  // استلام البلاغ للعمل عليه
   const handleClaim = (ticket: any) => {
     if (!db || !user) return;
     const ticketRef = doc(db, 'tickets', ticket.id);
@@ -62,37 +72,60 @@ export function SpecialistView() {
       assignedToSpecialistName: user.name,
       status: 'Pending',
       logs: arrayUnion({
-        action: 'تم استلام البلاغ من قبل الأخصائي',
+        action: `تم استلام البلاغ بواسطة الأخصائي: ${user.name}`,
         timestamp: new Date().toISOString(),
         userName: user.name
       })
     });
-    toast({ title: "تم الاستلام بنجاح", description: `البلاغ ${ticket.ticketID} الآن تحت معالجتك.` });
+    toast({ title: "تم الاستلام", description: "البلاغ الآن في قائمة مهامك." });
   };
 
-  const handleResolve = () => {
+  // معالجة البلاغ (حل، رفض، إحالة)
+  const handleAction = async (actionType: 'Resolved' | 'Rejected' | 'Escalated') => {
     if (!db || !user || !selectedTicket) return;
     if (!response.trim()) {
-      toast({ variant: "destructive", title: "تنبيه", description: "يجب كتابة رد فني مفصل قبل إغلاق البلاغ." });
+      toast({ variant: "destructive", title: "تنبيه", description: "يجب كتابة تعليق أو رد فني يوضح الإجراء المتخذ." });
       return;
     }
 
+    setIsProcessing(true);
     const ticketRef = doc(db, 'tickets', selectedTicket.id);
-    updateDocumentNonBlocking(ticketRef, {
-      status: 'Resolved',
-      specialistResponse: response,
-      resolvedAt: new Date().toISOString(),
+    
+    let actionText = '';
+    switch(actionType) {
+      case 'Resolved': actionText = 'تم تقديم الحل الفني وإغلاق البلاغ'; break;
+      case 'Rejected': actionText = 'تم رفض البلاغ مع ذكر الأسباب'; break;
+      case 'Escalated': actionText = 'تمت إحالة البلاغ للمستوى الأعلى'; break;
+    }
+
+    const updateData: any = {
+      status: actionType,
       logs: arrayUnion({
-        action: 'تم تقديم الحل الفني وإغلاق البلاغ',
+        action: actionText,
         timestamp: new Date().toISOString(),
         userName: user.name,
         note: response
       })
-    });
+    };
 
-    toast({ title: "تم الحل والإغلاق", description: "تم إرسال الرد الفني للموظف بنجاح." });
-    setSelectedTicket(null);
-    setResponse('');
+    if (actionType === 'Resolved') {
+      updateData.specialistResponse = response;
+      updateData.resolvedAt = new Date().toISOString();
+    } else if (actionType === 'Rejected') {
+      updateData.rejectionReason = response;
+      updateData.rejectedAt = new Date().toISOString();
+    }
+
+    try {
+      updateDocumentNonBlocking(ticketRef, updateData);
+      toast({ title: "تم تحديث الحالة", description: `تم تغيير حالة البلاغ إلى ${actionType === 'Resolved' ? 'تم الحل' : actionType === 'Rejected' ? 'مرفوض' : 'محال'}.` });
+      setSelectedTicket(null);
+      setResponse('');
+    } catch (err) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث حالة البلاغ." });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleAiSuggest = async () => {
@@ -101,12 +134,12 @@ export function SpecialistView() {
     try {
       const result = await smartResponseAssistant({
         complaintDetails: `المشكلة: ${selectedTicket.subIssue}, التفاصيل: ${selectedTicket.description}`,
-        resolutionHistory: ["إعادة تعيين الرقم السري للبطاقة", "تفعيل الحساب المجمد", "تحديث بيانات الهوية الشخصية"]
+        resolutionHistory: ["تفعيل البطاقة المجمدة", "تغيير رمز PIN", "تحديث بيانات KYC"]
       });
       setResponse(result.suggestedResponse);
       toast({ title: "اقتراح ذكي", description: "تم توليد رد فني مقترح بناءً على تفاصيل البلاغ." });
     } catch (e) {
-      toast({ variant: "destructive", title: "خطأ AI", description: "فشل مساعد الرد الذكي في معالجة الطلب." });
+      toast({ variant: "destructive", title: "خطأ AI", description: "فشل مساعد الرد الذكي." });
     } finally {
       setIsGenerating(false);
     }
@@ -114,9 +147,11 @@ export function SpecialistView() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending': return <Badge className="status-pending rounded-full px-4 font-bold shadow-sm">قيد العمل</Badge>;
-      case 'Resolved': return <Badge className="status-resolved rounded-full px-4 font-bold shadow-sm">تم الحل</Badge>;
-      default: return <Badge className="status-new rounded-full px-4 font-bold shadow-sm">بلاغ جديد</Badge>;
+      case 'Pending': return <Badge className="bg-amber-500 text-white rounded-full px-4 font-black">قيد المعالجة</Badge>;
+      case 'Resolved': return <Badge className="bg-green-600 text-white rounded-full px-4 font-black">تم الحل</Badge>;
+      case 'Rejected': return <Badge className="bg-slate-800 text-white rounded-full px-4 font-black">مرفوض</Badge>;
+      case 'Escalated': return <Badge className="bg-red-600 text-white rounded-full px-4 font-black">محال</Badge>;
+      default: return <Badge className="bg-blue-600 text-white rounded-full px-4 font-black">جديد</Badge>;
     }
   };
 
@@ -124,11 +159,11 @@ export function SpecialistView() {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 text-right h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pb-10" dir="rtl">
         <div className="flex items-center justify-between flex-row-reverse">
-          <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="rounded-full hover:bg-white text-slate-500 font-bold px-6">
+          <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="rounded-full hover:bg-white text-slate-500 font-black px-6">
             <ArrowRight className="w-5 h-5 ml-2" /> العودة لمحطة العمل
           </Button>
           <div className="flex items-center gap-3 flex-row-reverse">
-            <span className="text-slate-400 font-bold text-xs text-right">حالة البلاغ الحالية:</span>
+            <span className="text-slate-400 font-black text-xs text-right">الحالة الحالية:</span>
             {getStatusBadge(selectedTicket.status)}
           </div>
         </div>
@@ -142,9 +177,7 @@ export function SpecialistView() {
                     <Inbox className="w-8 h-8 text-primary" />
                   </div>
                   <div className="text-right">
-                    <CardTitle className="text-2xl font-black text-primary">
-                      معالجة بلاغ رقم: {selectedTicket.ticketID}
-                    </CardTitle>
+                    <CardTitle className="text-2xl font-black text-primary">معالجة بلاغ رقم: {selectedTicket.ticketID}</CardTitle>
                     <div className="flex items-center gap-2 mt-2 text-slate-400 text-xs font-bold justify-end">
                       <Calendar className="w-4 h-4" />
                       <span>تاريخ الورود: {new Date(selectedTicket.createdAt).toLocaleString('ar-SA')}</span>
@@ -153,40 +186,33 @@ export function SpecialistView() {
                 </div>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
+                {/* بيانات العميل */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
-                    <CardContent className="p-6 flex items-center gap-4 justify-start flex-row-reverse">
-                      <div className="p-3 bg-white rounded-full shadow-sm"><UserCircle className="w-6 h-6 text-primary/40" /></div>
-                      <div className="text-right">
-                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1 text-right">اسم العميل</Label>
-                        <p className="font-black text-slate-800 text-right">{selectedTicket.customerName}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="rounded-[24px] border-none shadow-sm bg-slate-50/50">
-                    <CardContent className="p-6 flex items-center gap-4 justify-start flex-row-reverse">
-                      <div className="p-3 bg-white rounded-full shadow-sm"><Fingerprint className="w-6 h-6 text-primary/40" /></div>
-                      <div className="text-right">
-                        <Label className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mb-1 text-right">رقم الحساب (CIF)</Label>
-                        <p className="font-mono font-black text-primary text-right">{selectedTicket.cif}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
+                    <div className="p-2 bg-white rounded-lg shadow-sm"><UserCircle className="w-5 h-5 text-primary" /></div>
+                    <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">اسم العميل</span><p className="font-black text-sm text-right">{selectedTicket.customerName}</p></div>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse border border-slate-100">
+                    <div className="p-2 bg-white rounded-lg shadow-sm"><Fingerprint className="w-5 h-5 text-primary" /></div>
+                    <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">رقم CIF</span><p className="font-mono font-black text-sm text-right">{selectedTicket.cif}</p></div>
+                  </div>
                 </div>
 
+                {/* تفاصيل المشكلة */}
                 <div className="space-y-4">
                    <div className="flex items-center gap-3 px-2 justify-end">
                       <h3 className="font-black text-xl text-slate-900">وصف المشكلة الفنية</h3>
                       <MessageSquare className="w-6 h-6 text-primary" />
                    </div>
-                   <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm text-lg leading-relaxed text-slate-700 font-medium whitespace-pre-wrap text-right">
-                      <div className="flex justify-end mb-6">
-                        <Badge className="bg-primary/5 border-primary/10 text-primary font-black px-6 py-2 rounded-full border shadow-sm">{selectedTicket.subIssue}</Badge>
+                   <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm text-lg leading-relaxed text-slate-700 font-medium text-right">
+                      <div className="flex justify-end mb-4">
+                        <Badge className="bg-primary/5 border-primary/10 text-primary font-black px-6 py-2 rounded-full border">{selectedTicket.subIssue}</Badge>
                       </div>
-                      <p className="text-right">{selectedTicket.description}</p>
+                      <p>{selectedTicket.description}</p>
                    </div>
                 </div>
 
+                {/* المرفقات */}
                 {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
                   <div className="space-y-4 pt-4">
                     <div className="flex items-center gap-3 px-2 justify-end">
@@ -197,46 +223,50 @@ export function SpecialistView() {
                       {selectedTicket.attachments.map((file: any, idx: number) => (
                         <div key={idx} className="bg-white p-4 rounded-[28px] border border-slate-100 shadow-sm group">
                           {file.url.startsWith('data:image/') ? (
-                             <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 shadow-inner">
-                               <img src={file.url} alt={file.description} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                             <div className="relative aspect-video rounded-2xl overflow-hidden mb-2">
+                               <img src={file.url} alt={file.description} className="w-full h-full object-cover" />
                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-3 bg-white rounded-full text-primary shadow-xl">
-                                    <Eye className="w-6 h-6" />
-                                  </a>
+                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white rounded-full text-primary"><Eye className="w-5 h-5" /></a>
                                </div>
                              </div>
                           ) : (
-                             <div className="aspect-video bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-dashed">
-                               <FileText className="w-10 h-10 text-slate-300" />
-                             </div>
+                             <div className="aspect-video bg-slate-50 rounded-2xl flex items-center justify-center mb-2"><FileText className="w-8 h-8 text-slate-300" /></div>
                           )}
-                          <p className="text-[10px] font-black text-slate-400 truncate text-right px-2">{file.description}</p>
+                          <p className="text-[10px] font-black text-slate-400 truncate text-right">{file.description}</p>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
+                {/* اتخاذ إجراء */}
                 <div className="space-y-4 pt-10 border-t">
                    <div className="flex items-center justify-between px-2 flex-row-reverse">
                       <div className="flex items-center gap-3 flex-row-reverse">
                         <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        <h3 className="font-black text-xl text-slate-900">الرد الفني والحل المتخذ</h3>
+                        <h3 className="font-black text-xl text-slate-900">الرد الفني والتعليق</h3>
                       </div>
-                      <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full border-accent/20 hover:bg-accent/5 text-accent font-black px-6 h-11 shadow-sm transition-all hover:scale-105">
+                      <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full border-accent/20 hover:bg-accent/5 text-accent font-black h-11">
                          {isGenerating ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2" />}
-                         مساعد الرد الذكي (AI)
+                         اقتراح ذكي (AI)
                       </Button>
                    </div>
                    <Textarea 
                       value={response} 
                       onChange={(e) => setResponse(e.target.value)} 
-                      placeholder="يرجى كتابة التفاصيل التقنية للحل هنا..." 
-                      className="banking-input min-h-[220px] p-8 text-lg border-slate-200 shadow-inner bg-slate-50/30 focus:bg-white text-right" 
+                      placeholder="اكتب ردك الفني أو سبب الرفض/الإحالة هنا..." 
+                      className="banking-input min-h-[200px] p-8 text-lg text-right" 
                    />
-                   <div className="flex justify-end pt-6">
-                      <Button className="banking-button premium-gradient text-white h-16 px-16 text-xl shadow-2xl shadow-primary/20" onClick={handleResolve}>
-                         اعتماد الحل وإغلاق البلاغ
+                   
+                   <div className="flex flex-wrap justify-end gap-4 pt-6">
+                      <Button variant="outline" className="h-16 px-10 rounded-[28px] border-red-200 text-red-600 hover:bg-red-50 font-black text-lg" onClick={() => handleAction('Rejected')} disabled={isProcessing}>
+                         <XCircle className="w-6 h-6 ml-2" /> رفض البلاغ
+                      </Button>
+                      <Button variant="outline" className="h-16 px-10 rounded-[28px] border-amber-200 text-amber-600 hover:bg-amber-50 font-black text-lg" onClick={() => handleAction('Escalated')} disabled={isProcessing}>
+                         <Send className="w-6 h-6 ml-2" /> إحالة للمشرف
+                      </Button>
+                      <Button className="banking-button premium-gradient text-white h-16 px-16 text-xl shadow-2xl" onClick={() => handleAction('Resolved')} disabled={isProcessing}>
+                         <CheckCircle2 className="w-6 h-6 ml-2" /> اعتماد الحل والإغلاق
                       </Button>
                    </div>
                 </div>
@@ -248,16 +278,17 @@ export function SpecialistView() {
              <Card className="banking-card shadow-lg border-none overflow-hidden">
                 <CardHeader className="p-6 border-b bg-slate-50/50 flex items-center gap-3 justify-start flex-row-reverse">
                    <History className="w-5 h-5 text-primary" />
-                   <CardTitle className="text-lg font-black text-slate-800">سجل البلاغ</CardTitle>
+                   <CardTitle className="text-lg font-black text-slate-800">سجل تتبع البلاغ</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                    <div className="space-y-6">
                       {selectedTicket.logs?.map((log: any, idx: number) => (
                         <div key={idx} className="relative pr-6 border-r-2 border-slate-100 last:border-0 pb-6 text-right">
-                           <div className="absolute top-0 -right-[7px] w-3.5 h-3.5 rounded-full bg-primary shadow-md border-2 border-white"></div>
+                           <div className="absolute top-0 -right-[7px] w-3.5 h-3.5 rounded-full bg-primary border-2 border-white"></div>
                            <div className="text-right">
                               <p className="font-black text-slate-800 text-xs">{log.action}</p>
-                              <p className="text-[10px] text-slate-400 font-bold mt-1 tracking-wider text-right">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
+                              <p className="text-[10px] text-slate-400 font-black mt-1">{new Date(log.timestamp).toLocaleString('ar-SA')}</p>
+                              {log.note && <p className="mt-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100 font-bold text-slate-600">{log.note}</p>}
                            </div>
                         </div>
                       ))}
@@ -280,9 +311,10 @@ export function SpecialistView() {
       <Card className="banking-card overflow-hidden shadow-2xl border-none">
         <CardHeader className="p-10 border-b border-slate-50 bg-white">
           <div className="flex items-center gap-4 justify-start flex-row-reverse">
-            <div className="p-4 bg-primary/5 rounded-[22px]"><Clock className="w-8 h-8 text-primary" /></div>
+            <div className="p-4 bg-primary/5 rounded-[22px]"><Inbox className="w-8 h-8 text-primary" /></div>
             <div className="text-right">
-              <CardTitle className="text-2xl text-primary font-black">المهام والعمليات الواردة</CardTitle>
+              <CardTitle className="text-2xl text-primary font-black">صندوق المهام الواردة</CardTitle>
+              <p className="text-slate-400 font-bold mt-1">البلاغات الموجهة لقسمك بانتظار المعالجة</p>
             </div>
           </div>
         </CardHeader>
@@ -291,9 +323,9 @@ export function SpecialistView() {
             <div className="flex justify-center py-24"><Loader2 className="animate-spin text-primary h-14 w-14" /></div>
           ) : (
             <div className="overflow-x-auto">
-              <Table className="border-collapse">
-                <TableHeader>
-                  <TableRow className="bg-primary border-none hover:bg-primary">
+              <Table>
+                <TableHeader className="bg-primary">
+                  <TableRow className="border-none hover:bg-primary">
                     <TableHead className="text-right h-18 font-black text-white pr-12">رقم البلاغ</TableHead>
                     <TableHead className="text-right h-18 font-black text-white">العميل</TableHead>
                     <TableHead className="text-right h-18 font-black text-white">نوع المشكلة</TableHead>
@@ -305,61 +337,39 @@ export function SpecialistView() {
                   {tickets?.map((t: any, index: number) => (
                     <TableRow 
                       key={t.id} 
-                      className={`transition-all duration-200 border-b border-slate-100 cursor-pointer group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                      onClick={() => t.assignedToSpecialistId === user?.id && setSelectedTicket(t)}
+                      className={`transition-colors border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
                     >
                       <TableCell className="py-6 font-black text-primary pr-12 text-right">
-                        <span className="bg-primary/5 px-5 py-2.5 rounded-full text-xs shadow-sm border border-primary/5">{t.ticketID}</span>
+                        <span className="bg-primary/5 px-4 py-2 rounded-full text-xs">{t.ticketID}</span>
                       </TableCell>
                       <TableCell className="py-6 text-right">
-                         <div className="font-black text-slate-800 text-sm text-right">{t.customerName}</div>
-                         <div className="text-[10px] text-slate-400 font-black font-mono mt-1 tracking-wider uppercase text-right">{t.cif}</div>
-                      </TableCell>
-                      <TableCell className="py-6 text-right text-slate-600 font-bold text-sm">
-                        <Badge variant="outline" className="rounded-full bg-slate-50 border-slate-200 text-slate-500 font-bold">{t.subIssue}</Badge>
+                         <div className="font-black text-slate-800 text-sm">{t.customerName}</div>
+                         <div className="text-[10px] text-slate-400 font-mono">{t.cif}</div>
                       </TableCell>
                       <TableCell className="py-6 text-right">
-                         <div className="scale-95 origin-right">{getStatusBadge(t.status)}</div>
+                        <Badge variant="outline" className="font-black border-slate-200 text-slate-500">{t.subIssue}</Badge>
                       </TableCell>
+                      <TableCell className="py-6 text-right">{getStatusBadge(t.status)}</TableCell>
                       <TableCell className="py-6 text-center pl-12">
                         {!t.assignedToSpecialistId ? (
                           <Button 
-                             size="sm" 
-                             onClick={(e) => { e.stopPropagation(); handleClaim(t); }} 
-                             className="banking-button premium-gradient text-white h-11 px-8 font-black text-xs"
+                             onClick={() => handleClaim(t)} 
+                             className="banking-button premium-gradient text-white h-11 px-8 font-black"
                           >
-                             <div className="flex items-center gap-2">
-                               <UserPlus className="w-4 h-4" />
-                               <span>استلام المهمة</span>
-                             </div>
+                             <UserPlus className="w-4 h-4 ml-2" /> استلام البلاغ
                           </Button>
                         ) : t.assignedToSpecialistId === user?.id ? (
-                          <Button variant="outline" size="sm" className="rounded-full h-11 px-8 border-primary/20 hover:bg-primary hover:text-white font-black text-xs">
-                             <div className="flex items-center gap-2">
-                               <ExternalLink className="w-4 h-4" />
-                               <span>فتح ومعالجة</span>
-                             </div>
+                          <Button variant="outline" onClick={() => setSelectedTicket(t)} className="rounded-full h-11 px-8 border-primary text-primary hover:bg-primary hover:text-white font-black">
+                             معالجة الآن
                           </Button>
                         ) : (
-                          <div className="flex items-center gap-2 text-slate-400 font-black text-[10px] bg-slate-100 px-4 py-2 rounded-full w-fit mx-auto border border-slate-200/50">
-                             <span>مستلم بواسطة {t.assignedToSpecialistName}</span>
-                          </div>
+                          <span className="text-slate-400 font-black text-[10px] bg-slate-100 px-4 py-2 rounded-full">مستلم بواسطة {t.assignedToSpecialistName}</span>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
                   {(!tickets || tickets.length === 0) && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-32 bg-white">
-                         <div className="flex flex-col items-center gap-6 text-slate-300">
-                           <div className="p-8 bg-slate-50 rounded-full border border-slate-100"><Inbox className="w-20 h-20 opacity-30" /></div>
-                           <div className="space-y-1">
-                             <p className="font-black text-2xl text-slate-400">لا توجد مهام حالياً</p>
-                             <p className="text-sm text-slate-300">صندوق الوارد نظيف، استمتع ببعض الراحة!</p>
-                           </div>
-                         </div>
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-32 font-black text-slate-400">لا توجد مهام حالياً في قسمك</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
