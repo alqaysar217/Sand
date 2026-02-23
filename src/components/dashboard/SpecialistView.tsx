@@ -16,7 +16,6 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, doc, orderBy, arrayUnion } from 'firebase/firestore';
 
@@ -26,7 +25,6 @@ export function SpecialistView() {
   const { toast } = useToast();
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [response, setResponse] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [activeDeptFilter, setActiveDeptFilter] = useState('all');
@@ -111,14 +109,6 @@ export function SpecialistView() {
     setIsProcessing(false);
   };
 
-  const handleAiSuggest = async () => {
-    if (!selectedTicket) return;
-    setIsGenerating(true);
-    const result = await smartResponseAssistant({ complaintDetails: selectedTicket.description });
-    setResponse(result.suggestedResponse);
-    setIsGenerating(false);
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Pending': return <Badge className="bg-amber-500 rounded-full font-black">قيد المعالجة</Badge>;
@@ -177,9 +167,6 @@ export function SpecialistView() {
                          <h4 className="font-black text-slate-800 flex items-center gap-2">
                             الرد الفني والحل المتخذ <Sparkles className="w-4 h-4 text-accent" />
                          </h4>
-                         <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isGenerating} className="rounded-full text-accent font-black h-10 border-accent/20 hover:bg-accent/5">
-                            {isGenerating ? <Loader2 className="animate-spin ml-2" /> : <Sparkles className="ml-2 w-4 h-4" />} استشارة المساعد الذكي
-                         </Button>
                       </div>
                       <Textarea 
                         value={response} 
