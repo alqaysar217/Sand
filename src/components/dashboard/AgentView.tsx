@@ -15,7 +15,7 @@ import {
   ArrowRight, ImageIcon, 
   MessageSquare, Phone, MapPin, ExternalLink,
   Upload, User, X, Trash2, CheckCircle2, AlertCircle, Clock,
-  BellRing, FileText, Reply, History
+  BellRing, FileText, Reply, History, Building2, UserCircle, Fingerprint, Share2, Settings2, Paperclip
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle
@@ -253,7 +253,7 @@ export function AgentView() {
         <Card className="max-w-4xl border-2 border-primary/10 shadow-xl animate-in slide-in-from-top-4">
           <CardHeader className="bg-slate-50 text-right border-b flex flex-row items-center justify-between">
             <div className="text-right flex-1">
-              <CardTitle className="text-primary text-xl flex items-center gap-2">
+              <CardTitle className="text-primary text-xl flex items-center gap-2 justify-start">
                  <FileText className="w-5 h-5 text-accent" /> رفع بلاغ فني جديد 
               </CardTitle>
               <CardDescription>أدخل بيانات العميل والمشكلة بدقة لضمان سرعة الحل</CardDescription>
@@ -281,7 +281,9 @@ export function AgentView() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">الجهة المعنية</Label>
+                  <Label className="font-bold flex items-center gap-2 justify-start">
+                    <Building2 className="w-4 h-4 text-primary" /> الجهة المعنية
+                  </Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required dir="rtl">
                     <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر الجهة" /></SelectTrigger>
                     <SelectContent>
@@ -290,19 +292,27 @@ export function AgentView() {
                   </Select>
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">اسم العميل</Label>
+                  <Label className="font-bold flex items-center gap-2 justify-start">
+                    <UserCircle className="w-4 h-4 text-primary" /> اسم العميل
+                  </Label>
                   <Input placeholder="الاسم الكامل" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="text-right h-11" />
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">رقم الحساب / CIF</Label>
+                  <Label className="font-bold flex items-center gap-2 justify-start">
+                    <Fingerprint className="w-4 h-4 text-primary" /> رقم الحساب / CIF
+                  </Label>
                   <Input placeholder="أدخل الرقم" required value={formData.cif} onChange={e => setFormData({...formData, cif: e.target.value})} className="text-right font-mono h-11" />
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">رقم الهاتف</Label>
+                  <Label className="font-bold flex items-center gap-2 justify-start">
+                    <Phone className="w-4 h-4 text-primary" /> رقم الهاتف
+                  </Label>
                   <Input placeholder="+966..." required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="text-right h-11" />
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">وسيلة الاستلام</Label>
+                  <Label className="font-bold flex items-center gap-2 justify-start">
+                    <Share2 className="w-4 h-4 text-primary" /> وسيلة الاستلام
+                  </Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required dir="rtl">
                     <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
                     <SelectContent>
@@ -311,7 +321,9 @@ export function AgentView() {
                   </Select>
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-bold">نوع الخدمة / المشكلة</Label>
+                  <Label className="font-bold flex items-center gap-2 justify-start">
+                    <Settings2 className="w-4 h-4 text-primary" /> نوع الخدمة / المشكلة
+                  </Label>
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required dir="rtl">
                     <SelectTrigger className="text-right h-11"><SelectValue placeholder="اختر المشكلة" /></SelectTrigger>
                     <SelectContent>
@@ -322,15 +334,19 @@ export function AgentView() {
               </div>
 
               <div className="space-y-2 text-right">
-                <Label className="font-bold">شرح تفصيلي للمشكلة</Label>
+                <Label className="font-bold flex items-center gap-2 justify-start">
+                  <FileText className="w-4 h-4 text-primary" /> شرح تفصيلي للمشكلة
+                </Label>
                 <Textarea placeholder="اكتب هنا..." required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="text-right min-h-[120px]" />
               </div>
 
               <div className="space-y-4 border-t pt-4">
-                <Label className="flex items-center gap-2 font-bold text-primary">المرفقات التوضيحية <ImageIcon className="w-4 h-4" /></Label>
+                <Label className="flex items-center gap-2 font-bold text-primary justify-start">
+                  <ImageIcon className="w-4 h-4" /> المرفقات التوضيحية
+                </Label>
                 <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                 <Button type="button" variant="outline" className="border-dashed border-2 h-20 w-full bg-slate-50 hover:bg-blue-50" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}>
-                  {uploadingImage ? <Loader2 className="animate-spin" /> : <><Upload className="w-5 h-5 ml-2" /> إرفاق صورة (بحد أقصى 500 ك.ب)</>}
+                  {uploadingImage ? <Loader2 className="animate-spin" /> : <><Paperclip className="w-5 h-5 ml-2" /> إرفاق صورة (بحد أقصى 500 ك.ب)</>}
                 </Button>
                 <div className="grid grid-cols-4 gap-4">
                   {formData.attachments.map((att, i) => (
@@ -356,7 +372,7 @@ export function AgentView() {
           <Card className="shadow-sm border-2">
             <CardHeader className="pb-4 border-b space-y-4">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <CardTitle className="text-lg text-right w-full flex items-center gap-2">
+                <CardTitle className="text-lg text-right w-full flex items-center gap-2 justify-start">
                    <History className="w-5 h-5 text-primary" /> سجل البلاغات والمتابعة
                 </CardTitle>
                 <div className="relative w-full md:w-96">
@@ -539,12 +555,12 @@ export function AgentView() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-bold text-sm flex items-center gap-2"> <FileText className="w-4 h-4" /> وصف المشكلة الأصلي</Label>
+                    <Label className="font-bold text-sm flex items-center gap-2 justify-start"> <FileText className="w-4 h-4" /> وصف المشكلة الأصلي</Label>
                     <div className="bg-white border-2 p-4 rounded-xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm text-right">{selectedTicket.description}</div>
                   </div>
 
                   <div className="space-y-3 border-t pt-4">
-                    <Label className="font-bold text-sm flex items-center gap-2"> <History className="w-4 h-4" /> تاريخ الحركات (Timeline)</Label>
+                    <Label className="font-bold text-sm flex items-center gap-2 justify-start"> <History className="w-4 h-4" /> تاريخ الحركات (Timeline)</Label>
                     <div className="space-y-2">
                       {selectedTicket.logs?.map((log: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between text-[11px] bg-slate-50 p-2 rounded-lg border-r-4 border-primary shadow-sm">
@@ -604,4 +620,3 @@ export function AgentView() {
     </div>
   );
 }
-
