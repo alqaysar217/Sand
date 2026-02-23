@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -220,11 +221,11 @@ export function AgentView() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending': return <Badge className="status-pending rounded-full px-4 font-bold">قيد المعالجة</Badge>;
-      case 'Resolved': return <Badge className="status-resolved rounded-full px-4 font-bold">تم الحل</Badge>;
-      case 'Escalated': return <Badge className="status-escalated rounded-full px-4 font-bold">محال للإدارة</Badge>;
-      case 'Rejected': return <Badge className="status-rejected rounded-full px-4 font-bold">مرفوض</Badge>;
-      default: return <Badge className="status-new rounded-full px-4 font-bold">جديد</Badge>;
+      case 'Pending': return <Badge className="status-pending rounded-full px-4 font-bold shadow-sm">قيد المعالجة</Badge>;
+      case 'Resolved': return <Badge className="status-resolved rounded-full px-4 font-bold shadow-sm">تم الحل</Badge>;
+      case 'Escalated': return <Badge className="status-escalated rounded-full px-4 font-bold shadow-sm">محال للإدارة</Badge>;
+      case 'Rejected': return <Badge className="status-rejected rounded-full px-4 font-bold shadow-sm">مرفوض</Badge>;
+      default: return <Badge className="status-new rounded-full px-4 font-bold shadow-sm">جديد</Badge>;
     }
   };
 
@@ -425,9 +426,9 @@ export function AgentView() {
                       {filteredTickets.map((t: any, index: number) => (
                         <TableRow 
                           key={t.id} 
-                          className={`transition-all duration-200 border-b border-slate-50/50 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100/40'}`}
+                          className={`transition-all duration-200 border-b border-slate-100 hover:bg-primary/5 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
                         >
-                          <TableCell className="font-bold text-primary text-right pr-10">
+                          <TableCell className="py-5 font-bold text-primary text-right pr-10">
                              <div className="flex items-center gap-3">
                                <span className="bg-primary/5 px-4 py-2 rounded-full text-xs shadow-sm border border-primary/5">{t.ticketID}</span>
                                {t.status === 'Resolved' && !t.acknowledged && (
@@ -435,17 +436,17 @@ export function AgentView() {
                                )}
                              </div>
                           </TableCell>
-                          <TableCell className="text-right text-slate-600 font-bold text-sm">{getEntityLabel(t.serviceType)}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="py-5 text-right text-slate-600 font-bold text-sm">{getEntityLabel(t.serviceType)}</TableCell>
+                          <TableCell className="py-5 text-right">
                              <div className="font-extrabold text-slate-800 text-sm">{t.customerName}</div>
                              <div className="text-[10px] text-slate-400 font-black font-mono mt-1 tracking-wider">{t.cif}</div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="py-5 text-right">
                             <div className="scale-95 origin-right">
                               {getStatusBadge(t.status)}
                             </div>
                           </TableCell>
-                          <TableCell className="text-center pl-10">
+                          <TableCell className="py-5 text-center pl-10">
                              <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full h-10 px-5 border-slate-200 hover:bg-primary hover:text-white transition-all shadow-sm font-bold text-xs">
                                <ExternalLink className="w-4 h-4 ml-2" /> التفاصيل
                              </Button>
