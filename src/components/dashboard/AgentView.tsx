@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,24 +13,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Loader2, ArrowRight, MessageSquare, Inbox, Headset, MonitorSmartphone,
-  UserCircle, Fingerprint, History, Calendar, CheckCircle2, Paperclip, XCircle, Send, Archive, Upload
+  UserCircle, Fingerprint, History, Calendar, CheckCircle2, Paperclip, XCircle, Send, Archive, Upload, FileText, Trash2, Eye
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import Image from 'next/image';
 
 export function AgentView() {
   const { user } = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [showNewForm, setShowNewForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [attachments, setAttachments] = useState<{url: string, name: string, type: string}[]>([]);
 
   // جلب إعدادات النظام
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
@@ -58,11 +61,37 @@ export function AgentView() {
     if (!tickets) return [];
     return tickets.filter(t => {
       const searchStr = searchQuery.toLowerCase();
-      const matchesSearch = t.ticketID.toLowerCase().includes(searchStr) || t.customerName.toLowerCase().includes(searchStr) || t.cif.includes(searchStr);
+      const matchesSearch = (t.ticketID || '').toLowerCase().includes(searchStr) || (t.customerName || '').toLowerCase().includes(searchStr) || (t.cif || '').includes(searchStr);
       const matchesStatus = activeTab === 'all' || t.status === activeTab;
       return matchesSearch && matchesStatus;
     });
   }, [tickets, searchQuery, activeTab]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (file.size > 2 * 1024 * 1024) {
+        toast({ variant: "destructive", title: "حجم الملف كبير", description: "الحد الأقصى لكل ملف هو 2 ميجابايت." });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachments(prev => [...prev, {
+          url: reader.result as string,
+          name: file.name,
+          type: file.type
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +112,7 @@ export function AgentView() {
       description: formData.description,
       createdByAgentId: user.id,
       createdByAgentName: formData.createdByAgentName,
-      attachments: [],
+      attachments: attachments.map(a => ({ url: a.url, description: a.name })),
       logs: [{ 
         action: `تم رفع البلاغ بواسطة: ${formData.createdByAgentName}`, 
         timestamp: new Date().toISOString(), 
@@ -96,6 +125,7 @@ export function AgentView() {
         toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}.` });
         setShowNewForm(false);
         setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
+        setAttachments([]);
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -192,7 +222,7 @@ export function AgentView() {
                     <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر نوع المشكلة" /></SelectTrigger>
                     <SelectContent dir="rtl">
                       {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>) || (
-                        ['تغيير رمز pin أو تأخره', 'الاستعلام عن فتح حساب', 'تأخر فتح الحساب', 'الاستعلام عن حوالة', 'مشكلة تطبيق', 'كلمة مرور', 'تأخر إصدار البطاقة'].map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)
+                        ['تغيير رمز pin أو تأخره', 'الاستعلام عن حوالة'].map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)
                       )}
                     </SelectContent>
                   </Select>
@@ -202,18 +232,57 @@ export function AgentView() {
                 <Label className="font-black text-slate-700 mr-1 text-xs">تفاصيل البلاغ</Label>
                 <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" placeholder="اكتب تفاصيل المشكلة هنا..." />
               </div>
+              
               <div className="space-y-4 text-right">
                 <Label className="font-black text-slate-700 mr-1 text-xs flex items-center justify-end gap-2">
                    إرفاق مستندات أو لقطات شاشة <Paperclip className="w-4 h-4" />
                 </Label>
-                <div className="border-2 border-dashed border-slate-200 rounded-[20px] p-10 text-center bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group">
+                <input 
+                  type="file" 
+                  multiple 
+                  accept="image/*,.pdf" 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                />
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-200 rounded-[20px] p-10 text-center bg-slate-50/50 hover:bg-slate-100 transition-all cursor-pointer group"
+                >
                    <div className="flex flex-col items-center gap-3">
                       <div className="p-4 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform"><Upload className="w-6 h-6 text-primary" /></div>
-                      <p className="text-slate-500 font-black">اسحب لقطات الشاشة هنا أو اضغط للاختيار</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PNG, JPG, PDF (MAX. 5MB)</p>
+                      <p className="text-slate-500 font-black">اضغط لاختيار المستندات أو لقطات الشاشة</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">المرفقات المختارة: {attachments.length}</p>
                    </div>
                 </div>
+
+                {attachments.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    {attachments.map((file, idx) => (
+                      <div key={idx} className="relative bg-white p-2 rounded-xl border border-slate-100 shadow-sm group">
+                        {file.type.startsWith('image/') ? (
+                          <div className="relative aspect-video rounded-lg overflow-hidden mb-2">
+                             <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="aspect-video bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+                             <FileText className="w-8 h-8 text-primary/40" />
+                          </div>
+                        )}
+                        <p className="text-[10px] font-bold text-slate-600 truncate px-1">{file.name}</p>
+                        <button 
+                          type="button" 
+                          onClick={(e) => { e.stopPropagation(); removeAttachment(idx); }}
+                          className="absolute -top-2 -left-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
               <div className="flex justify-end gap-3 pt-6 border-t">
                 <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)} className="h-12 px-6 rounded-full font-black">إلغاء</Button>
                 <Button type="submit" className="banking-button premium-gradient text-white h-12 px-12" disabled={isSubmitting}>
@@ -293,10 +362,10 @@ export function AgentView() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
-        <DialogContent className="max-w-3xl text-right border-none rounded-[32px] p-0 overflow-hidden" dir="rtl">
+        <DialogContent className="max-w-4xl text-right border-none rounded-[32px] p-0 overflow-hidden" dir="rtl">
           {selectedTicket && (
-            <div className="flex flex-col">
-              <div className="premium-gradient p-8 text-white">
+            <div className="flex flex-col h-[80vh] overflow-y-auto no-scrollbar">
+              <div className="premium-gradient p-8 text-white sticky top-0 z-10">
                 <div className="flex justify-between items-center flex-row-reverse">
                   <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="p-3 bg-white/20 rounded-[18px] backdrop-blur-md"><History className="w-6 h-6" /></div>
@@ -308,7 +377,7 @@ export function AgentView() {
                   {getStatusBadge(selectedTicket.status)}
                 </div>
               </div>
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-8 bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse">
                       <UserCircle className="w-5 h-5 text-primary" />
@@ -319,6 +388,7 @@ export function AgentView() {
                       <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">رقم CIF</span><p className="font-mono font-black text-sm text-right">{selectedTicket.cif}</p></div>
                    </div>
                 </div>
+
                 <div className="bg-white border p-6 rounded-[24px] space-y-4 shadow-sm">
                    <div className="flex items-center gap-2 text-primary font-black flex-row-reverse">
                       <MessageSquare className="w-4 h-4" /> 
@@ -326,8 +396,38 @@ export function AgentView() {
                    </div>
                    <p className="text-slate-600 font-medium leading-relaxed text-right bg-slate-50/30 p-4 rounded-xl">{selectedTicket.description}</p>
                 </div>
+
+                {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-slate-800 font-black flex-row-reverse">
+                      <Paperclip className="w-4 h-4" /> 
+                      <span>المرفقات والمستندات</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {selectedTicket.attachments.map((file: any, idx: number) => (
+                        <div key={idx} className="bg-slate-50 p-4 rounded-[20px] border border-slate-100 flex flex-col gap-3 group">
+                          {file.url.startsWith('data:image/') ? (
+                             <div className="relative aspect-video rounded-xl overflow-hidden shadow-sm">
+                               <img src={file.url} alt={file.description} className="w-full h-full object-cover" />
+                             </div>
+                          ) : (
+                             <div className="aspect-video bg-white rounded-xl flex items-center justify-center border">
+                               <FileText className="w-8 h-8 text-slate-300" />
+                             </div>
+                          )}
+                          <div className="flex items-center justify-between flex-row-reverse">
+                            <span className="text-[9px] font-black text-slate-400 truncate w-3/4">{file.description}</span>
+                            <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-primary/10 rounded-full text-primary hover:bg-primary hover:text-white transition-colors">
+                               <Eye className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="p-6 border-t bg-slate-50 flex justify-end">
+              <div className="p-6 border-t bg-slate-50 flex justify-end sticky bottom-0">
                 <Button variant="outline" onClick={() => setSelectedTicket(null)} className="rounded-full font-black px-8">إغلاق النافذة</Button>
               </div>
             </div>

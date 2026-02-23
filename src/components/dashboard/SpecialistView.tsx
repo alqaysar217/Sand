@@ -25,7 +25,9 @@ import {
   Calendar,
   Inbox,
   Paperclip,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +47,7 @@ export function SpecialistView() {
     if (!db || !user?.department) return null;
     return query(
       collection(db, 'tickets'),
-      where('serviceType', '==', user.department),
+      where('serviceType', '==', user.department === 'Cards' ? 'إدارة البطائق' : user.department),
       orderBy('createdAt', 'desc')
     );
   }, [db, user?.department]);
@@ -120,7 +122,7 @@ export function SpecialistView() {
 
   if (selectedTicket) {
     return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 text-right" dir="rtl">
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 text-right h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pb-10" dir="rtl">
         <div className="flex items-center justify-between flex-row-reverse">
           <Button variant="ghost" onClick={() => setSelectedTicket(null)} className="rounded-full hover:bg-white text-slate-500 font-bold px-6">
             <ArrowRight className="w-5 h-5 ml-2" /> العودة لمحطة العمل
@@ -185,7 +187,37 @@ export function SpecialistView() {
                    </div>
                 </div>
 
-                <div className="space-y-4 pt-6">
+                {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                  <div className="space-y-4 pt-4">
+                    <div className="flex items-center gap-3 px-2 justify-end">
+                      <h3 className="font-black text-xl text-slate-900">المرفقات المستلمة</h3>
+                      <Paperclip className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {selectedTicket.attachments.map((file: any, idx: number) => (
+                        <div key={idx} className="bg-white p-4 rounded-[28px] border border-slate-100 shadow-sm group">
+                          {file.url.startsWith('data:image/') ? (
+                             <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 shadow-inner">
+                               <img src={file.url} alt={file.description} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="p-3 bg-white rounded-full text-primary shadow-xl">
+                                    <Eye className="w-6 h-6" />
+                                  </a>
+                               </div>
+                             </div>
+                          ) : (
+                             <div className="aspect-video bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-dashed">
+                               <FileText className="w-10 h-10 text-slate-300" />
+                             </div>
+                          )}
+                          <p className="text-[10px] font-black text-slate-400 truncate text-right px-2">{file.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4 pt-10 border-t">
                    <div className="flex items-center justify-between px-2 flex-row-reverse">
                       <div className="flex items-center gap-3 flex-row-reverse">
                         <CheckCircle2 className="w-6 h-6 text-green-600" />
