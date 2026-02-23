@@ -96,23 +96,23 @@ export function AppSidebar() {
     switch (user.role) {
       case 'Agent':
         return [
-          { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home', count: counts.all },
+          { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home', count: counts.all, badgeColor: 'bg-primary' },
           { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
-          { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending', count: counts.Pending },
-          { title: 'البلاغات المحالة', icon: Send, action: 'Escalated', count: counts.Escalated },
-          { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected },
-          { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved },
+          { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending', count: counts.Pending, badgeColor: 'bg-amber-500' },
+          { title: 'البلاغات المحالة', icon: Send, action: 'Escalated', count: counts.Escalated, badgeColor: 'bg-red-600' },
+          { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
+          { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
         ];
       case 'Specialist':
         return [
-          { title: 'محطة العمل', icon: Inbox, action: 'home', count: counts.all },
-          { title: 'المهام الواردة', icon: Clock, action: 'home', count: (counts.New || 0) + (counts.Pending || 0) },
-          { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home', count: counts.Rejected },
+          { title: 'محطة العمل', icon: Inbox, action: 'home', count: counts.all, badgeColor: 'bg-primary' },
+          { title: 'المهام الواردة', icon: Clock, action: 'home', count: (counts.New || 0) + (counts.Pending || 0), badgeColor: 'bg-amber-500' },
+          { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home', count: counts.Rejected, badgeColor: 'bg-slate-700' },
         ];
       case 'Admin':
         return [
-          { title: 'لوحة التحكم', icon: BarChart3, action: 'home', count: counts.all },
-          { title: 'تذاكر متأخرة', icon: AlertCircle, action: 'home', count: counts.Overdue },
+          { title: 'لوحة التحكم', icon: BarChart3, action: 'home', count: counts.all, badgeColor: 'bg-primary' },
+          { title: 'تذاكر متأخرة', icon: AlertCircle, action: 'home', count: counts.Overdue, badgeColor: 'bg-red-600' },
           { title: 'إدارة الموظفين', icon: Users, action: 'home' },
         ];
       default:
@@ -160,8 +160,8 @@ export function AppSidebar() {
                       <span className="text-base font-bold">{item.title}</span>
                     </SidebarMenuButton>
                     {item.count !== undefined && item.count > 0 && (
-                      <SidebarMenuBadge className={`left-4 right-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-bold border-2 border-white shadow-sm ${
-                        isActive ? 'bg-white text-primary' : 'bg-slate-100 text-slate-500'
+                      <SidebarMenuBadge className={`left-4 right-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-black border-2 border-white shadow-md transition-all duration-300 ${
+                        isActive ? 'bg-white text-primary' : `${item.badgeColor || 'bg-slate-100'} text-white`
                       }`}>
                         {item.count}
                       </SidebarMenuBadge>
