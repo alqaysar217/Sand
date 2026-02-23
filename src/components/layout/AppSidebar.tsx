@@ -1,9 +1,10 @@
+
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   PlusSquare, 
@@ -35,6 +36,18 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export function AppSidebar() {
   const { user } = useAuth();
   const db = useFirestore();
+  const [activeAction, setActiveAction] = useState('home');
+
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      const action = e.detail;
+      if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected', 'home', 'new-ticket'].includes(action)) {
+        setActiveAction(action);
+      }
+    };
+    window.addEventListener('sidebar-nav', handleSync);
+    return () => window.removeEventListener('sidebar-nav', handleSync);
+  }, []);
 
   const ticketsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -75,6 +88,7 @@ export function AppSidebar() {
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   const handleNav = (action: string) => {
+    setActiveAction(action);
     window.dispatchEvent(new CustomEvent('sidebar-nav', { detail: action }));
   };
 
@@ -123,29 +137,40 @@ export function AppSidebar() {
           <span className="font-bold text-3xl text-primary tracking-tight">سند</span>
         </div>
       </SidebarHeader>
-      <SidebarContent className="bg-white px-3 py-6">
+      <SidebarContent className="bg-white px-3 py-6 no-scrollbar">
         <SidebarGroup>
           <SidebarGroupLabel className="text-slate-400 font-bold px-4 py-4 mb-4 text-right text-[10px] uppercase tracking-[2px]">
             التنقل الذكي
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">
-              {getNavItems().map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    onClick={() => handleNav(item.action)}
-                    className={`flex items-center gap-4 h-13 w-full px-5 justify-start text-right rounded-[18px] transition-all duration-300 ${item.isAction ? 'premium-gradient text-white hover:opacity-90 shadow-lg' : 'hover:bg-slate-50 text-slate-600'}`}
-                  >
-                    <item.icon className={`w-5 h-5 ${item.isAction ? 'text-white' : 'text-slate-400'}`} />
-                    <span className="text-base font-bold">{item.title}</span>
-                  </SidebarMenuButton>
-                  {item.count !== undefined && item.count > 0 && (
-                    <SidebarMenuBadge className={`left-4 right-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-bold border-2 border-white shadow-sm ${item.isAction ? 'bg-white text-primary' : 'bg-slate-100 text-slate-500'}`}>
-                      {item.count}
-                    </SidebarMenuBadge>
-                  )}
-                </SidebarMenuItem>
-              ))}
+              {getNavItems().map((item) => {
+                const isActive = activeAction === item.action;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      onClick={() => handleNav(item.action)}
+                      className={`flex items-center gap-4 h-13 w-full px-5 justify-start text-right rounded-[18px] transition-all duration-300 ${
+                        isActive 
+                          ? 'bg-primary text-white shadow-lg' 
+                          : item.isAction 
+                            ? 'premium-gradient text-white hover:opacity-90 shadow-md' 
+                            : 'hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <item.icon className={`w-5 h-5 ${isActive || item.isAction ? 'text-white' : 'text-slate-400'}`} />
+                      <span className="text-base font-bold">{item.title}</span>
+                    </SidebarMenuButton>
+                    {item.count !== undefined && item.count > 0 && (
+                      <SidebarMenuBadge className={`left-4 right-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-bold border-2 border-white shadow-sm ${
+                        isActive || item.isAction ? 'bg-white text-primary' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {item.count}
+                      </SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
