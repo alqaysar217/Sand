@@ -15,7 +15,8 @@ import {
   Archive,
   Clock,
   Send,
-  XCircle
+  XCircle,
+  FileText
 } from 'lucide-react';
 import {
   Sidebar,
@@ -36,12 +37,12 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export function AppSidebar() {
   const { user } = useAuth();
   const db = useFirestore();
-  const [activeAction, setActiveAction] = useState('home');
+  const [activeAction, setActiveAction] = useState('all');
 
   useEffect(() => {
     const handleSync = (e: any) => {
       const action = e.detail;
-      if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected', 'home', 'new-ticket'].includes(action)) {
+      if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected', 'new-ticket'].includes(action)) {
         setActiveAction(action);
       }
     };
@@ -79,7 +80,6 @@ export function AppSidebar() {
       Escalated: tickets.filter(t => t.status === 'Escalated').length,
       Resolved: tickets.filter(t => t.status === 'Resolved').length,
       Rejected: tickets.filter(t => t.status === 'Rejected').length,
-      Overdue: tickets.filter(t => t.status !== 'Resolved' && (Date.now() - new Date(t.createdAt).getTime() > 86400000)).length,
     };
   }, [tickets]);
 
@@ -93,30 +93,27 @@ export function AppSidebar() {
   };
 
   const getNavItems = () => {
-    switch (user.role) {
-      case 'Agent':
-        return [
-          { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home', count: counts.all, badgeColor: 'bg-primary' },
-          { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
-          { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending', count: counts.Pending, badgeColor: 'bg-amber-500' },
-          { title: 'البلاغات المحالة', icon: Send, action: 'Escalated', count: counts.Escalated, badgeColor: 'bg-red-600' },
-          { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
-          { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
-        ];
-      case 'Specialist':
-        return [
-          { title: 'محطة العمل', icon: Inbox, action: 'home', count: counts.all, badgeColor: 'bg-primary' },
-          { title: 'المهام الواردة', icon: Clock, action: 'home', count: (counts.New || 0) + (counts.Pending || 0), badgeColor: 'bg-amber-500' },
-          { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home', count: counts.Rejected, badgeColor: 'bg-slate-700' },
-        ];
-      case 'Admin':
-        return [
-          { title: 'لوحة التحكم', icon: BarChart3, action: 'home', count: counts.all, badgeColor: 'bg-primary' },
-          { title: 'تذاكر متأخرة', icon: AlertCircle, action: 'home', count: counts.Overdue, badgeColor: 'bg-red-600' },
-          { title: 'إدارة الموظفين', icon: Users, action: 'home' },
-        ];
-      default:
-        return [];
+    if (user.role === 'Agent') {
+      return [
+        { title: 'كل البلاغات', icon: LayoutDashboard, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
+        { title: 'بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
+        { title: 'جديد', icon: AlertCircle, action: 'New', count: counts.New, badgeColor: 'bg-blue-600' },
+        { title: 'قيد المعالجة', icon: Clock, action: 'Pending', count: counts.Pending, badgeColor: 'bg-amber-500' },
+        { title: 'محالة للأقسام', icon: Send, action: 'Escalated', count: counts.Escalated, badgeColor: 'bg-red-600' },
+        { title: 'مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
+        { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
+      ];
+    } else if (user.role === 'Specialist') {
+      return [
+        { title: 'محطة العمل', icon: Inbox, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
+        { title: 'تم الحل', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
+      ];
+    } else {
+      return [
+        { title: 'الإحصائيات', icon: BarChart3, action: 'all' },
+        { title: 'إدارة الموظفين', icon: Users, action: 'all' },
+        { title: 'إعدادات النظام', icon: FileText, action: 'all' },
+      ];
     }
   };
 

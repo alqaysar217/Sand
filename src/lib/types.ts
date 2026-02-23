@@ -1,3 +1,4 @@
+
 export type UserRole = 'Admin' | 'Agent' | 'Specialist';
 export type Department = 'Cards' | 'App' | 'Operations' | 'Digital' | 'Support';
 export type TicketStatus = 'New' | 'Pending' | 'Resolved' | 'Escalated' | 'Rejected';
@@ -46,7 +47,14 @@ export interface Ticket {
   rejectedAt?: string;
   escalatedBy?: string;
   escalationNote?: string;
-  acknowledged?: boolean; // هل تم رؤية الرد من قبل الموظف
+  acknowledged?: boolean;
   attachments: Attachment[];
   logs?: TicketLog[];
+}
+
+// إعدادات النظام القابلة للإدارة من المدير
+export interface SystemConfig {
+  serviceTypes: string[];
+  intakeMethods: string[];
+  issueTypes: string[];
 }
