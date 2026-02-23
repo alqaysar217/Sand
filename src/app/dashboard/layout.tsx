@@ -4,11 +4,10 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { Navbar } from "@/components/layout/Navbar"
-import { useAuth } from "@/lib/contexts/AuthContext"
 import { Toaster } from "@/components/ui/toaster"
 
 /**
- * تم تعديل التخطيط لتعطيل إعادة التوجيه التلقائي.
+ * تم تعديل التخطيط لتعطيل نظام الحماية تماماً.
  * هذا يسمح للمستخدم بالوصول للوحة القيادة حتى لو فشل الاتصال بـ Firebase.
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

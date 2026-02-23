@@ -5,28 +5,20 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { AgentView } from '@/components/dashboard/AgentView';
 import { SpecialistView } from '@/components/dashboard/SpecialistView';
 import { AdminView } from '@/components/dashboard/AdminView';
-import { Loader2, ShieldAlert, UserCog, Headset, CreditCard, MonitorSmartphone } from "lucide-react";
+import { ShieldAlert, UserCog, Headset, CreditCard, MonitorSmartphone } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { UserRole, Department } from '@/lib/types';
 
 export default function DashboardPage() {
-  const { user, firebaseUser, loading } = useAuth();
+  const { user } = useAuth();
   
-  // نظام تجاوز الدخول (Mock User) للتطوير في حال تعطل Firebase
+  // نظام تجاوز الدخول (Mock User) للتطوير لتعطيل قيود Firebase
   const [mockUser, setMockUser] = useState<{role: UserRole, department: Department, name: string} | null>(null);
 
-  // إذا كان هناك مستخدم حقيقي مسجل، نستخدمه
+  // إذا كان هناك مستخدم حقيقي مسجل، نستخدمه، وإلا نستخدم المستخدم التجريبي المختار
   const activeUser = user || mockUser;
-
-  if (loading && !activeUser) {
-    return (
-      <div className="h-[70vh] w-full flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   // إذا لم يجد النظام مستخدماً، يظهر "بوابة عبور المطور" لاختيار الواجهة يدوياً
   if (!activeUser) {
@@ -39,7 +31,7 @@ export default function DashboardPage() {
             </div>
             <CardTitle className="text-3xl font-black">بوابة عبور المطور</CardTitle>
             <CardDescription className="text-white/70 font-bold mt-2">
-              لم نتمكن من العثور على جلسة دخول نشطة. اختر الواجهة التي تود تجربتها الآن لتجاوز نظام الدخول.
+              نظام الحماية معطل حالياً. اختر الواجهة التي تود إكمال بنائها وتجربتها الآن.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-10">
@@ -82,7 +74,7 @@ export default function DashboardPage() {
             </div>
             
             <p className="text-center mt-8 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              هذه البوابة مخصصة للمطورين فقط لتجاوز قيود الدخول في بيئة الاختبار
+              هذه الواجهة متاحة فقط للمطورين لتجاوز قيود الدخول وبناء النظام
             </p>
           </CardContent>
         </Card>
@@ -90,7 +82,7 @@ export default function DashboardPage() {
     );
   }
 
-  // عرض الواجهة بناءً على الدور (الحقيقي أو التجريبي)
+  // عرض الواجهة بناءً على الدور المختار يدوياً
   switch (activeUser.role) {
     case 'Admin':
       return <AdminView />;
