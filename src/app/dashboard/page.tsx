@@ -19,11 +19,12 @@ export default function DashboardPage() {
 
   const autoValues = useMemo(() => {
     const email = firebaseUser?.email || '';
+    // مطابقة البيانات بناءً على القائمة المرسلة من المستخدم
     if (email === 'admin.bank@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
     if (email === 'balkharam.admin@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'بلخرم (المدير العام)' };
+    if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
     if (email === 'callcenter.agent@bank.com') return { role: 'Agent' as UserRole, dept: 'Support' as Department, name: 'موظف الاتصال' };
     if (email === 'cards.ops@bank.com') return { role: 'Specialist' as UserRole, dept: 'Cards' as Department, name: 'الأخصائي الفني' };
-    if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
     if (email === 'cs.digital@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
     
     return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك' };
@@ -36,7 +37,7 @@ export default function DashboardPage() {
         setIsActivating(true);
         try {
           await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
-          toast({ title: "تم تفعيل الهوية المصرفية", description: `مرحباً بك ${autoValues.name} في نظام سند.` });
+          // لا نحتاج لرسالة توست هنا لسرعة الانتقال
         } catch (err) {
           console.error("Auto activation failed", err);
           toast({ variant: "destructive", title: "خطأ في التفعيل", description: "يرجى تسجيل الخروج والمحاولة مرة أخرى." });
