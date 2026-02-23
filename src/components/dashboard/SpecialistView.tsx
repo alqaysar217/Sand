@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers
+  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -30,22 +30,19 @@ export function SpecialistView() {
   const [activeDeptFilter, setActiveDeptFilter] = useState('all');
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [ticketToClaim, setTicketToClaim] = useState<any | null>(null);
-  const [selectedStaffName, setSelectedStaffName] = useState('');
 
-  // تحديد اسم القسم الحالي للموظف للمساعدة في تحديد صلاحيات "الاستلام"
   const myDeptServiceType = useMemo(() => {
     if (user?.department === 'Cards') return 'إدارة البطائق';
     if (user?.department === 'App') return 'مشاكل التطبيق';
     return 'خدمة العملاء';
   }, [user?.department]);
 
-  // الاستماع لأحداث القائمة الجانبية
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
       const action = e.detail;
       if (['all', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
         setActiveStatusFilter(action);
-        setSelectedTicket(null); // العودة للقائمة في حال كان الموظف داخل تفاصيل بلاغ
+        setSelectedTicket(null);
       }
     };
     window.addEventListener('sidebar-nav', handleSidebarNav);
@@ -72,20 +69,26 @@ export function SpecialistView() {
   }, [tickets, activeStatusFilter, activeDeptFilter]);
 
   const handleClaimConfirm = () => {
-    if (!db || !user || !ticketToClaim || !selectedStaffName) return;
+    if (!db || !user || !ticketToClaim) return;
+    
     updateDocumentNonBlocking(doc(db, 'tickets', ticketToClaim.id), {
       assignedToSpecialistId: user.id,
-      assignedToSpecialistName: selectedStaffName,
+      assignedToSpecialistName: user.name, // تلقائياً من الحساب
       status: 'Pending',
-      logs: arrayUnion({ action: `تم استلام البلاغ بواسطة الأخصائي: ${selectedStaffName}`, timestamp: new Date().toISOString(), userName: selectedStaffName })
+      logs: arrayUnion({ 
+        action: `تم استلام البلاغ بواسطة الأخصائي: ${user.name}`, 
+        timestamp: new Date().toISOString(), 
+        userName: user.name 
+      })
     });
+    
     toast({ title: "تم الاستلام", description: "تم بدء معالجة البلاغ بنجاح" });
     setClaimDialogOpen(false);
     setTicketToClaim(null);
   };
 
   const handleAction = async (actionType: 'Resolved' | 'Rejected' | 'Escalated') => {
-    if (!db || !selectedTicket || !response.trim()) {
+    if (!db || !selectedTicket || !response.trim() || !user) {
        toast({ variant: "destructive", title: "تنبيه", description: "يرجى كتابة الرد الفني أو سبب الإجراء المتخذ." });
        return;
     }
@@ -103,7 +106,7 @@ export function SpecialistView() {
       logs: arrayUnion({ 
         action: `إجراء متخذ: ${actionLabel}`, 
         timestamp: new Date().toISOString(), 
-        userName: selectedTicket.assignedToSpecialistName, 
+        userName: user.name, 
         note: response 
       })
     };
@@ -131,13 +134,6 @@ export function SpecialistView() {
       default: return <Badge className="bg-blue-600 rounded-full font-black">جديد</Badge>;
     }
   };
-
-  const currentSpecialistList = useMemo(() => {
-    if (!config) return [];
-    if (user?.department === 'Cards') return config.specialistNames || [];
-    if (user?.department === 'App') return config.appSpecialistNames || [];
-    return config.csNames || [];
-  }, [config, user?.department]);
 
   if (selectedTicket) {
     return (
@@ -366,28 +362,24 @@ export function SpecialistView() {
          <DialogContent className="max-w-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-primary/5 border-b">
                <DialogTitle className="text-2xl font-black text-primary text-right flex items-center gap-2 justify-end">
-                  <CheckCircle2 className="w-6 h-6" /> تأكيد استلام البلاغ
+                  <UserCheck className="w-6 h-6" /> تأكيد استلام البلاغ
                </DialogTitle>
             </DialogHeader>
             <div className="p-8 space-y-6">
-               <div className="space-y-3 text-right">
-                  <Label className="font-black text-sm text-slate-600 mr-1">اسم الأخصائي القائم بالمعالجة</Label>
-                  <Select value={selectedStaffName} onValueChange={setSelectedStaffName}>
-                     <SelectTrigger className="banking-input h-14 text-right font-black border-slate-200">
-                       <SelectValue placeholder={currentSpecialistList.length ? "اختر اسمك من القائمة المعتمدة" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
-                     </SelectTrigger>
-                     <SelectContent dir="rtl">
-                        {currentSpecialistList.map((n: string) => <SelectItem key={n} value={n} className="font-bold">{n}</SelectItem>)}
-                     </SelectContent>
-                  </Select>
+               <div className="space-y-4 text-right">
+                  <Label className="font-black text-sm text-slate-600 mr-1">الأخصائي القائم بالمعالجة</Label>
+                  <div className="banking-input h-14 flex items-center justify-end px-6 bg-slate-50 border-slate-200 font-black text-primary">
+                    {user?.name}
+                    <ShieldCheck className="w-5 h-5 mr-3 text-primary" />
+                  </div>
                </div>
-               <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-right">
-                  بمجرد تأكيد الاستلام، سيتم تسجيل اسمك في سجل تتبع البلاغ وإشعار الكول سنتر ببدء العمل عليه.
+               <p className="text-[12px] text-slate-500 font-bold leading-relaxed text-right">
+                  أهلاً بك يا <strong>{user?.name}</strong>. بمجرد تأكيد الاستلام، سيتم ربط البلاغ رقم <strong>{ticketToClaim?.ticketID}</strong> بحسابك وسيتغير حالته إلى "قيد المعالجة" فوراً.
                </p>
             </div>
             <DialogFooter className="flex-row-reverse gap-3 p-8 border-t bg-slate-50">
                <Button variant="ghost" onClick={() => setClaimDialogOpen(false)} className="rounded-full font-black px-8">إلغاء</Button>
-               <Button onClick={handleClaimConfirm} disabled={!selectedStaffName} className="banking-button premium-gradient text-white px-10 rounded-full font-black h-12 shadow-lg">تأكيد الاستلام والعمل</Button>
+               <Button onClick={handleClaimConfirm} className="banking-button premium-gradient text-white px-10 rounded-full font-black h-12 shadow-lg">تأكيد الاستلام والبدء</Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>

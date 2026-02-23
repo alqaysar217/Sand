@@ -14,7 +14,7 @@ import {
   Plus, Search, Loader2, Inbox, Headset,
   Phone, Share2, MessageSquare, ImageIcon, User, Paperclip, X, Upload,
   Clock, CheckCircle2, AlertTriangle, FileText, UserCheck, MessageCircle,
-  Trash2
+  Trash2, ShieldCheck
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -46,12 +46,10 @@ export function AgentView() {
     intakeMethod: '', 
     subIssue: '', 
     description: '', 
-    createdByAgentName: '',
   });
 
   const [attachments, setAttachments] = useState<{url: string, description: string}[]>([]);
 
-  // الاستماع لأحداث القائمة الجانبية
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
       const action = e.detail;
@@ -99,10 +97,8 @@ export function AgentView() {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db || !formData.createdByAgentName) {
-      toast({ variant: "destructive", title: "تنبيه", description: "يرجى اختيار اسم الموظف أولاً" });
-      return;
-    }
+    if (!user || !db) return;
+    
     setIsSubmitting(true);
     const ticketID = `TIC-${Math.floor(10000 + Math.random() * 90000)}`;
     
@@ -118,12 +114,12 @@ export function AgentView() {
       subIssue: formData.subIssue,
       description: formData.description,
       createdByAgentId: user.id,
-      createdByAgentName: formData.createdByAgentName,
+      createdByAgentName: user.name, // تلقائياً من الملف الشخصي
       attachments: attachments,
       logs: [{ 
-        action: `تم رفع البلاغ وتوجيهه إلى ${formData.serviceType} بواسطة: ${formData.createdByAgentName}`, 
+        action: `تم رفع البلاغ وتوجيهه إلى ${formData.serviceType} بواسطة: ${user.name}`, 
         timestamp: new Date().toISOString(), 
-        userName: formData.createdByAgentName 
+        userName: user.name 
       }]
     };
 
@@ -131,9 +127,8 @@ export function AgentView() {
       .then(() => {
         toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}` });
         setShowNewForm(false);
-        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
+        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '' });
         setAttachments([]);
-        // إعادة التعيين لتبويب الكل بعد الرفع
         setActiveTab('all');
       })
       .finally(() => setIsSubmitting(false));
@@ -186,16 +181,13 @@ export function AgentView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1 text-primary flex items-center gap-2 justify-end">
-                    موظف الكول سنتر (الرفع) <User className="w-4 h-4" />
+                    موظف الرفع الحالي <User className="w-4 h-4" />
                   </Label>
-                  <Select value={formData.createdByAgentName} onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
-                    <SelectTrigger className="banking-input h-14 text-right border-slate-200">
-                      <SelectValue placeholder={config?.agentNames?.length ? "اختر اسم الموظف" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
-                    </SelectTrigger>
-                    <SelectContent dir="rtl">
-                      {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <div className="banking-input h-14 flex items-center justify-end px-6 bg-white border-slate-200 font-black text-slate-700">
+                    {user?.name} (BIM: {user?.username})
+                    <ShieldCheck className="w-4 h-4 mr-2 text-green-600" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold mr-1">يتم تسجيل اسمك تلقائياً كمسؤول عن رفع هذا البلاغ</p>
                 </div>
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1 text-primary flex items-center gap-2 justify-end">
@@ -235,7 +227,7 @@ export function AgentView() {
                   <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">وسيلة استلام الطلب <Share2 className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200">
-                      <SelectValue placeholder={config?.intakeMethods?.length ? "كيف تواصل العميل؟" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
+                      <SelectValue placeholder="كيف تواصل العميل؟" />
                     </SelectTrigger>
                     <SelectContent dir="rtl">
                       {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
@@ -246,7 +238,7 @@ export function AgentView() {
                   <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">نوع المشكلة <MessageSquare className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200">
-                      <SelectValue placeholder={config?.issueTypes?.length ? "تصنيف المشكلة الفنية" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
+                      <SelectValue placeholder="تصنيف المشكلة الفنية" />
                     </SelectTrigger>
                     <SelectContent dir="rtl">
                       {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
@@ -416,7 +408,6 @@ export function AgentView() {
                 </DialogHeader>
                 
                 <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1 min-h-0">
-                   {/* بيانات العميل والطلب */}
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card className="banking-card p-6 border-none shadow-md space-y-4">
                          <h4 className="font-black text-primary flex items-center gap-2 justify-end">
@@ -463,7 +454,6 @@ export function AgentView() {
                       </Card>
                    </div>
 
-                   {/* الوصف والمرفقات */}
                    <div className="space-y-4">
                       <h4 className="font-black text-slate-800 flex items-center gap-2 justify-end">
                          وصف المشكلة الفنية <FileText className="w-4 h-4" />
@@ -494,7 +484,6 @@ export function AgentView() {
                       )}
                    </div>
 
-                   {/* الرد الفني والمعالجة (إذا توفرت) */}
                    {(selectedTicket.assignedToSpecialistName || selectedTicket.specialistResponse) && (
                      <div className="space-y-4 pt-4 border-t border-slate-100">
                         <h4 className="font-black text-green-600 flex items-center gap-2 justify-end">
@@ -520,7 +509,6 @@ export function AgentView() {
                      </div>
                    )}
 
-                   {/* سجل التتبع */}
                    <div className="space-y-4 pt-4 border-t border-slate-100 pb-8">
                       <h4 className="font-black text-slate-400 flex items-center gap-2 justify-end">
                          سجل تتبع العمليات <Clock className="w-4 h-4" />

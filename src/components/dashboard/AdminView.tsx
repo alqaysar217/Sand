@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, Settings2, ListTodo
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove } from 'firebase/firestore';
@@ -41,7 +41,6 @@ export function AdminView() {
   const [newPass, setNewPass] = useState('');
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   
-  // لخيارات النظام
   const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
 
   const [newUser, setNewUser] = useState({
@@ -53,7 +52,6 @@ export function AdminView() {
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
-  // جلب إعدادات النظام
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
@@ -212,7 +210,7 @@ export function AdminView() {
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
                <ShieldCheck className="w-8 h-8" /> لوحة الإدارة العامة
             </h1>
-            <p className="text-slate-500 font-bold mt-1">إدارة الكوادر، الهوية المصرفية، وصلاحيات النظام</p>
+            <p className="text-slate-500 font-bold mt-1">إدارة الكوادر وتصنيفات النظام</p>
           </div>
           <div className="flex items-center gap-3">
              <Button onClick={() => setShowChangePassDialog(true)} variant="outline" className="rounded-full font-black border-primary text-primary">
@@ -282,7 +280,7 @@ export function AdminView() {
               </Button>
               <div className="flex items-center gap-2 text-slate-400 font-bold bg-white px-6 py-3 rounded-full border">
                  <Info className="w-4 h-4 text-primary" />
-                 <span>يمكن للمدير تحديد BIM ID المخصص وكلمة المرور لكل موظف</span>
+                 <span>يتم التعرف على هوية الموظف تلقائياً عند الدخول</span>
               </div>
            </div>
            
@@ -357,56 +355,7 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="options" className="animate-in fade-in duration-500 mt-0 space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* إدارة أسماء الكوادر */}
-            <Card className="banking-card border-none shadow-xl">
-              <CardHeader className="bg-primary/5 p-6 border-b">
-                <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
-                  إدارة أسماء الكوادر المعتمدة <Users className="w-5 h-5 text-primary" />
-                </CardTitle>
-                <CardDescription className="text-right font-bold">تحديد الأسماء التي تظهر في نماذج الرفع والمعالجة</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <ConfigListManager 
-                  title="موظفي الكول سنتر" 
-                  field="agentNames" 
-                  items={config?.agentNames || []} 
-                  value={newItemValues.agentNames || ''}
-                  onValueChange={(v) => setNewItemValues({...newItemValues, agentNames: v})}
-                  onAdd={() => handleAddConfigItem('agentNames')}
-                  onRemove={(val) => handleRemoveConfigItem('agentNames', val)}
-                />
-                <ConfigListManager 
-                  title="أخصائيي البطائق" 
-                  field="specialistNames" 
-                  items={config?.specialistNames || []} 
-                  value={newItemValues.specialistNames || ''}
-                  onValueChange={(v) => setNewItemValues({...newItemValues, specialistNames: v})}
-                  onAdd={() => handleAddConfigItem('specialistNames')}
-                  onRemove={(val) => handleRemoveConfigItem('specialistNames', val)}
-                />
-                <ConfigListManager 
-                  title="أخصائيي القنوات الرقمية" 
-                  field="csNames" 
-                  items={config?.csNames || []} 
-                  value={newItemValues.csNames || ''}
-                  onValueChange={(v) => setNewItemValues({...newItemValues, csNames: v})}
-                  onAdd={() => handleAddConfigItem('csNames')}
-                  onRemove={(val) => handleRemoveConfigItem('csNames', val)}
-                />
-                <ConfigListManager 
-                  title="أخصائيي التطبيق" 
-                  field="appSpecialistNames" 
-                  items={config?.appSpecialistNames || []} 
-                  value={newItemValues.appSpecialistNames || ''}
-                  onValueChange={(v) => setNewItemValues({...newItemValues, appSpecialistNames: v})}
-                  onAdd={() => handleAddConfigItem('appSpecialistNames')}
-                  onRemove={(val) => handleRemoveConfigItem('appSpecialistNames', val)}
-                />
-              </CardContent>
-            </Card>
-
-            {/* إدارة تصنيفات النظام */}
+          <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
             <Card className="banking-card border-none shadow-xl">
               <CardHeader className="bg-accent/5 p-6 border-b">
                 <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
@@ -414,7 +363,7 @@ export function AdminView() {
                 </CardTitle>
                 <CardDescription className="text-right font-bold">التحكم في وسائل الاستلام وأنواع المشكلات الفنية</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-6 space-y-8">
                 <ConfigListManager 
                   title="وسائل استلام الطلبات" 
                   field="intakeMethods" 
@@ -523,7 +472,6 @@ export function AdminView() {
                              <SelectItem value="App">مشاكل التطبيق (App)</SelectItem>
                           </SelectContent>
                        </Select>
-                       <p className="text-[10px] text-amber-600 font-black mr-1 mt-1">سيتم تحديث الدور الوظيفي تلقائياً بناءً على القسم المختار.</p>
                     </div>
                  </div>
                  <DialogFooter className="flex-row-reverse gap-3 pt-6">
@@ -609,33 +557,37 @@ function StaffCategoryCard({ icon: Icon, title, desc, count }: any) {
 
 function ConfigListManager({ title, field, items, value, onValueChange, onAdd, onRemove }: any) {
   return (
-    <div className="space-y-3 bg-white p-4 rounded-[20px] border border-slate-100">
+    <div className="space-y-4 bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm">
       <div className="flex justify-between items-center flex-row-reverse mb-2">
-        <h5 className="font-black text-slate-700 text-sm">{title}</h5>
-        <Badge variant="outline" className="text-[10px] font-black">{items.length} خيارات</Badge>
+        <h5 className="font-black text-slate-700 text-base">{title}</h5>
+        <Badge variant="secondary" className="text-[10px] font-black px-3">{items.length} خيارات متاحة</Badge>
       </div>
-      <div className="flex gap-2">
-        <Button onClick={onAdd} size="icon" className="shrink-0 h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-white">
-          <Plus className="w-5 h-5" />
+      <div className="flex gap-3">
+        <Button onClick={onAdd} size="icon" className="shrink-0 h-12 w-12 rounded-full bg-primary hover:bg-primary/90 text-white shadow-md">
+          <Plus className="w-6 h-6" />
         </Button>
         <Input 
           value={value} 
           onChange={(e) => onValueChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onAdd()}
-          placeholder={`إضافة ${title.toLowerCase()}...`}
-          className="banking-input h-10 text-right text-xs"
+          placeholder={`أضف خياراً جديداً لـ ${title.toLowerCase()}...`}
+          className="banking-input h-12 text-right text-sm border-slate-200"
         />
       </div>
-      <div className="flex flex-wrap gap-2 justify-end max-h-[150px] overflow-y-auto p-1 no-scrollbar">
+      <div className="flex flex-wrap gap-3 justify-end max-h-[250px] overflow-y-auto p-2 no-scrollbar">
         {items.map((item: string) => (
-          <Badge key={item} variant="secondary" className="h-8 pl-1 pr-3 rounded-full flex items-center gap-2 bg-slate-50 border-slate-200 text-slate-600 font-bold">
-            <button onClick={() => onRemove(item)} className="hover:bg-red-100 p-0.5 rounded-full transition-colors">
-              <X className="w-3 h-3 text-red-500" />
+          <Badge key={item} variant="outline" className="h-10 pl-2 pr-4 rounded-full flex items-center gap-3 bg-slate-50 border-slate-200 text-slate-700 font-bold hover:bg-red-50 hover:border-red-200 group transition-all">
+            <button onClick={() => onRemove(item)} className="p-1 rounded-full opacity-40 group-hover:opacity-100 hover:bg-red-100 transition-all">
+              <X className="w-3.5 h-3.5 text-red-500" />
             </button>
             <span>{item}</span>
           </Badge>
         ))}
-        {items.length === 0 && <p className="text-[10px] text-slate-400 font-black italic">لا توجد خيارات مضافة</p>}
+        {items.length === 0 && (
+          <div className="w-full text-center py-4 border-2 border-dashed rounded-2xl border-slate-100">
+            <p className="text-xs text-slate-400 font-black italic">لا توجد خيارات مضافة لهذه القائمة</p>
+          </div>
+        )}
       </div>
     </div>
   );
