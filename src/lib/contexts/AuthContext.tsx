@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface AuthContextType {
@@ -37,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (firebaseUser && db) {
       setLoading(true);
       
-      // إلغاء أي اشتراك سابق لتجنب التكرار
       if (snapshotUnsubscribe.current) {
         snapshotUnsubscribe.current();
       }
@@ -55,8 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         },
         (err) => {
-          console.error("Profile fetch error:", err);
-          setError("خطأ في جلب بيانات المستخدم.");
+          setError("خطأ في جلب البيانات.");
           setLoading(false);
         }
       );
@@ -77,12 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        // محاولة إنشاء حساب إذا كان تجريبياً ولم يسبق إنشاؤه
+      // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه فوراً بكلمة المرور الافتراضية للتجربة
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr: any) {
-          // إذا كان البريد مستخدماً بالفعل بكلمة مرور مختلفة، نعيد الخطأ الأصلي
           throw err;
         }
       } else {
@@ -103,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         department: dept
       });
     } catch (err) {
-      console.error("Error setting up profile:", err);
+      console.error("Setup profile error:", err);
       throw err;
     }
   };

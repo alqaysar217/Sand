@@ -29,17 +29,17 @@ export default function DashboardPage() {
     return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك' };
   }, [firebaseUser?.email]);
 
-  // تفعيل فوري وحاسم للحسابات التجريبية
+  // تفعيل فوري وقوي جداً عند أول دخول لكل حساب تجريبي
   useEffect(() => {
     if (error === "MISSING_PROFILE" && firebaseUser && !isActivating && !user) {
       const runActivation = async () => {
         setIsActivating(true);
         try {
           await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
-          toast({ title: "تم تفعيل الصلاحيات", description: `مرحباً بك ${autoValues.name} في نظام سند.` });
+          toast({ title: "تم تفعيل الهوية المصرفية", description: `مرحباً بك ${autoValues.name} في نظام سند.` });
         } catch (err) {
           console.error("Auto activation failed", err);
-          toast({ variant: "destructive", title: "خطأ في التفعيل", description: "يرجى المحاولة مرة أخرى." });
+          toast({ variant: "destructive", title: "خطأ في التفعيل", description: "يرجى تسجيل الخروج والمحاولة مرة أخرى." });
         } finally {
           setIsActivating(false);
         }
@@ -58,30 +58,30 @@ export default function DashboardPage() {
           </div>
           <div className="text-center space-y-2">
             <h2 className="font-black text-primary text-xl">جاري تهيئة بيئة العمل...</h2>
-            <p className="text-slate-400 font-bold text-sm">يتم الآن التحقق من هويتك المصرفية كـ {autoValues.name}</p>
+            <p className="text-slate-400 font-bold text-sm">يتم الآن التحقق من الهوية المصرفية لـ {autoValues.name}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error === "MISSING_PROFILE") {
+  if (error === "MISSING_PROFILE" && !isActivating) {
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-6 text-center">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
-        <p className="font-black text-slate-600 text-lg">لم يتم العثور على ملفك الشخصي، جاري إنشاؤه تلقائياً...</p>
-        <Button onClick={logout} variant="outline" className="rounded-full">خروج ومحاولة مرة أخرى</Button>
+        <p className="font-black text-slate-600 text-lg">لم نتمكن من العثور على صلاحياتك، جاري محاولة التنشيط...</p>
+        <Button onClick={logout} variant="outline" className="rounded-full">خروج ومحاولة ثانية</Button>
       </div>
     );
   }
 
-  if (error) return (
+  if (error && error !== "MISSING_PROFILE") return (
     <div className="max-w-md mx-auto mt-20 text-right" dir="rtl">
       <Alert variant="destructive" className="rounded-[24px] shadow-xl border-none">
         <AlertTitle className="font-black text-right mb-2">تنبيه النظام</AlertTitle>
         <AlertDescription className="font-bold text-right">{error}</AlertDescription>
       </Alert>
-      <Button className="w-full h-12 rounded-full mt-6 font-black bg-primary shadow-lg" onClick={logout}>تسجيل الخروج والعودة</Button>
+      <Button className="w-full h-12 rounded-full mt-6 font-black bg-primary shadow-lg" onClick={logout}>العودة للرئيسية</Button>
     </div>
   );
 
@@ -97,8 +97,8 @@ export default function DashboardPage() {
     default:
       return (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
-          <p className="font-black text-slate-400">نعتذر، لم نتمكن من تحديد واجهة العمل الخاصة بك.</p>
-          <Button onClick={logout} className="rounded-full">العودة للخلف</Button>
+          <p className="font-black text-slate-400">لم يتم تحديد صلاحياتك بعد.</p>
+          <Button onClick={logout} className="rounded-full">الخروج</Button>
         </div>
       );
   }

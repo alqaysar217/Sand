@@ -24,7 +24,7 @@ export default function Home() {
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   useEffect(() => {
-    // التوجه للوحة القيادة إذا كان هناك مستخدم أو إذا كان الحساب بحاجة لتفعيل الملف الشخصي
+    // التوجه للوحة القيادة فور تحقق هوية المستخدم أو حاجته للتفعيل
     if ((user || error === "MISSING_PROFILE") && !loading) {
       router.push('/dashboard');
     }
@@ -35,10 +35,6 @@ export default function Home() {
     setIsLoggingIn(true);
     try {
       await login(email, password);
-      toast({
-        title: "تم تسجيل الدخول",
-        description: "مرحباً بك في نظام سند المصرفي.",
-      });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -52,7 +48,7 @@ export default function Home() {
 
   const setDemoLogin = (email: string) => {
     setEmail(email);
-    setPassword('password123'); // توحيد كلمة المرور للتجربة
+    setPassword('password123');
   };
 
   if (loading) {
@@ -141,7 +137,7 @@ export default function Home() {
             </form>
 
             <div className="mt-8 pt-6 border-t border-slate-50">
-              <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">بوابات الدخول التجريبي</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">بوابات الدخول السريع</p>
               <div className="grid grid-cols-2 gap-3">
                 <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com')}>
                   <MonitorSmartphone className="h-5 w-5 text-accent" />
