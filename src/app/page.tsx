@@ -8,6 +8,9 @@ import { Shield, ArrowLeft, MonitorSmartphone, Headset, CreditCard, UserCog } fr
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
+/**
+ * الصفحة الرئيسية المبسطة - تسمح بالدخول المباشر للنظام لتجاوز مشاكل تسجيل الدخول
+ */
 export default function Home() {
   const router = useRouter();
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
@@ -39,28 +42,26 @@ export default function Home() {
 
         <Card className="banking-card overflow-hidden border-none shadow-2xl">
           <CardHeader className="premium-gradient text-white p-10 text-center">
-            <CardTitle className="text-2xl font-black">بوابة العبور السريع</CardTitle>
+            <CardTitle className="text-2xl font-black">بوابة العبور المباشر</CardTitle>
             <CardDescription className="text-white/70 font-bold mt-2">
-              تم تعطيل نظام الحماية مؤقتاً لتمكينك من إكمال بناء الواجهات. اختر القسم الذي تود العمل عليه الآن.
+              تم تعطيل نظام الحماية وفتح قواعد البيانات للسماح لك بإكمال بناء واجهات النظام لكل الأقسام.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-10">
-            <div className="grid grid-cols-1 gap-4">
-              <Button 
-                onClick={() => router.push('/dashboard')} 
-                className="w-full banking-button bg-primary text-white h-16 text-xl font-black shadow-xl hover:scale-[1.02] transition-transform"
-              >
-                <span>دخول لوحة القيادة (تجاوز الحماية)</span>
-                <ArrowLeft className="w-6 h-6 mr-2" />
-              </Button>
-            </div>
+            <Button 
+              onClick={() => router.push('/dashboard')} 
+              className="w-full banking-button bg-primary text-white h-20 text-xl font-black shadow-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-3"
+            >
+              <span>دخول النظام وتجربة الواجهات</span>
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
 
             <div className="mt-8 pt-6 border-t border-slate-50">
-              <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">أقسام النظام المتاحة</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">أقسام النظام المتاحة للمعاينة</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl gap-2">
                   <CreditCard className="h-5 w-5 text-primary" />
-                  <span className="font-bold text-[10px] text-slate-800">إدارة البطائق</span>
+                  <span className="font-bold text-[10px] text-slate-800">قسم البطائق</span>
                 </div>
                 <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl gap-2">
                   <Headset className="h-5 w-5 text-secondary" />
@@ -68,7 +69,7 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl gap-2">
                   <MonitorSmartphone className="h-5 w-5 text-accent" />
-                  <span className="font-bold text-[10px] text-slate-800">الخدمات الرقمية</span>
+                  <span className="font-bold text-[10px] text-slate-800">الرقمية</span>
                 </div>
                 <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl gap-2">
                   <UserCog className="h-5 w-5 text-red-600" />
