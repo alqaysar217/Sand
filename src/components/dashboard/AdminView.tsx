@@ -12,12 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Award
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -91,13 +91,33 @@ export function AdminView() {
   const { data: appUsers } = useCollection<UserProfile>(usersQuery);
 
   const stats = useMemo(() => {
-    if (!tickets || tickets.length === 0) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [] };
+    if (!tickets || tickets.length === 0) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [], agentPerf: [], specPerf: [] };
+    
     const deptMap: Record<string, number> = {};
     const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0, 'Escalated': 0, 'Rejected': 0 };
+    const agentMap: Record<string, { name: string, count: number }> = {};
+    const specMap: Record<string, { name: string, resolved: number, rejected: number, escalated: number }> = {};
 
     tickets.forEach(t => {
+      // إحصائيات الأقسام والحالات
       deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
+
+      // أداء موظفي الرفع (Agents)
+      if (t.createdByAgentId) {
+        if (!agentMap[t.createdByAgentId]) agentMap[t.createdByAgentId] = { name: t.createdByAgentName, count: 0 };
+        agentMap[t.createdByAgentId].count++;
+      }
+
+      // أداء الأخصائيين (Specialists)
+      if (t.assignedToSpecialistId) {
+        if (!specMap[t.assignedToSpecialistId]) {
+          specMap[t.assignedToSpecialistId] = { name: t.assignedToSpecialistName || 'غير معروف', resolved: 0, rejected: 0, escalated: 0 };
+        }
+        if (t.status === 'Resolved') specMap[t.assignedToSpecialistId].resolved++;
+        if (t.status === 'Rejected') specMap[t.assignedToSpecialistId].rejected++;
+        if (t.status === 'Escalated') specMap[t.assignedToSpecialistId].escalated++;
+      }
     });
 
     const statusTranslation: Record<string, string> = {
@@ -113,7 +133,14 @@ export function AdminView() {
       statusData: Object.entries(statusMap).map(([name, value]) => ({ 
         name: statusTranslation[name] || name, 
         value 
-      })).filter(s => s.value > 0)
+      })).filter(s => s.value > 0),
+      agentPerf: Object.values(agentMap).sort((a, b) => b.count - a.count).slice(0, 5),
+      specPerf: Object.values(specMap).map(s => ({
+        name: s.name,
+        إنجاز: s.resolved,
+        رفض: s.rejected,
+        إحالة: s.escalated
+      })).sort((a, b) => b.إنجاز - a.إنجاز).slice(0, 5)
     };
   }, [tickets]);
 
@@ -248,7 +275,52 @@ export function AdminView() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <Card className="banking-card border-none shadow-xl">
+             {/* أداء موظفي الكول سنتر */}
+             <Card className="banking-card border-none shadow-xl overflow-hidden">
+                <CardHeader className="text-right border-b bg-primary/5 p-6">
+                   <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+                      إنتاجية موظفي الكول سنتر (الرفع) <Headset className="w-5 h-5 text-primary" />
+                   </CardTitle>
+                   <CardDescription className="text-right font-bold">أكثر 5 موظفين رفعاً للبلاغات</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 h-[350px]">
+                   <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.agentPerf} layout="vertical">
+                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                         <XAxis type="number" hide />
+                         <YAxis dataKey="name" type="category" fontSize={12} fontWeight="bold" width={100} orientation="right" />
+                         <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
+                         <Bar dataKey="count" name="عدد البلاغات المرفوعة" fill="#6C63FF" radius={[0, 8, 8, 0]} />
+                      </BarChart>
+                   </ResponsiveContainer>
+                </CardContent>
+             </Card>
+
+             {/* أداء الأخصائيين */}
+             <Card className="banking-card border-none shadow-xl overflow-hidden">
+                <CardHeader className="text-right border-b bg-green-50/50 p-6">
+                   <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+                      إنجازات الأخصائيين (المعالجة) <Award className="w-5 h-5 text-green-600" />
+                   </CardTitle>
+                   <CardDescription className="text-right font-bold">أداء الأخصائيين حسب نوع الإجراء</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 h-[350px]">
+                   <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.specPerf}>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                         <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
+                         <YAxis orientation="right" fontSize={12} fontWeight="bold" />
+                         <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
+                         <Legend verticalAlign="top" height={36} />
+                         <Bar dataKey="إنجاز" fill="#10B981" radius={[4, 4, 0, 0]} />
+                         <Bar dataKey="رفض" fill="#64748b" radius={[4, 4, 0, 0]} />
+                         <Bar dataKey="إحالة" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                   </ResponsiveContainer>
+                </CardContent>
+             </Card>
+
+             <Card className="banking-card border-none shadow-xl overflow-hidden">
                 <CardHeader className="text-right border-b bg-slate-50/50 p-6">
                    <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
                       حجم العمل لكل قسم <BarChart3 className="w-5 h-5 text-primary" />
@@ -266,7 +338,8 @@ export function AdminView() {
                    </ResponsiveContainer>
                 </CardContent>
              </Card>
-             <Card className="banking-card border-none shadow-xl">
+
+             <Card className="banking-card border-none shadow-xl overflow-hidden">
                 <CardHeader className="text-right border-b bg-slate-50/50 p-6">
                    <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
                       توزيع الحالات <PieChartIcon className="w-5 h-5 text-primary" />
