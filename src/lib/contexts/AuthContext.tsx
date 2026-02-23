@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(null);
           } else {
             setProfile(null);
-            setError("MISSING_PROFILE");
+            // لا نضبط خطأ هنا للسماح بإنشاء الملف الشخصي أول مرة
           }
           setLoading(false);
         },
@@ -61,7 +61,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     } else {
       setProfile(null);
-      setError(null);
       setLoading(false);
     }
 
@@ -76,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // Create demo account if not exists
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
@@ -110,7 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     await signOut(auth);
     setProfile(null);
-    setError(null);
     setLoading(false);
   };
 

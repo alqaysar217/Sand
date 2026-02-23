@@ -2,7 +2,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // تم فتح القواعد مؤقتاً للسماح للمطور بإكمال بناء الواجهات دون قيود تسجيل الدخول
+    // السماح بالوصول الكامل لجميع المستخدمين المسجلين وغير المسجلين مؤقتاً لضمان استقرار التطوير
     match /{document=**} {
       allow read, write: if true;
     }
