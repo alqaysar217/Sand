@@ -318,7 +318,7 @@ export function AdminView() {
 
       {/* نافذة تغيير كلمة سر المدير */}
       <Dialog open={showChangePassDialog} onOpenChange={setShowChangePassDialog}>
-         <DialogContent className="max-w-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
+         <DialogContent className="max-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-primary/5 border-b">
                <DialogTitle className="text-2xl font-black text-primary flex items-center gap-2 justify-end">
                   <Key className="w-6 h-6" /> تحديث كلمة سر الإدارة
@@ -348,35 +348,29 @@ function StatCard({ icon: Icon, title, value, color }: any) {
   
   return (
     <div className={cn(
-      "relative rounded-[24px] p-6 shadow-xl overflow-hidden transition-all duration-300",
-      isBgColor ? `${color} text-white` : "bg-white border border-slate-100"
+      "relative rounded-[24px] p-6 shadow-xl border-none overflow-hidden",
+      isBgColor ? `${color} text-white` : "bg-white text-slate-900 border border-slate-100"
     )}>
-       <div className="relative z-10 flex justify-between items-start flex-row-reverse">
-          <div className={cn(
-            "p-3 rounded-2xl flex items-center justify-center",
-            isBgColor ? "bg-white/20" : "bg-slate-50"
-          )}>
-             <Icon className={cn(
-               "w-6 h-6",
-               isBgColor ? "text-white" : color
-             )} />
-          </div>
-          <div className="text-right">
-            <p className={cn(
-              "text-[10px] font-black uppercase tracking-wider mb-1",
-              isBgColor ? "text-white/80" : "text-slate-400"
-            )}>{title}</p>
-            <h3 className={cn(
-              "text-3xl font-black",
-              isBgColor ? "text-white" : "text-slate-900"
-            )}>{value}</h3>
-          </div>
-       </div>
-       {isBgColor && (
-         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
-            <Icon className="absolute -bottom-4 -left-4 w-24 h-24 rotate-12" />
-         </div>
-       )}
+      <div className="flex justify-between items-center relative z-20">
+        <div className="text-right">
+          <p className={cn(
+            "text-xs font-black mb-1",
+            isBgColor ? "text-white/80" : "text-slate-500"
+          )}>{title}</p>
+          <h3 className="text-3xl font-black tabular-nums">{value}</h3>
+        </div>
+        <div className={cn(
+          "p-4 rounded-2xl flex items-center justify-center",
+          isBgColor ? "bg-white/20" : "bg-slate-50"
+        )}>
+          <Icon className={cn("w-6 h-6", isBgColor ? "text-white" : color)} />
+        </div>
+      </div>
+      {isBgColor && (
+        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none z-10">
+          <Icon className="absolute -bottom-4 -left-4 w-24 h-24 rotate-12" />
+        </div>
+      )}
     </div>
   );
 }

@@ -73,14 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [firebaseUser, isUserLoading, db]);
 
   const login = async (username: string, password: string) => {
-    // BIM ID التحويل إلى بريد إلكتروني وهمي للتعامل مع نظام فيربيس
     const email = `${username.toLowerCase()}@sanad.bank`;
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      console.error("Login error:", err);
-      // إذا كان المدير يدخل لأول مرة بالبيانات الافتراضية
-      if (username === 'BIM0100' && password === 'ha892019' && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
+      // التعامل مع حالة المدير العام لأول مرة
+      if (username === 'BIM0100' && password === 'ha892019' && 
+         (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, password);
           await setDoc(doc(db, 'users', cred.user.uid), {
@@ -92,7 +91,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             department: 'Operations'
           });
           return;
-        } catch (createErr) {
+        } catch (createErr: any) {
+          // إذا كان البريد مستخدم بالفعل، يعني أن كلمة السر خاطئة للمدير الموجود مسبقاً
+          if (createErr.code === 'auth/email-already-in-use') {
+             throw new Error('كلمة المرور غير صحيحة لحساب المدير العام.');
+          }
           throw err;
         }
       }
@@ -103,7 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const createEmployeeAccount = async (data: { name: string, username: string, role: UserRole, dept: Department, password: string }) => {
     if (!db || !auth.currentUser) return;
     
-    // استخدام تطبيق ثانوي لإنشاء المستخدم الجديد دون تسجيل خروج المدير الحالي
     const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
     const secondaryAuth = getAuth(secondaryApp);
     

@@ -42,11 +42,12 @@ export default function Home() {
       toast({ title: "تم تسجيل الدخول", description: `مرحباً بك في محطة العمل، ${selectedEmp.name}` });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error);
+      // إظهار رسالة الخطأ للمستخدم دون تسجيلها في الكونسول لتجنب Overlay التطوير
+      const msg = error.message || "فشل تسجيل الدخول. تأكد من البيانات والارتباط بالقسم الصحيح.";
       toast({ 
         variant: "destructive", 
         title: "خطأ في الدخول", 
-        description: "اسم المستخدم أو كلمة المرور غير صحيحة، أو الحساب غير مخول لهذا القسم." 
+        description: msg.includes('auth/') ? "اسم المستخدم أو كلمة المرور غير صحيحة." : msg
       });
     } finally {
       setLoading(false);
