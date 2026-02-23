@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "sanad-logo",
+      "description": "شعار نظام سند المصرفي",
+      "imageUrl": "https://images.unsplash.com/photo-1649734929640-d0c0f79da545?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxiYW5raW5nJTIwbG9nb3xlbnwwfHx8fDE3NzE4MDQ5NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "banking logo"
+    }
+  ]
 }

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -8,12 +9,11 @@ import {
   Inbox, 
   BarChart3, 
   Users, 
-  Settings,
   AlertCircle,
-  FileCheck,
   Archive,
   Clock,
-  Shield
+  Shield,
+  FileText
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,10 +27,14 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function AppSidebar() {
   const { user } = useAuth();
   if (!user) return null;
+
+  const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   // إرسال حدث مخصص للتحكم في الواجهة بدلاً من إعادة تحميل الصفحة
   const handleNav = (action: string) => {
@@ -43,7 +47,7 @@ export function AppSidebar() {
         return [
           { title: 'الرئيسية (السجل)', icon: LayoutDashboard, action: 'home' },
           { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
-          { title: 'البلاغات المحالة', icon: History, action: 'home' }, // سنستخدم الفلتر داخل الواجهة
+          { title: 'البلاغات المحالة', icon: History, action: 'home' },
           { title: 'الأرشيف المحلول', icon: Archive, action: 'home' },
         ];
       case 'Specialist':
@@ -65,16 +69,25 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-l border-r-0" side="right">
-      <SidebarHeader className="p-4 border-b bg-primary/5">
-        <div className="flex items-center gap-2 justify-end">
-          <span className="font-bold text-primary">كونكت-ريزولف</span>
-          <Shield className="w-5 h-5 text-primary" />
+      <SidebarHeader className="p-6 border-b bg-primary/5">
+        <div className="flex items-center gap-3 justify-end">
+          <span className="font-bold text-2xl text-primary">سند</span>
+          {logo && (
+            <Image 
+              src={logo.imageUrl} 
+              alt="Sanad Logo" 
+              width={32} 
+              height={32} 
+              className="rounded-lg"
+              data-ai-hint={logo.imageHint}
+            />
+          )}
         </div>
       </SidebarHeader>
       <SidebarContent className="bg-white">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-primary font-bold px-4 py-2 mt-2 text-right">
-            لوحة الوصول السريع
+          <SidebarGroupLabel className="text-primary font-bold px-4 py-4 mb-2 text-right text-sm">
+            لوحة التحكم السريع
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -82,10 +95,10 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     onClick={() => handleNav(item.action)}
-                    className="flex-row-reverse hover:bg-slate-100 h-11 w-full"
+                    className="flex-row-reverse hover:bg-slate-100 h-12 w-full px-4"
                   >
-                    <item.icon className="w-5 h-5 ml-3 mr-0 text-slate-500" />
-                    <span className="text-sm font-medium">{item.title}</span>
+                    <item.icon className="w-5 h-5 ml-4 mr-0 text-slate-500" />
+                    <span className="text-base font-medium">{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -93,8 +106,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t bg-slate-50 text-[10px] text-muted-foreground text-center">
-        نظام إدارة البلاغات المصرفي v1.2
+      <SidebarFooter className="p-6 border-t bg-slate-50 text-[11px] text-muted-foreground text-center font-medium">
+        نظام سند المصرفي لإدارة البلاغات v2.0
       </SidebarFooter>
     </Sidebar>
   );

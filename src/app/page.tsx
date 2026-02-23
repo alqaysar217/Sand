@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Shield, Lock, Mail, ArrowLeft, CheckCircle2, Loader2, Info, Copy, Check, Database, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function Home() {
   const [email, setEmail] = useState('');
@@ -20,6 +22,8 @@ export default function Home() {
   const { login, user, firebaseUser, loading, error, logout } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+
+  const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   useEffect(() => {
     if (user && !loading) {
@@ -34,7 +38,7 @@ export default function Home() {
       await login(email, password);
       toast({
         title: "تم تسجيل الدخول",
-        description: "مرحباً بك في نظام كونكت-ريزولف.",
+        description: "مرحباً بك في نظام سند.",
       });
     } catch (error: any) {
       let message = "فشل تسجيل الدخول. يرجى التحقق من البيانات.";
@@ -68,7 +72,9 @@ export default function Home() {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-primary rounded-lg"></div>
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+             <div className="w-10 h-10 bg-primary rounded-lg animate-spin"></div>
+          </div>
           <div className="h-4 w-32 bg-slate-200 rounded"></div>
         </div>
       </div>
@@ -90,29 +96,37 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F6F9FA] flex flex-col">
       <nav className="p-6">
-        <div className="max-w-7xl mx-auto flex items-center gap-2">
-          <div className="bg-primary p-1.5 rounded-lg">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
-          <span className="font-headline font-bold text-2xl text-primary tracking-tight">كونكت-ريزولف</span>
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          {logo && (
+            <Image 
+              src={logo.imageUrl} 
+              alt="Logo" 
+              width={48} 
+              height={48} 
+              className="rounded-xl border-2 border-primary/20 shadow-sm"
+              data-ai-hint={logo.imageHint}
+            />
+          )}
+          <span className="font-headline font-bold text-3xl text-primary tracking-tight">سند</span>
         </div>
       </nav>
 
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl w-full items-center">
           <div className="hidden lg:block space-y-8">
-            <h1 className="text-5xl font-bold text-primary leading-tight">
-              نظام <span className="text-secondary">بلاغات</span> المصرفي.
+            <h1 className="text-6xl font-extrabold text-primary leading-tight">
+              نظام <span className="text-secondary">سند</span> <br/>
+              لإدارة بلاغات العملاء.
             </h1>
-            <p className="text-xl text-muted-foreground">
-              تمكين فرق الدعم والمديرين من متابعة الشكاوى وحلها بأعلى معايير الجودة والأمان.
+            <p className="text-xl text-muted-foreground max-w-md">
+              نظام مصرفي ذكي يربط الميدان بالدعم الفني لضمان حل أسرع لشكاوى العملاء.
             </p>
             <div className="space-y-4">
               {[
-                "تحليلات غرفة القيادة والرقابة (للمدير)",
-                "معالجة فنية متقدمة (لقسم البطائق)",
-                "رفع سريع للبلاغات (للكول سنتر)",
-                "واجهة فروع مدعومة بالمرفقات (لخدمة العملاء)"
+                "متابعة لحظية لبلاغات العملاء",
+                "ردود فنية مدعومة بالذكاء الاصطناعي",
+                "أرشيف كامل لكافة المشكلات وحلولها",
+                "تقارير وإحصائيات لمتخذي القرار"
               ].map((text) => (
                 <div key={text} className="flex items-center gap-3">
                   <div className="bg-green-100 p-1 rounded-full">
@@ -198,7 +212,7 @@ export default function Home() {
               <Card className="w-full max-w-md mx-auto shadow-xl border-t-4 border-t-primary">
                 <CardHeader className="space-y-1 text-right">
                   <CardTitle className="text-2xl font-bold">دخول الموظفين والمسؤولين</CardTitle>
-                  <CardDescription>أدخل البريد الرسمي وكلمة السر</CardDescription>
+                  <CardDescription>أدخل البريد الرسمي وكلمة السر لنظام سند</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleLogin} className="space-y-4">
@@ -209,7 +223,7 @@ export default function Home() {
                         <Input 
                           id="email" 
                           type="email" 
-                          placeholder="balkharam.admin@bank.com" 
+                          placeholder="employee@bank.com" 
                           className="pr-10 text-right"
                           dir="ltr"
                           value={email}
@@ -241,33 +255,17 @@ export default function Home() {
                   </form>
 
                   <div className="mt-8 pt-6 border-t">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">دخول سريع ببياناتك المحددة:</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-3 text-right">دخول سريع للتجربة:</p>
                     <div className="grid grid-cols-1 gap-2">
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
                         <div className="text-right">
                           <p className="font-bold">بلخرم (المدير العام)</p>
-                          <p className="opacity-50">ADMIN773362423</p>
                         </div>
                         <Shield className="h-4 w-4 opacity-30" />
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SECURE_2024')}>
-                        <div className="text-right">
-                          <p className="font-bold">قسم البطائق</p>
-                          <p className="opacity-50">CARDS_SECURE_2024</p>
-                        </div>
-                        <Database className="h-4 w-4 opacity-30" />
-                      </Button>
-                      <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('callcenter.agent@bank.com', 'CALL7788_CC')}>
-                        <div className="text-right">
-                          <p className="font-bold">الكول سنتر</p>
-                          <p className="opacity-50">CALL7788_CC</p>
-                        </div>
-                        <Mail className="h-4 w-4 opacity-30" />
-                      </Button>
                       <Button variant="outline" size="sm" className="justify-between flex-row-reverse text-[10px] h-auto py-2" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
                         <div className="text-right">
-                          <p className="font-bold">خدمة العملاء</p>
-                          <p className="opacity-50">CS_GUEST_99</p>
+                          <p className="font-bold">موظف خدمة العملاء</p>
                         </div>
                         <Info className="h-4 w-4 opacity-30" />
                       </Button>
@@ -281,7 +279,7 @@ export default function Home() {
       </main>
 
       <footer className="p-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} أنظمة كونكت-ريزولف المصرفية | جميع الحقوق محفوظة
+        © {new Date().getFullYear()} نظام سند المصرفي | جميع الحقوق محفوظة
       </footer>
     </div>
   );

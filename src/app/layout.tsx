@@ -1,11 +1,12 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/contexts/AuthContext';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'ConnectResolve | نظام إدارة شكاوى البنك',
-  description: 'نظام ذكي لإدارة وحل شكاوى العملاء في القطاع المصرفي',
+  title: 'سند | نظام إدارة بلاغات العملاء',
+  description: 'نظام سند الذكي لإدارة وحل شكاوى العملاء في القطاع المصرفي',
 };
 
 export default function RootLayout({
