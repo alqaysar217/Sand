@@ -17,7 +17,7 @@ import {
   Send,
   XCircle,
   Settings,
-  FileText
+  ShieldCheck
 } from 'lucide-react';
 import {
   Sidebar,
@@ -54,11 +54,8 @@ export function AppSidebar() {
     if (user.role === 'Admin') {
       return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
     } else if (user.role === 'Specialist') {
-      return query(
-        collection(db, 'tickets'),
-        where('serviceType', '==', user.department === 'Cards' ? 'إدارة البطائق' : user.department),
-        orderBy('createdAt', 'desc')
-      );
+      // الأخصائي يرى كل البلاغات الموجهة للأقسام
+      return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
     } else {
       return query(
         collection(db, 'tickets'),
@@ -104,8 +101,11 @@ export function AppSidebar() {
       ];
     } else if (user.role === 'Specialist') {
       return [
-        { title: 'محطة العمل', icon: Inbox, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
-        { title: 'تم الحل', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
+        { title: 'كل المهام', icon: Inbox, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
+        { title: 'قيد المعالجة', icon: Clock, action: 'Pending', count: counts.Pending, badgeColor: 'bg-amber-500' },
+        { title: 'بلاغات محالة', icon: Send, action: 'Escalated', count: counts.Escalated, badgeColor: 'bg-red-600' },
+        { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
+        { title: 'بلاغات تم حلها', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
       ];
     } else {
       return [
@@ -136,7 +136,7 @@ export function AppSidebar() {
       <SidebarContent className="bg-white px-3 py-6 no-scrollbar">
         <SidebarGroup>
           <SidebarGroupLabel className="text-slate-400 font-bold px-4 py-4 mb-4 text-right text-[10px] uppercase tracking-[2px]">
-            التنقل الذكي
+            لوحة التحكم
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">
@@ -170,7 +170,10 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-8 border-t bg-slate-50/50 text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider">
-        سند المصرفي v2.5
+        <div className="flex flex-col gap-1 items-center">
+           <ShieldCheck className="w-4 h-4 text-primary/30" />
+           <span>سند المصرفي v2.5</span>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
