@@ -5,14 +5,14 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user within the system, including their identification, role, and departmental assignment.",
+      "description": "يمثل مستخدم النظام ويحدد صلاحياته. الأدوار: Admin (مدير النظام)، Agent (موظف رفع البلاغات في الكول سنتر)، Specialist (أخصائي معالجة وحل البلاغات في الأقسام الفنية).",
       "properties": {
         "id": { "type": "string" },
-        "username": { "type": "string", "description": "The unique BIM ID of the user (e.g., BIM0100)" },
+        "username": { "type": "string", "description": "الهوية المصرفية الموحدة للموظف (BIM ID)" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["Admin", "Agent", "Specialist"] },
-        "department": { "type": "string" }
+        "department": { "type": "string", "description": "القسم التابع له (Support, Cards, Digital, App, Operations)" }
       },
       "required": ["id", "username", "name", "email", "role", "department"]
     },
@@ -20,7 +20,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ComplaintTicket",
       "type": "object",
-      "description": "Represents a complaint ticket with enhanced fields for intake method and detailed descriptions.",
+      "description": "يمثل بلاغ العميل. يتم إنشاؤه بواسطة الـ Agent (موظف الرفع) ومعالجته بواسطة الـ Specialist (أخصائي المعالجة).",
       "properties": {
         "id": { "type": "string" },
         "ticketID": { "type": "string" },
