@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, Save, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, MessageSquare, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle
+  Share2, MessageSquare, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff
 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -22,21 +22,24 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Department } from '@/lib/types';
+import { Department, UserProfile } from '@/lib/types';
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
 export function AdminView() {
   const db = useFirestore();
   const { toast } = useToast();
-  const { createEmployeeAccount, updateAdminPassword, checkUsernameExists } = useAuth();
+  const { createEmployeeAccount, updateAdminPassword, checkUsernameExists, updateEmployeeProfile } = useAuth();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showChangePassDialog, setShowChangePassDialog] = useState(false);
   const [newPass, setNewPass] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   
   const [newUser, setNewUser] = useState({
     name: '',
@@ -44,6 +47,8 @@ export function AdminView() {
     dept: 'Cards' as Department,
     password: ''
   });
+
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
@@ -56,7 +61,6 @@ export function AdminView() {
     return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
   }, []);
 
-  // فحص توفر اسم المستخدم فور الكتابة
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (newUser.username.length >= 4) {
@@ -79,7 +83,7 @@ export function AdminView() {
   const { data: tickets } = useCollection(allTicketsQuery);
 
   const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users'), orderBy('createdAt', 'desc')) : null, [db]);
-  const { data: appUsers } = useCollection(usersQuery);
+  const { data: appUsers } = useCollection<UserProfile>(usersQuery);
 
   const stats = useMemo(() => {
     if (!tickets || tickets.length === 0) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [] };
@@ -124,6 +128,33 @@ export function AdminView() {
     }
   };
 
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsUpdatingUser(true);
+    try {
+      await updateEmployeeProfile(editingUser.id, {
+        name: editingUser.name,
+        department: editingUser.department
+      });
+      toast({ title: "تم التحديث بنجاح", description: `تم تحديث بيانات الموظف ${editingUser.name}` });
+      setShowEditUserDialog(false);
+      setEditingUser(null);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "فشل التحديث", description: err.message });
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    if (!db) return;
+    if (confirm('هل أنت متأكد من رغبتك في حذف هذا الحساب؟')) {
+      deleteDocumentNonBlocking(doc(db, 'users', uid));
+      toast({ title: "تم الحذف", description: "تم حذف حساب الموظف من النظام." });
+    }
+  };
+
   const handleChangeAdminPass = async () => {
     if (newPass.length < 6) {
       toast({ variant: "destructive", title: "تنبيه", description: "كلمة السر يجب أن تكون 6 خانات على الأقل" });
@@ -137,6 +168,13 @@ export function AdminView() {
     } catch (err) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث كلمة السر." });
     }
+  };
+
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
   };
 
   return (
@@ -239,10 +277,10 @@ export function AdminView() {
                     <TableHeader className="bg-primary">
                        <TableRow className="hover:bg-primary border-none">
                           <TableHead className="text-right font-black text-white h-14 pr-8">الاسم الكامل</TableHead>
-                          <TableHead className="text-right font-black text-white h-14">BIM ID (اسم المستخدم)</TableHead>
-                          <TableHead className="text-right font-black text-white h-14">الدور الوظيفي</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">BIM ID</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">كلمة المرور</TableHead>
                           <TableHead className="text-right font-black text-white h-14">القسم</TableHead>
-                          <TableHead className="text-center font-black text-white h-14 pl-8">الإجراء</TableHead>
+                          <TableHead className="text-center font-black text-white h-14 pl-8">الإجراءات</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -251,17 +289,29 @@ export function AdminView() {
                              <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
                              <TableCell className="text-right font-mono font-bold text-primary">{u.username || 'N/A'}</TableCell>
                              <TableCell className="text-right">
+                                <div className="flex items-center gap-2 justify-end">
+                                   <span className="font-mono text-xs">{visiblePasswords[u.id] ? u.password : '••••••••'}</span>
+                                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => togglePasswordVisibility(u.id)}>
+                                      {visiblePasswords[u.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                   </Button>
+                                </div>
+                             </TableCell>
+                             <TableCell className="text-right">
                                 <Badge className={`rounded-full px-4 font-black ${
-                                   u.role === 'Admin' ? 'bg-red-500' : u.role === 'Specialist' ? 'bg-primary' : 'bg-secondary'
+                                   u.role === 'Admin' ? 'bg-red-500' : 'bg-slate-100 text-slate-600'
                                 }`}>
-                                   {u.role === 'Admin' ? 'مدير نظام' : u.role === 'Specialist' ? 'أخصائي معالجة' : 'موظف رفع'}
+                                   {u.department}
                                 </Badge>
                              </TableCell>
-                             <TableCell className="text-right font-bold text-slate-500">{u.department}</TableCell>
                              <TableCell className="text-center pl-8">
-                                <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 rounded-full h-10 w-10">
-                                   <Trash2 className="w-5 h-5" />
-                                </Button>
+                                <div className="flex items-center justify-center gap-2">
+                                   <Button variant="ghost" size="icon" onClick={() => { setEditingUser(u); setShowEditUserDialog(true); }} className="text-blue-500 hover:text-blue-700 rounded-full h-10 w-10">
+                                      <Edit2 className="w-5 h-5" />
+                                   </Button>
+                                   <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(u.id)} className="text-red-400 hover:text-red-600 rounded-full h-10 w-10">
+                                      <Trash2 className="w-5 h-5" />
+                                   </Button>
+                                </div>
                              </TableCell>
                           </TableRow>
                        ))}
@@ -318,7 +368,6 @@ export function AdminView() {
                   <div className="col-span-1 md:col-span-2 space-y-2">
                      <Label className="font-black text-xs mr-1">كلمة المرور الافتتاحية</Label>
                      <Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" placeholder="••••••••" />
-                     <p className="text-[10px] text-slate-400 font-bold mr-1">سيتمكن الموظف من استخدام هذه الكلمة للدخول لقسمه المخصص فقط.</p>
                   </div>
                </div>
                <DialogFooter className="flex-row-reverse gap-3 pt-6">
@@ -328,6 +377,46 @@ export function AdminView() {
                   </Button>
                </DialogFooter>
             </form>
+         </DialogContent>
+      </Dialog>
+
+      {/* نافذة تعديل موظف */}
+      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+         <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
+            <DialogHeader className="p-8 bg-blue-50 border-b">
+               <DialogTitle className="text-2xl font-black text-blue-700 flex items-center gap-2 justify-end">
+                  <Edit2 className="w-6 h-6" /> تعديل بيانات الموظف
+               </DialogTitle>
+            </DialogHeader>
+            {editingUser && (
+              <form onSubmit={handleUpdateUser} className="p-8 space-y-6">
+                 <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-2">
+                       <Label className="font-black text-xs mr-1">الاسم الكامل</Label>
+                       <Input required value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="banking-input h-12 text-right" />
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="font-black text-xs mr-1">تعديل القسم</Label>
+                       <Select value={editingUser.department} onValueChange={(v: any) => setEditingUser({...editingUser, department: v})}>
+                          <SelectTrigger className="banking-input h-12 text-right"><SelectValue /></SelectTrigger>
+                          <SelectContent dir="rtl">
+                             <SelectItem value="Support">الكول سنتر (Support)</SelectItem>
+                             <SelectItem value="Cards">إدارة البطائق (Cards)</SelectItem>
+                             <SelectItem value="Digital">خدمة العملاء (Digital)</SelectItem>
+                             <SelectItem value="App">مشاكل التطبيق (App)</SelectItem>
+                          </SelectContent>
+                       </Select>
+                       <p className="text-[10px] text-amber-600 font-black mr-1 mt-1">سيتم تحديث الدور الوظيفي تلقائياً بناءً على القسم المختار.</p>
+                    </div>
+                 </div>
+                 <DialogFooter className="flex-row-reverse gap-3 pt-6">
+                    <Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black px-8 h-12">إلغاء</Button>
+                    <Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 hover:bg-blue-700 text-white h-12 px-10 rounded-full font-black shadow-lg">
+                       {isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}
+                    </Button>
+                 </DialogFooter>
+              </form>
+            )}
          </DialogContent>
       </Dialog>
 
@@ -343,7 +432,6 @@ export function AdminView() {
                <div className="space-y-3">
                   <Label className="font-black text-sm mr-1">كلمة السر الجديدة</Label>
                   <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="banking-input h-14 text-right" placeholder="••••••••" />
-                  <p className="text-[10px] text-slate-400 font-bold">يرجى اختيار كلمة سر قوية لضمان أمن النظام</p>
                </div>
                <div className="pt-4 flex flex-col gap-3">
                   <Button onClick={handleChangeAdminPass} className="banking-button premium-gradient text-white h-14 rounded-full font-black shadow-xl">

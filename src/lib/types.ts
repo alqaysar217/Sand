@@ -12,6 +12,8 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   department: Department;
+  password?: string; // أضفنا كلمة المرور ليتمكن المدير من رؤيتها
+  createdAt?: string;
 }
 
 export interface Attachment {

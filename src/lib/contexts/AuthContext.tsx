@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, getAuth } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (username: string, password: string, targetDept: Department) => Promise<void>;
   logout: () => Promise<void>;
   createEmployeeAccount: (data: { name: string, username: string, dept: Department, password: string }) => Promise<void>;
+  updateEmployeeProfile: (uid: string, data: Partial<UserProfile>) => Promise<void>;
   updateAdminPassword: (newPassword: string) => Promise<void>;
   checkUsernameExists: (username: string) => Promise<boolean>;
   loading: boolean;
@@ -76,23 +77,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const email = `${username.toLowerCase()}@sanad.bank`;
     
     try {
-      // محاولة تسجيل الدخول أولاً للتحقق من كلمة السر
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // جلب بيانات المستخدم من Firestore للتحقق من القسم
       const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
-        
-        // التحقق من تطابق القسم المخصص مع البوابة التي يحاول الدخول منها
-        // المدير العام (Operations) يمكنه الدخول من بوابته الخاصة فقط أو أي بوابة إدارية
         if (userData.department !== targetDept && userData.role !== 'Admin') {
-          await signOut(auth); // تسجيل الخروج فوراً لأنه غير مخول لهذا القسم
+          await signOut(auth);
           throw new Error(`عذراً، هويتك مرتبطة بـ (${userData.department}) وغير مخول لك دخول قسم (${targetDept}).`);
         }
       }
     } catch (err: any) {
-      // التعامل مع حالة المدير العام لأول مرة
       if (username === 'BIM0100' && password === 'ha892019' && 
          (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
         try {
@@ -103,7 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: 'المدير العام',
             email: email,
             role: 'Admin',
-            department: 'Operations'
+            department: 'Operations',
+            password: password // حفظ كلمة السر للمدير أيضاً
           });
           return;
         } catch (createErr: any) {
@@ -113,8 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw err;
         }
       }
-      
-      // ترجمة رسائل الخطأ الشائعة
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
       }
@@ -132,7 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string }) => {
     if (!db || !auth.currentUser) return;
     
-    // التحقق من عدم تكرار اسم المستخدم
     const exists = await checkUsernameExists(data.username);
     if (exists) {
       throw new Error('اسم المستخدم هذا محجوز بالفعل لموظف آخر.');
@@ -140,10 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
     const secondaryAuth = getAuth(secondaryApp);
-    
     const email = `${data.username.toLowerCase()}@sanad.bank`;
-    
-    // تحديد الدور تلقائياً بناءً على القسم
     const role: UserRole = data.dept === 'Support' ? 'Agent' : 'Specialist';
     
     try {
@@ -155,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: email,
         role: role,
         department: data.dept,
+        password: data.password, // حفظ كلمة السر في المستند ليتمكن المدير من رؤيتها
         createdAt: new Date().toISOString()
       });
       await signOut(secondaryAuth);
@@ -166,10 +156,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateEmployeeProfile = async (uid: string, data: Partial<UserProfile>) => {
+    if (!db) return;
+    const userRef = doc(db, 'users', uid);
+    
+    // إذا تغير القسم، يجب تحديث الدور تلقائياً
+    if (data.department) {
+      data.role = data.department === 'Support' ? 'Agent' : 'Specialist';
+    }
+
+    try {
+      await updateDoc(userRef, data);
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const updateAdminPassword = async (newPassword: string) => {
     if (!auth.currentUser) return;
     try {
       await updatePassword(auth.currentUser, newPassword);
+      // تحديث كلمة السر في Firestore أيضاً للمزامنة
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
     } catch (err) {
       throw err;
     }
@@ -189,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login, 
       logout,
       createEmployeeAccount,
+      updateEmployeeProfile,
       updateAdminPassword,
       checkUsernameExists,
       loading,
