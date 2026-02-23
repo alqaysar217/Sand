@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,21 @@ export function AgentView() {
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [attachments, setAttachments] = useState<{url: string, name: string, type: string}[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // ربط التنقل من القائمة الجانبية بالفلترة أو النماذج
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      const action = e.detail;
+      if (action === 'new-ticket') {
+        setShowNewForm(true);
+      } else if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected'].includes(action)) {
+        setShowNewForm(false);
+        setActiveTab(action);
+      }
+    };
+    window.addEventListener('sidebar-nav', handleSync);
+    return () => window.removeEventListener('sidebar-nav', handleSync);
+  }, []);
 
   // جلب إعدادات النظام
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
@@ -325,7 +340,7 @@ export function AgentView() {
                 <TabsTrigger value="New" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-blue-600 data-[state=active]:text-white">جديد</TabsTrigger>
                 <TabsTrigger value="Pending" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-amber-500 data-[state=active]:text-white">قيد المعالجة</TabsTrigger>
                 <TabsTrigger value="Escalated" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-red-600 data-[state=active]:text-white">المحالة</TabsTrigger>
-                <TabsTrigger value="Rejected" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-slate-700 data-[state=active]:text-white">المرفوضة</TabsTrigger>
+                <TabsTrigger value="Rejected" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-slate-700 data-[state=active]:text-white">مرفوضة</TabsTrigger>
                 <TabsTrigger value="Resolved" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-green-600 data-[state=active]:text-white">تم الحل</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -553,3 +568,4 @@ export function AgentView() {
     </div>
   );
 }
+

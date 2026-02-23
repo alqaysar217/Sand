@@ -42,9 +42,7 @@ export function AppSidebar() {
   useEffect(() => {
     const handleSync = (e: any) => {
       const action = e.detail;
-      if (['all', 'New', 'Pending', 'Escalated', 'Resolved', 'Rejected', 'new-ticket'].includes(action)) {
-        setActiveAction(action);
-      }
+      setActiveAction(action);
     };
     window.addEventListener('sidebar-nav', handleSync);
     return () => window.removeEventListener('sidebar-nav', handleSync);
@@ -57,7 +55,7 @@ export function AppSidebar() {
     } else if (user.role === 'Specialist') {
       return query(
         collection(db, 'tickets'),
-        where('serviceType', '==', user.department),
+        where('serviceType', '==', user.department === 'Cards' ? 'إدارة البطائق' : user.department),
         orderBy('createdAt', 'desc')
       );
     } else {
@@ -110,9 +108,9 @@ export function AppSidebar() {
       ];
     } else {
       return [
-        { title: 'الإحصائيات', icon: BarChart3, action: 'all' },
-        { title: 'إدارة الموظفين', icon: Users, action: 'all' },
-        { title: 'إعدادات النظام', icon: FileText, action: 'all' },
+        { title: 'الإحصائيات', icon: BarChart3, action: 'stats' },
+        { title: 'إدارة الموظفين', icon: Users, action: 'users' },
+        { title: 'إعدادات النظام', icon: settings, action: 'settings' },
       ];
     }
   };
@@ -176,3 +174,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
