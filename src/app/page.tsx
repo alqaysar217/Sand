@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, AlertCircle } from 'lucide-react';
+import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, AlertCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -22,6 +22,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [localError, setLocalError] = useState<string | null>(null);
   
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
@@ -35,6 +36,7 @@ export default function Home() {
 
   // تفريغ الحقول عند فتح نافذة الدخول أو إغلاقها
   const handleSelectEmployee = (emp: any) => {
+    setLocalError(null);
     setSelectedEmp(emp);
     setCredentials({ username: emp.defaultUsername || '', password: '' });
   };
@@ -43,6 +45,7 @@ export default function Home() {
     if (!loading) {
       setSelectedEmp(null);
       setCredentials({ username: '', password: '' });
+      setLocalError(null);
     }
   };
 
@@ -51,13 +54,15 @@ export default function Home() {
     if (!selectedEmp) return;
     
     setLoading(true);
+    setLocalError(null);
     try {
       await login(credentials.username, credentials.password, selectedEmp.dept);
       toast({ title: "تم تسجيل الدخول بنجاح", description: `مرحباً بك في نظام سند، ${credentials.username}` });
       router.push('/dashboard');
     } catch (error: any) {
-      // تفريغ الحقول عند الخطأ
+      // تفريغ الحقول عند الخطأ وإظهار رسالة الخطأ محلياً
       setCredentials({ username: '', password: '' });
+      setLocalError(error.message || "اسم المستخدم أو كلمة المرور غير صحيحة");
       toast({ 
         variant: "destructive", 
         title: "فشل الدخول", 
@@ -143,13 +148,26 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleLoginSubmit} className="p-8 space-y-6">
+            
+            {localError && (
+              <div className="bg-red-50 p-4 rounded-2xl flex items-start gap-3 border border-red-100 animate-in fade-in slide-in-from-top-1">
+                 <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                 <p className="text-xs text-red-700 font-black leading-relaxed">
+                   {localError}
+                 </p>
+              </div>
+            )}
+
             <div className="space-y-3 text-right">
               <Label className="font-black text-sm text-slate-600 mr-1">اسم المستخدم (BIM ID)</Label>
               <Input 
                 required 
                 autoFocus
                 value={credentials.username}
-                onChange={e => setCredentials({...credentials, username: e.target.value})}
+                onChange={e => {
+                  setCredentials({...credentials, username: e.target.value});
+                  if (localError) setLocalError(null);
+                }}
                 placeholder="BIMxxxx" 
                 className="banking-input h-14 text-right font-mono text-lg" 
               />
@@ -160,7 +178,10 @@ export default function Home() {
                 required 
                 type="password"
                 value={credentials.password}
-                onChange={e => setCredentials({...credentials, password: e.target.value})}
+                onChange={e => {
+                  setCredentials({...credentials, password: e.target.value});
+                  if (localError) setLocalError(null);
+                }}
                 placeholder="••••••••" 
                 className="banking-input h-14 text-right" 
               />
