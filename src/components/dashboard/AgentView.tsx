@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,21 @@ export function AgentView() {
   });
 
   const [attachments, setAttachments] = useState<{url: string, description: string}[]>([]);
+
+  // الاستماع لأحداث القائمة الجانبية
+  useEffect(() => {
+    const handleSidebarNav = (e: any) => {
+      const action = e.detail;
+      if (action === 'new-ticket') {
+        setShowNewForm(true);
+      } else if (['all', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
+        setShowNewForm(false);
+        setActiveTab(action);
+      }
+    };
+    window.addEventListener('sidebar-nav', handleSidebarNav);
+    return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
+  }, []);
 
   const agentTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.id) return null;
@@ -118,6 +133,8 @@ export function AgentView() {
         setShowNewForm(false);
         setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: '' });
         setAttachments([]);
+        // إعادة التعيين لتبويب الكل بعد الرفع
+        setActiveTab('all');
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -146,7 +163,9 @@ export function AgentView() {
           <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
              <Headset className="w-8 h-8" /> محطة عمل الكول سنتر
           </h1>
-          <p className="text-slate-500 font-bold mt-1">إنشاء وبث البلاغات المصرفية للأقسام الفنية</p>
+          <p className="text-slate-500 font-bold mt-1">
+            {showNewForm ? "تعبئة بيانات البلاغ الجديد" : `عرض البلاغات: ${activeTab === 'all' ? 'الكل' : getStatusBadge(activeTab).props.children}`}
+          </p>
         </div>
         {!showNewForm && (
           <Button onClick={() => setShowNewForm(true)} className="banking-button premium-gradient text-white h-14 px-8 shadow-xl">
@@ -156,7 +175,7 @@ export function AgentView() {
       </div>
 
       {showNewForm ? (
-        <Card className="banking-card max-w-5xl shadow-2xl border-none mx-auto overflow-hidden">
+        <Card className="banking-card max-w-5xl shadow-2xl border-none mx-auto overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
           <CardHeader className="bg-primary/5 p-8 border-b">
             <CardTitle className="text-primary text-2xl font-black flex items-center gap-2 justify-end">
                نموذج استلام ورفع طلب مصرفي <Plus className="w-6 h-6" />
@@ -295,7 +314,7 @@ export function AgentView() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="banking-card overflow-hidden shadow-xl border-none">
+        <Card className="banking-card overflow-hidden shadow-xl border-none animate-in fade-in duration-500">
           <CardHeader className="p-8 border-b bg-white">
             <div className="flex flex-col md:flex-row-reverse justify-between items-center gap-6">
               <CardTitle className="text-2xl font-black text-primary flex items-center gap-3">
@@ -355,7 +374,9 @@ export function AgentView() {
                 ))}
                 {filteredTickets?.length === 0 && (
                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-20 font-black text-slate-400">لا توجد بلاغات صادرة حالياً</TableCell>
+                      <TableCell colSpan={5} className="text-center py-20 font-black text-slate-400">
+                        {searchQuery || activeTab !== 'all' ? "لا توجد نتائج مطابقة لبحثك" : "لا توجد بلاغات صادرة حالياً"}
+                      </TableCell>
                    </TableRow>
                 )}
               </TableBody>
