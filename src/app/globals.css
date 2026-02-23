@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 225 33% 97%; /* #F4F6FA - أغمق قليلاً للتباين */
+    --background: 225 33% 97%; /* #F4F6FA */
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -23,11 +23,33 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 240 80% 40%;
-    --radius: 1.5rem; /* 24px default for cards */
+    --radius: 1.5rem;
 
     /* Status Colors */
     --status-pending: 45 93% 47%;
     --status-resolved: 142 76% 36%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
 
@@ -59,7 +81,7 @@
 }
 
 .banking-card {
-  @apply rounded-[24px] border border-slate-100 bg-white;
+  @apply rounded-[24px] border border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800;
   box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
 
@@ -69,14 +91,14 @@
 }
 
 .banking-input {
-  @apply rounded-[20px] border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+  @apply rounded-[20px] border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all duration-200 dark:bg-slate-800 dark:border-slate-700 dark:focus:bg-slate-900;
 }
 
 .status-pending { background-color: #F59E0B; color: white; }
 .status-resolved { background-color: #10B981; color: white; }
-.status-new { @apply bg-blue-100 text-blue-700; }
-.status-escalated { @apply bg-red-100 text-red-600; }
-.status-rejected { @apply bg-slate-800 text-white; }
+.status-new { @apply bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300; }
+.status-escalated { @apply bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300; }
+.status-rejected { @apply bg-slate-800 text-white dark:bg-slate-700; }
 
 /* Hide scrollbar for cleaner look */
 .no-scrollbar::-webkit-scrollbar {
