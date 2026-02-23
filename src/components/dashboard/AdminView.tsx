@@ -19,12 +19,15 @@ import {
   CheckCircle2,
   Edit2,
   Save,
-  X
+  X,
+  TrendingUp,
+  PieChart as PieChartIcon,
+  BarChart3
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
@@ -72,13 +75,24 @@ export function AdminView() {
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
     });
 
+    const statusTranslation: Record<string, string> = {
+      'New': 'جديد',
+      'Pending': 'قيد المعالجة',
+      'Resolved': 'تم الحل',
+      'Escalated': 'محالة',
+      'Rejected': 'مرفوضة'
+    };
+
     return {
       total: tickets.length,
       resolved: statusMap['Resolved'],
       pending: statusMap['Pending'],
       new: statusMap['New'],
       deptData: Object.entries(deptMap).map(([name, tickets]) => ({ name, tickets })),
-      statusData: Object.entries(statusMap).map(([name, value]) => ({ name, value }))
+      statusData: Object.entries(statusMap).map(([name, value]) => ({ 
+        name: statusTranslation[name] || name, 
+        value 
+      })).filter(s => s.value > 0)
     };
   }, [tickets]);
 
@@ -106,7 +120,7 @@ export function AdminView() {
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
                <ShieldCheck className="w-8 h-8" /> لوحة قيادة المدير العام
             </h1>
-            <p className="text-slate-500 font-bold mt-1">إدارة قوائم النظام والموظفين والعمليات</p>
+            <p className="text-slate-500 font-bold mt-1">إدارة قوائم النظام والموظفين والتحليل الذكي للبيانات</p>
           </div>
           <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
             <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
@@ -125,28 +139,49 @@ export function AdminView() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <Card className="banking-card border-none shadow-xl">
-                <CardHeader className="text-right border-b bg-slate-50/50 p-6"><CardTitle className="text-xl font-black">حجم العمل لكل قسم</CardTitle></CardHeader>
-                <CardContent className="p-6 h-[300px]">
+                <CardHeader className="text-right border-b bg-slate-50/50 p-6">
+                   <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+                      حجم العمل لكل قسم <BarChart3 className="w-5 h-5 text-primary" />
+                   </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 h-[350px]">
                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.deptData}>
-                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                         <XAxis dataKey="name" />
-                         <YAxis orientation="right" />
-                         <Tooltip />
-                         <Bar dataKey="tickets" fill="#1414B8" radius={[8, 8, 0, 0]} />
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                         <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
+                         <YAxis orientation="right" fontSize={12} fontWeight="bold" />
+                         <Tooltip 
+                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', textAlign: 'right' }}
+                            itemStyle={{ fontWeight: 'bold' }}
+                         />
+                         <Bar dataKey="tickets" name="عدد البلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} />
                       </BarChart>
                    </ResponsiveContainer>
                 </CardContent>
              </Card>
              <Card className="banking-card border-none shadow-xl">
-                <CardHeader className="text-right border-b bg-slate-50/50 p-6"><CardTitle className="text-xl font-black">توزيع الحالات</CardTitle></CardHeader>
-                <CardContent className="p-6 h-[300px]">
+                <CardHeader className="text-right border-b bg-slate-50/50 p-6">
+                   <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+                      توزيع حالات البلاغات <PieChartIcon className="w-5 h-5 text-primary" />
+                   </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 h-[350px]">
                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                         <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                         <Pie 
+                            data={stats.statusData} 
+                            cx="50%" 
+                            cy="50%" 
+                            innerRadius={70} 
+                            outerRadius={100} 
+                            paddingAngle={8} 
+                            dataKey="value"
+                            label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                         >
                             {stats.statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                          </Pie>
-                         <Tooltip />
+                         <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', textAlign: 'right' }} />
+                         <Legend verticalAlign="bottom" height={36} />
                       </PieChart>
                    </ResponsiveContainer>
                 </CardContent>
@@ -183,7 +218,7 @@ export function AdminView() {
            <Card className="banking-card border-none shadow-xl overflow-hidden">
               <CardHeader className="p-8 border-b bg-white">
                  <CardTitle className="text-2xl font-black text-primary">إدارة موظفي النظام</CardTitle>
-                 <p className="text-slate-400 font-bold mt-1">عرض الموظفين المسجلين وصلاحياتهم الحالية</p>
+                 <p className="text-slate-400 font-bold mt-1">عرض الموظفين المسجلين وصلاحياتهم الحالية (نظام Zebra Striping)</p>
               </CardHeader>
               <CardContent className="p-0">
                  <div className="overflow-x-auto">
@@ -333,7 +368,7 @@ function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
                                  variant="ghost" 
                                  size="icon" 
                                  onClick={() => handleStartEdit(idx, item)} 
-                                 className="text-slate-400 h-8 w-8 hover:text-primary hover:bg-primary/5"
+                                 className="text-primary h-8 w-8 hover:bg-primary/5"
                               >
                                  <Edit2 className="w-3.5 h-3.5" />
                               </Button>
@@ -341,7 +376,7 @@ function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
                                  variant="ghost" 
                                  size="icon" 
                                  onClick={() => handleDelete(idx)} 
-                                 className="text-slate-400 h-8 w-8 hover:text-red-500 hover:bg-red-50"
+                                 className="text-red-500 h-8 w-8 hover:bg-red-50"
                               >
                                  <Trash2 className="w-3.5 h-3.5" />
                               </Button>
