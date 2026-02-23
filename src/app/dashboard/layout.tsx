@@ -6,34 +6,12 @@ import { AppSidebar } from "@/components/layout/AppSidebar"
 import { Navbar } from "@/components/layout/Navbar"
 import { useAuth } from "@/lib/contexts/AuthContext"
 import { Toaster } from "@/components/ui/toaster"
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
-function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { firebaseUser, loading, error } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    // We only redirect if there is no firebase session at all
-    if (!loading && !firebaseUser && !error) {
-      router.push('/');
-    }
-  }, [firebaseUser, loading, error, router]);
-
-  if (loading) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F6F9FA]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          <div className="font-black text-primary animate-pulse text-lg">سند | جاري تأمين الاتصال...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Allow rendering if we have a firebase user, even if profile is missing (page.tsx will handle activation)
-  if (!firebaseUser) return null;
-
+/**
+ * تم تعديل التخطيط لتعطيل إعادة التوجيه التلقائي.
+ * هذا يسمح للمستخدم بالوصول للوحة القيادة حتى لو فشل الاتصال بـ Firebase.
+ */
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -43,15 +21,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </SidebarInset>
-    </SidebarProvider>
-  );
-}
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <DashboardContent>{children}</DashboardContent>
       <Toaster />
-    </>
+    </SidebarProvider>
   );
 }

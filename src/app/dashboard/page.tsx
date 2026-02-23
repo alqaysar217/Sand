@@ -5,74 +5,93 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { AgentView } from '@/components/dashboard/AgentView';
 import { SpecialistView } from '@/components/dashboard/SpecialistView';
 import { AdminView } from '@/components/dashboard/AdminView';
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldAlert, UserCog, Headset, CreditCard, MonitorSmartphone } from "lucide-react";
 import { Button } from '@/components/ui/button';
-import { useState, useEffect, useMemo } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
 import { UserRole, Department } from '@/lib/types';
 
 export default function DashboardPage() {
-  const { user, firebaseUser, error, loading, logout, setupDemoProfile } = useAuth();
-  const [isActivating, setIsActivating] = useState(false);
-  const { toast } = useToast();
+  const { user, firebaseUser, loading } = useAuth();
+  
+  // نظام تجاوز الدخول (Mock User) للتطوير في حال تعطل Firebase
+  const [mockUser, setMockUser] = useState<{role: UserRole, department: Department, name: string} | null>(null);
 
-  // نظام ذكي لتعيين الصلاحيات بناءً على القائمة الرسمية المرسلة من العميل
-  const autoValues = useMemo(() => {
-    const email = firebaseUser?.email || '';
-    if (email === 'admin.bank@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'المدير العام' };
-    if (email === 'balkharam.admin@bank.com') return { role: 'Admin' as UserRole, dept: 'Operations' as Department, name: 'بلخرم (المدير العام)' };
-    if (email === 'cs.frontline@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف الميدان' };
-    if (email === 'callcenter.agent@bank.com') return { role: 'Agent' as UserRole, dept: 'Support' as Department, name: 'موظف الاتصال' };
-    if (email === 'cards.ops@bank.com') return { role: 'Specialist' as UserRole, dept: 'Cards' as Department, name: 'الأخصائي الفني' };
-    if (email === 'cs.digital@bank.com') return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف خدمة العملاء الرقمية' };
-    
-    return { role: 'Agent' as UserRole, dept: 'Digital' as Department, name: 'موظف بنك جديد' };
-  }, [firebaseUser?.email]);
+  // إذا كان هناك مستخدم حقيقي مسجل، نستخدمه
+  const activeUser = user || mockUser;
 
-  // التنشيط التلقائي الفوري: يتم إنشاء الملف بمجرد اكتشاف أنه مفقود
-  useEffect(() => {
-    if (error === "MISSING_PROFILE" && firebaseUser && !isActivating && !user) {
-      const runActivation = async () => {
-        setIsActivating(true);
-        try {
-          await setupDemoProfile(autoValues.role, autoValues.dept, autoValues.name);
-          toast({ title: "تم تفعيل الهوية المصرفية", description: `مرحباً بك: ${autoValues.name}` });
-        } catch (err) {
-          console.error("Auto activation failed", err);
-        } finally {
-          setIsActivating(false);
-        }
-      };
-      runActivation();
-    }
-  }, [error, firebaseUser, autoValues, setupDemoProfile, toast, isActivating, user]);
-
-  if (loading || isActivating) {
+  if (loading && !activeUser) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#F6F9FA]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="relative">
-             <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-             <Loader2 className="absolute inset-0 m-auto h-6 w-6 text-primary animate-pulse" />
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="font-black text-primary text-xl">جاري تهيئة بيئة العمل...</h2>
-            <p className="text-slate-400 font-bold text-sm">يتم الآن التحقق من الهوية المصرفية لـ {autoValues.name}</p>
-          </div>
-        </div>
+      <div className="h-[70vh] w-full flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!user && !isActivating) return (
-     <div className="flex flex-col items-center justify-center p-20 gap-4">
-        <Loader2 className="animate-spin h-10 w-10 text-primary" />
-        <p className="font-black text-slate-500">جاري تحميل البيانات الفنية...</p>
-        <Button onClick={logout} variant="outline" className="rounded-full">العودة للرئيسية</Button>
-     </div>
-  );
+  // إذا لم يجد النظام مستخدماً، يظهر "بوابة عبور المطور" لاختيار الواجهة يدوياً
+  if (!activeUser) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 animate-in fade-in duration-700">
+        <Card className="banking-card max-w-2xl w-full border-none shadow-2xl overflow-hidden">
+          <CardHeader className="premium-gradient text-white p-10 text-center">
+            <div className="flex justify-center mb-4">
+              <ShieldAlert className="h-16 w-16 opacity-80" />
+            </div>
+            <CardTitle className="text-3xl font-black">بوابة عبور المطور</CardTitle>
+            <CardDescription className="text-white/70 font-bold mt-2">
+              لم نتمكن من العثور على جلسة دخول نشطة. اختر الواجهة التي تود تجربتها الآن لتجاوز نظام الدخول.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all"
+                onClick={() => setMockUser({ role: 'Admin', department: 'Operations', name: 'المدير العام (تجريبي)' })}
+              >
+                <UserCog className="h-6 w-6 text-red-600" />
+                <span className="font-black text-slate-800">واجهة المدير العام</span>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all"
+                onClick={() => setMockUser({ role: 'Specialist', department: 'Cards', name: 'أخصائي البطائق (تجريبي)' })}
+              >
+                <CreditCard className="h-6 w-6 text-primary" />
+                <span className="font-black text-slate-800">واجهة أخصائي البطائق</span>
+              </Button>
 
-  switch (user.role) {
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all"
+                onClick={() => setMockUser({ role: 'Agent', department: 'Support', name: 'موظف الكول سنتر (تجريبي)' })}
+              >
+                <Headset className="h-6 w-6 text-secondary" />
+                <span className="font-black text-slate-800">واجهة الكول سنتر</span>
+              </Button>
+
+              <Button 
+                variant="outline" 
+                className="h-24 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all"
+                onClick={() => setMockUser({ role: 'Agent', department: 'Digital', name: 'موظف الخدمات الرقمية (تجريبي)' })}
+              >
+                <MonitorSmartphone className="h-6 w-6 text-accent" />
+                <span className="font-black text-slate-800">واجهة الخدمات الرقمية</span>
+              </Button>
+            </div>
+            
+            <p className="text-center mt-8 text-xs font-bold text-slate-400 uppercase tracking-widest">
+              هذه البوابة مخصصة للمطورين فقط لتجاوز قيود الدخول في بيئة الاختبار
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // عرض الواجهة بناءً على الدور (الحقيقي أو التجريبي)
+  switch (activeUser.role) {
     case 'Admin':
       return <AdminView />;
     case 'Agent':
@@ -83,7 +102,7 @@ export default function DashboardPage() {
       return (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
           <p className="font-black text-slate-400 text-center">لم يتم تحديد صلاحياتك الوظيفية بشكل صحيح.</p>
-          <Button onClick={logout} className="rounded-full">الخروج وإعادة المحاولة</Button>
+          <Button onClick={() => setMockUser(null)} className="rounded-full">العودة للبوابة</Button>
         </div>
       );
   }
