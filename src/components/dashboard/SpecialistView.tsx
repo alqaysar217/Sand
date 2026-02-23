@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,19 @@ export function SpecialistView() {
     if (user?.department === 'App') return 'مشاكل التطبيق';
     return 'خدمة العملاء';
   }, [user?.department]);
+
+  // الاستماع لأحداث القائمة الجانبية
+  useEffect(() => {
+    const handleSidebarNav = (e: any) => {
+      const action = e.detail;
+      if (['all', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
+        setActiveStatusFilter(action);
+        setSelectedTicket(null); // العودة للقائمة في حال كان الموظف داخل تفاصيل بلاغ
+      }
+    };
+    window.addEventListener('sidebar-nav', handleSidebarNav);
+    return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
+  }, []);
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
