@@ -2,6 +2,9 @@
 "use client"
 
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   PlusSquare, 
@@ -27,17 +30,55 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarMenuBadge,
 } from "@/components/ui/sidebar"
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function AppSidebar() {
   const { user } = useAuth();
+  const db = useFirestore();
+
+  // جلب البيانات بناءً على دور المستخدم لتحديث العدادات
+  const ticketsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    if (user.role === 'Admin') {
+      return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
+    } else if (user.role === 'Specialist') {
+      return query(
+        collection(db, 'tickets'),
+        where('serviceType', '==', user.department),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      return query(
+        collection(db, 'tickets'),
+        where('createdByAgentId', '==', user.id),
+        orderBy('createdAt', 'desc')
+      );
+    }
+  }, [db, user]);
+
+  const { data: tickets } = useCollection(ticketsQuery);
+
+  // حساب العدادات
+  const counts = useMemo(() => {
+    if (!tickets) return {};
+    return {
+      all: tickets.length,
+      New: tickets.filter(t => t.status === 'New').length,
+      Pending: tickets.filter(t => t.status === 'Pending').length,
+      Escalated: tickets.filter(t => t.status === 'Escalated').length,
+      Resolved: tickets.filter(t => t.status === 'Resolved').length,
+      Rejected: tickets.filter(t => t.status === 'Rejected').length,
+      Overdue: tickets.filter(t => t.status !== 'Resolved' && (Date.now() - new Date(t.createdAt).getTime() > 86400000)).length,
+    };
+  }, [tickets]);
+
   if (!user) return null;
 
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
-  // إرسال حدث مخصص للتحكم في الواجهة
   const handleNav = (action: string) => {
     window.dispatchEvent(new CustomEvent('sidebar-nav', { detail: action }));
   };
@@ -46,23 +87,23 @@ export function AppSidebar() {
     switch (user.role) {
       case 'Agent':
         return [
-          { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home' },
+          { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home', count: counts.all },
           { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
-          { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending' },
-          { title: 'البلاغات المحالة', icon: Send, action: 'Escalated' },
-          { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected' },
-          { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved' },
+          { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending', count: counts.Pending },
+          { title: 'البلاغات المحالة', icon: Send, action: 'Escalated', count: counts.Escalated },
+          { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected },
+          { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved },
         ];
       case 'Specialist':
         return [
-          { title: 'محطة العمل', icon: Inbox, action: 'home' },
-          { title: 'المهام الواردة', icon: Clock, action: 'home' },
-          { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home' },
+          { title: 'محطة العمل', icon: Inbox, action: 'home', count: counts.all },
+          { title: 'المهام الواردة', icon: Clock, action: 'home', count: counts.New + counts.Pending },
+          { title: 'البلاغات المرفوضة', icon: AlertCircle, action: 'home', count: counts.Rejected },
         ];
       case 'Admin':
         return [
-          { title: 'لوحة التحكم', icon: BarChart3, action: 'home' },
-          { title: 'تذاكر متأخرة', icon: AlertCircle, action: 'home' },
+          { title: 'لوحة التحكم', icon: BarChart3, action: 'home', count: counts.all },
+          { title: 'تذاكر متأخرة', icon: AlertCircle, action: 'home', count: counts.Overdue },
           { title: 'إدارة الموظفين', icon: Users, action: 'home' },
         ];
       default:
@@ -103,6 +144,11 @@ export function AppSidebar() {
                     <item.icon className="w-5 h-5 text-slate-500" />
                     <span className="text-base font-medium">{item.title}</span>
                   </SidebarMenuButton>
+                  {item.count !== undefined && item.count > 0 && (
+                    <SidebarMenuBadge className="left-2 right-auto bg-slate-100 text-slate-600 font-bold border">
+                      {item.count}
+                    </SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
