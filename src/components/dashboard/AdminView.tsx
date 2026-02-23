@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
-  Edit2, Save, BarChart3, PieChart as PieChartIcon, ShieldAlert, MonitorSmartphone, CreditCard, Headset,
-  Share2, MessageSquare
+  Edit2, Save, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
+  Share2, MessageSquare, X
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -64,7 +64,6 @@ export function AdminView() {
 
   const handleUpdateConfigList = async (type: string, newList: string[]) => {
     if (!db) return;
-    // التأكد من الحفاظ على القيم السابقة حتى لو لم يكن المستند موجوداً بعد
     const currentData = config || {
       specialistNames: [],
       csNames: [],
@@ -92,15 +91,15 @@ export function AdminView() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
           <div className="text-right">
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
-               <ShieldCheck className="w-8 h-8" /> لوحة إدارة النظام المصرفي
+               <ShieldCheck className="w-8 h-8" /> لوحة الإدارة العامة
             </h1>
-            <p className="text-slate-500 font-bold mt-1">الرقابة المركزية وإدارة خيارات ومعايير النظام</p>
+            <p className="text-slate-500 font-bold mt-1">إدارة الكوادر، الوسائل، ومعايير البلاغات المصرفية</p>
           </div>
           <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
             <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة الموظفين</TabsTrigger>
+            <TabsTrigger value="staff" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة الكادر</TabsTrigger>
             <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">خيارات النظام</TabsTrigger>
-            <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الحسابات</TabsTrigger>
+            <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">حسابات النظام</TabsTrigger>
           </TabsList>
         </div>
 
@@ -152,25 +151,28 @@ export function AdminView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="settings" className="space-y-6 animate-in fade-in duration-500 mt-0">
+        <TabsContent value="staff" className="space-y-6 animate-in fade-in duration-500 mt-0">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <ConfigSection 
                 title="أخصائيي البطائق" 
-                items={config?.specialistNames || ['علاء', 'محمود', 'عبدالله']} 
+                items={config?.specialistNames || []} 
                 onSave={(newList: string[]) => handleUpdateConfigList('specialistNames', newList)} 
                 icon={<CreditCard className="w-4 h-4" />}
+                placeholder="أضف أخصائي بطائق..."
               />
               <ConfigSection 
                 title="أخصائيي خدمة العملاء" 
-                items={config?.csNames || ['سالم', 'علي', 'فهد']} 
+                items={config?.csNames || []} 
                 onSave={(newList: string[]) => handleUpdateConfigList('csNames', newList)} 
                 icon={<MonitorSmartphone className="w-4 h-4" />}
+                placeholder="أضف موظف خدمة عملاء..."
               />
               <ConfigSection 
                 title="موظفي الكول سنتر" 
-                items={config?.agentNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس']} 
+                items={config?.agentNames || []} 
                 onSave={(newList: string[]) => handleUpdateConfigList('agentNames', newList)} 
                 icon={<Headset className="w-4 h-4" />}
+                placeholder="أضف موظف كول سنتر..."
               />
            </div>
         </TabsContent>
@@ -179,15 +181,17 @@ export function AdminView() {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ConfigSection 
                 title="وسائل استلام البلاغات" 
-                items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} 
+                items={config?.intakeMethods || []} 
                 onSave={(newList: string[]) => handleUpdateConfigList('intakeMethods', newList)} 
                 icon={<Share2 className="w-4 h-4" />}
+                placeholder="أضف وسيلة (واتساب، اتصال...)"
               />
               <ConfigSection 
                 title="أنواع المشاكل الفنية" 
-                items={config?.issueTypes || ['مشكلة في التطبيق', 'تغيير رمز PIN', 'كلمة السر', 'استفسار عام']} 
+                items={config?.issueTypes || []} 
                 onSave={(newList: string[]) => handleUpdateConfigList('issueTypes', newList)} 
                 icon={<MessageSquare className="w-4 h-4" />}
+                placeholder="أضف نوع (PIN، كلمة سر...)"
               />
            </div>
            <div className="mt-8 border-t pt-8">
@@ -273,8 +277,10 @@ function StatCard({ icon: Icon, title, value, color }: any) {
   );
 }
 
-function ConfigSection({ title, items, onSave, icon }: any) {
+function ConfigSection({ title, items, onSave, icon, placeholder }: any) {
    const [newItem, setNewItem] = useState('');
+   const [editIndex, setEditIndex] = useState<number | null>(null);
+   const [editValue, setEditValue] = useState('');
 
    const handleAdd = () => {
       if (newItem.trim()) {
@@ -287,6 +293,20 @@ function ConfigSection({ title, items, onSave, icon }: any) {
       onSave(items.filter((_: any, i: number) => i !== index));
    };
 
+   const handleEdit = (index: number) => {
+      setEditIndex(index);
+      setEditValue(items[index]);
+   };
+
+   const handleSaveEdit = () => {
+      if (editValue.trim() && editIndex !== null) {
+         const newList = [...items];
+         newList[editIndex] = editValue.trim();
+         onSave(newList);
+         setEditIndex(null);
+      }
+   };
+
    return (
       <Card className="banking-card border-none shadow-xl overflow-hidden">
          <CardHeader className="bg-primary/5 p-6 border-b flex flex-row-reverse items-center justify-between">
@@ -297,16 +317,53 @@ function ConfigSection({ title, items, onSave, icon }: any) {
          </CardHeader>
          <CardContent className="p-6 space-y-4">
             <div className="flex gap-2 flex-row-reverse">
-               <Input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="إضافة..." className="banking-input h-11 text-right" />
-               <Button onClick={handleAdd} className="bg-primary h-11 w-11 rounded-xl shrink-0"><Plus className="w-5 h-5" /></Button>
+               <Input 
+                 value={newItem} 
+                 onChange={e => setNewItem(e.target.value)} 
+                 placeholder={placeholder || "إضافة..."} 
+                 className="banking-input h-11 text-right" 
+               />
+               <Button onClick={handleAdd} className="bg-primary h-11 w-11 rounded-xl shrink-0">
+                  <Plus className="w-5 h-5" />
+               </Button>
             </div>
             <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
                {items.map((item: string, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl flex-row-reverse bg-slate-50">
-                     <span className="font-bold text-sm">{item}</span>
-                     <Button variant="ghost" size="icon" onClick={() => handleDelete(idx)} className="text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl flex-row-reverse bg-slate-50 border border-slate-100 hover:border-primary/20 transition-all">
+                     {editIndex === idx ? (
+                       <div className="flex gap-2 w-full flex-row-reverse">
+                          <Input 
+                            value={editValue} 
+                            onChange={e => setEditValue(e.target.value)} 
+                            className="h-9 banking-input" 
+                          />
+                          <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="text-green-600">
+                             <Save className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => setEditIndex(null)} className="text-slate-400">
+                             <X className="w-4 h-4" />
+                          </Button>
+                       </div>
+                     ) : (
+                       <>
+                         <span className="font-bold text-sm text-slate-700">{item}</span>
+                         <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(idx)} className="text-primary hover:bg-primary/5 h-8 w-8">
+                               <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(idx)} className="text-red-500 hover:bg-red-50 h-8 w-8">
+                               <Trash2 className="w-4 h-4" />
+                            </Button>
+                         </div>
+                       </>
+                     )}
                   </div>
                ))}
+               {items.length === 0 && (
+                  <div className="text-center py-8 text-slate-400 text-xs font-bold">
+                     لا يوجد بيانات مضافة حالياً
+                  </div>
+               )}
             </div>
          </CardContent>
       </Card>

@@ -160,14 +160,10 @@ export function AgentView() {
                   </Label>
                   <Select value={formData.createdByAgentName} onValueChange={(v) => setFormData({...formData, createdByAgentName: v})} required>
                     <SelectTrigger className="banking-input h-14 text-right border-slate-200">
-                      <SelectValue placeholder="اختر اسمك من القائمة" />
+                      <SelectValue placeholder={config?.agentNames?.length ? "اختر اسم الموظف" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
                     </SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.agentNames && config.agentNames.length > 0 ? (
-                        config.agentNames.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)
-                      ) : (
-                        <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
-                      )}
+                      {config?.agentNames?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -208,26 +204,22 @@ export function AgentView() {
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">وسيلة استلام الطلب <Share2 className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
-                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="كيف تواصل العميل؟" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200">
+                      <SelectValue placeholder={config?.intakeMethods?.length ? "كيف تواصل العميل؟" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
+                    </SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.intakeMethods && config.intakeMethods.length > 0 ? (
-                        config.intakeMethods.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>)
-                      ) : (
-                        <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
-                      )}
+                      {config?.intakeMethods?.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-3 text-right">
                   <Label className="font-black text-sm mr-1 flex items-center gap-2 justify-end">نوع المشكلة <MessageSquare className="w-4 h-4 text-accent" /></Label>
                   <Select onValueChange={(v) => setFormData({...formData, subIssue: v})} required>
-                    <SelectTrigger className="banking-input h-14 text-right border-slate-200"><SelectValue placeholder="تصنيف المشكلة الفنية" /></SelectTrigger>
+                    <SelectTrigger className="banking-input h-14 text-right border-slate-200">
+                      <SelectValue placeholder={config?.issueTypes?.length ? "تصنيف المشكلة الفنية" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
+                    </SelectTrigger>
                     <SelectContent dir="rtl">
-                      {config?.issueTypes && config.issueTypes.length > 0 ? (
-                        config.issueTypes.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>)
-                      ) : (
-                        <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
-                      )}
+                      {config?.issueTypes?.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -327,6 +319,11 @@ export function AgentView() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {filteredTickets?.length === 0 && (
+                   <TableRow>
+                      <TableCell colSpan={5} className="text-center py-20 font-black text-slate-400">لا توجد بلاغات صادرة حالياً</TableCell>
+                   </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

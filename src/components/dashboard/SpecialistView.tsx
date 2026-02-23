@@ -225,14 +225,10 @@ export function SpecialistView() {
                <Label className="font-black text-xs">اسم الموظف القائم بالاستلام</Label>
                <Select value={selectedStaffName} onValueChange={setSelectedStaffName}>
                   <SelectTrigger className="banking-input h-14 text-right font-black">
-                    <SelectValue placeholder="اختر اسمك من القائمة المعتمدة" />
+                    <SelectValue placeholder={(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.length ? "اختر اسمك من القائمة" : "ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر"} />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
-                     {((user?.department === 'Cards' ? config?.specialistNames : config?.csNames) && (user?.department === 'Cards' ? config?.specialistNames : config?.csNames).length > 0) ? (
-                       (user?.department === 'Cards' ? config?.specialistNames : config?.csNames).map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)
-                     ) : (
-                       <SelectItem value="dev" disabled>ثم اضافة الموظفين من قبل في واجهه المدير، لم لا تظهر</SelectItem>
-                     )}
+                     {(user?.department === 'Cards' ? config?.specialistNames : config?.csNames)?.map((n: string) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                   </SelectContent>
                </Select>
             </div>
