@@ -1,13 +1,13 @@
 
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, X, AlertCircle } from 'lucide-react';
+import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -17,7 +17,7 @@ import { Department } from '@/lib/types';
 
 export default function Home() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
@@ -33,6 +33,19 @@ export default function Home() {
     { id: 'app', name: 'أخصائي مشاكل التطبيق', role: 'Specialist', dept: 'App' as Department, icon: Smartphone },
   ];
 
+  // تفريغ الحقول عند فتح نافذة الدخول أو إغلاقها
+  const handleSelectEmployee = (emp: any) => {
+    setSelectedEmp(emp);
+    setCredentials({ username: emp.defaultUsername || '', password: '' });
+  };
+
+  const handleCloseDialog = () => {
+    if (!loading) {
+      setSelectedEmp(null);
+      setCredentials({ username: '', password: '' });
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmp) return;
@@ -43,10 +56,12 @@ export default function Home() {
       toast({ title: "تم تسجيل الدخول بنجاح", description: `مرحباً بك في نظام سند، ${credentials.username}` });
       router.push('/dashboard');
     } catch (error: any) {
+      // تفريغ الحقول عند الخطأ
+      setCredentials({ username: '', password: '' });
       toast({ 
         variant: "destructive", 
         title: "فشل الدخول", 
-        description: error.message 
+        description: error.message || "اسم المستخدم أو كلمة المرور غير صحيحة"
       });
     } finally {
       setLoading(false);
@@ -91,10 +106,7 @@ export default function Home() {
                 <Button 
                   key={emp.id}
                   variant="outline" 
-                  onClick={() => {
-                    setSelectedEmp(emp);
-                    setCredentials({ ...credentials, username: emp.defaultUsername || '' });
-                  }}
+                  onClick={() => handleSelectEmployee(emp)}
                   className="h-28 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all group relative overflow-hidden text-center p-4"
                 >
                   <emp.icon className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
@@ -120,7 +132,7 @@ export default function Home() {
         </Card>
       </div>
 
-      <Dialog open={!!selectedEmp} onOpenChange={() => { if (!loading) setSelectedEmp(null); }}>
+      <Dialog open={!!selectedEmp} onOpenChange={handleCloseDialog}>
         <DialogContent className="max-w-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
           <DialogHeader className="p-8 bg-primary/5 border-b">
             <DialogTitle className="text-2xl font-black text-primary text-right flex items-center gap-3 justify-end">
@@ -166,7 +178,7 @@ export default function Home() {
                 {loading ? <Loader2 className="animate-spin" /> : "تسجيل الدخول للنظام"}
               </Button>
               {!loading && (
-                <Button type="button" variant="ghost" onClick={() => setSelectedEmp(null)} className="rounded-full font-black">
+                <Button type="button" variant="ghost" onClick={handleCloseDialog} className="rounded-full font-black">
                   إلغاء والعودة
                 </Button>
               )}
