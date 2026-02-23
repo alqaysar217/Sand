@@ -16,6 +16,7 @@ import {
   Clock,
   Send,
   XCircle,
+  Settings,
   FileText
 } from 'lucide-react';
 import {
@@ -110,7 +111,7 @@ export function AppSidebar() {
       return [
         { title: 'الإحصائيات', icon: BarChart3, action: 'stats' },
         { title: 'إدارة الموظفين', icon: Users, action: 'users' },
-        { title: 'إعدادات النظام', icon: settings, action: 'settings' },
+        { title: 'إعدادات النظام', icon: Settings, action: 'settings' },
       ];
     }
   };
@@ -174,4 +175,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-
