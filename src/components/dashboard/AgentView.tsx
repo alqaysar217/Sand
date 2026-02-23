@@ -14,7 +14,7 @@ import {
   Plus, Search, Loader2, Inbox, Headset,
   Phone, Share2, MessageSquare, ImageIcon, User, Paperclip, X, Upload
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
@@ -334,10 +334,15 @@ export function AgentView() {
         <DialogContent className="max-w-3xl text-right rounded-[32px] p-0 overflow-hidden" dir="rtl">
            {selectedTicket && (
              <div className="p-8 space-y-6">
-                <div className="flex justify-between items-center border-b pb-4">
-                   <h3 className="text-2xl font-black text-primary">بلاغ رقم {selectedTicket.ticketID}</h3>
-                   {getStatusBadge(selectedTicket.status)}
-                </div>
+                <DialogHeader className="border-b pb-4">
+                   <div className="flex justify-between items-center w-full">
+                      <DialogTitle className="text-2xl font-black text-primary text-right">بلاغ رقم {selectedTicket.ticketID}</DialogTitle>
+                      {getStatusBadge(selectedTicket.status)}
+                   </div>
+                   <DialogDescription className="text-right font-bold text-slate-400 mt-1">
+                      تفاصيل البلاغ المصرفي المختار من السجل
+                   </DialogDescription>
+                </DialogHeader>
                 <div className="grid grid-cols-2 gap-4">
                    <div className="bg-slate-50 p-4 rounded-xl">
                       <span className="text-[10px] text-slate-400 block font-black uppercase">اسم العميل</span>
