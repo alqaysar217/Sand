@@ -61,15 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      // محاولة تسجيل الدخول
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه تلقائياً لتسهيل التجربة
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr) {
-          throw err; // رمي الخطأ الأصلي إذا فشل الإنشاء أيضاً
+          throw err;
         }
       } else {
         throw err;
@@ -79,7 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setupDemoProfile = async (role: 'Agent' | 'Specialist', dept: string, name: string) => {
     if (!firebaseUser || !db) return;
-    setLoading(true);
     try {
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         id: firebaseUser.uid,
@@ -91,9 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
     } catch (err) {
       console.error("Error setting up profile:", err);
-      setError("فشل في إنشاء الملف الشخصي التجريبي.");
-    } finally {
-      setLoading(false);
+      throw err;
     }
   };
 
