@@ -14,7 +14,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // لا تقم بإعادة التوجيه إذا كان هناك خطأ "ملف مفقود" لكي نتمكن من عرض رسالة الخطأ في صفحة Dashboard
     if (!loading && !user && !error) {
       router.push('/');
     }
@@ -31,7 +30,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // إذا كان هناك مستخدم ولكن بدون ملف شخصي، دع DashboardPage تتعامل مع العرض
+  // إذا كان هناك خطأ "ملف مفقود"، نعرض المحتوى (صفحة التفعيل) بدون الشريط الجانبي لتجنب الأخطاء
+  if (error === "MISSING_PROFILE") {
+    return <main className="p-6 md:p-8">{children}</main>;
+  }
+
   if (!user && !error) return null;
 
   return (
