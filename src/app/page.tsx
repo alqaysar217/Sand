@@ -142,13 +142,13 @@ export default function Home() {
             <div className="mt-8 pt-6 border-t border-slate-50">
               <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-[0.2em]">بوابات الدخول التجريبي</p>
               <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com', 'PASS_DIGITAL_11')}>
+                  <MonitorSmartphone className="h-5 w-5 text-accent" />
+                  <span className="font-bold text-xs text-slate-800">خدمة العملاء الرقمية</span>
+                </Button>
                 <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.frontline@bank.com', 'PASS_FRONT_99')}>
                   <Headset className="h-5 w-5 text-secondary" />
                   <span className="font-bold text-xs text-slate-800">الكول سنتر</span>
-                </Button>
-                <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cs.digital@bank.com', 'PASS_DIGITAL_11')}>
-                  <MonitorSmartphone className="h-5 w-5 text-accent" />
-                  <span className="font-bold text-xs text-slate-800">خدمة العملاء</span>
                 </Button>
                 <Button variant="outline" className="flex flex-col h-auto py-4 px-3 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all gap-2" onClick={() => setDemoLogin('cards.ops@bank.com', 'PASS_CARDS_22')}>
                   <CreditCard className="h-5 w-5 text-primary" />

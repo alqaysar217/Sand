@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,23 +10,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from '@/components/ui/textarea';
 import { 
-  Plus, Search, Loader2, ArrowRight, MessageSquare, Phone, MapPin, ExternalLink,
-  User, X, Trash2, CheckCircle2, Clock, History, UserCircle, Fingerprint, Share2, 
-  Settings2, Paperclip, Inbox, Headset, MonitorSmartphone
+  Plus, Search, Loader2, ArrowRight, MessageSquare, Inbox, Headset, MonitorSmartphone,
+  UserCircle, Fingerprint, History, Calendar, CheckCircle2, Clock
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { Textarea } from '@/components/ui/textarea';
 
 const SERVICE_ENTITIES = [
-  { id: 'CallCenter', label: 'الكول سنتر' },
   { id: 'Cards', label: 'قسم البطاقات' },
-  { id: 'Digital', label: 'خدمات أونلاين الرقمية' },
-  { id: 'AppAdmin', label: 'إدارة تطبيق البنك' },
+  { id: 'Digital', label: 'الخدمات الرقمية' },
+  { id: 'AppAdmin', label: 'إدارة التطبيق' },
+  { id: 'Operations', label: 'العمليات المركزية' },
+];
+
+const INTAKE_METHODS = [
+  { id: 'Call', label: 'اتصال هاتفي' },
+  { id: 'WhatsApp', label: 'واتساب' },
+  { id: 'Branch', label: 'زيارة فرع' },
 ];
 
 export function AgentView() {
@@ -43,8 +48,13 @@ export function AgentView() {
   const isCallCenter = user?.department === 'Support';
 
   const [formData, setFormData] = useState({
-    customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '',
-    createdByAgentName: user?.name || '', attachments: [] as { url: string; description: string }[]
+    customerName: '', 
+    cif: '', 
+    phone: '', 
+    serviceType: '', 
+    intakeMethod: isCallCenter ? 'Call' : 'WhatsApp', 
+    subIssue: '', 
+    description: ''
   });
 
   const agentTicketsQuery = useMemoFirebase(() => {
@@ -79,19 +89,33 @@ export function AgentView() {
     if (!user || !db) return;
     setIsSubmitting(true);
     const ticketID = `TIC-${Math.floor(1000 + Math.random() * 9000)}`;
+    
     const newTicket = {
-      ticketID, createdAt: new Date().toISOString(), status: 'New', customerName: formData.customerName,
-      cif: formData.cif, phoneNumber: formData.phone, serviceType: formData.serviceType,
-      intakeMethod: formData.intakeMethod, subIssue: formData.subIssue, description: formData.description,
-      createdByAgentId: user.id, createdByAgentName: user.name, attachments: formData.attachments,
-      logs: [{ action: `تم إنشاء البلاغ بواسطة ${isCallCenter ? 'الكول سنتر' : 'خدمة العملاء'}`, timestamp: new Date().toISOString(), userName: user.name }]
+      ticketID,
+      createdAt: new Date().toISOString(),
+      status: 'New',
+      customerName: formData.customerName,
+      cif: formData.cif,
+      phoneNumber: formData.phone,
+      serviceType: formData.serviceType,
+      intakeMethod: formData.intakeMethod,
+      subIssue: formData.subIssue,
+      description: formData.description,
+      createdByAgentId: user.id,
+      createdByAgentName: user.name,
+      attachments: [],
+      logs: [{ 
+        action: `تم إنشاء البلاغ بواسطة ${user.name} (${user.department})`, 
+        timestamp: new Date().toISOString(), 
+        userName: user.name 
+      }]
     };
 
     addDocumentNonBlocking(collection(db, 'tickets'), newTicket)
       .then(() => {
-        toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ: ${ticketID}.` });
+        toast({ title: "تم الرفع بنجاح", description: `رقم البلاغ الجديد: ${ticketID}.` });
         setShowNewForm(false);
-        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: '', subIssue: '', description: '', createdByAgentName: user.name, attachments: [] });
+        setFormData({ customerName: '', cif: '', phone: '', serviceType: '', intakeMethod: isCallCenter ? 'Call' : 'WhatsApp', subIssue: '', description: '' });
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -122,11 +146,11 @@ export function AgentView() {
       </div>
 
       {showNewForm ? (
-        <Card className="banking-card max-w-4xl shadow-2xl border-none">
+        <Card className="banking-card max-w-4xl shadow-2xl border-none overflow-hidden">
           <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100 flex flex-row-reverse items-center justify-between">
             <div className="text-right">
               <CardTitle className="text-primary text-2xl font-black">نموذج استلام بلاغ عميل</CardTitle>
-              <CardDescription className="text-slate-500 font-bold">تأكد من مطابقة بيانات CIF مع النظام البنكي</CardDescription>
+              <CardDescription className="text-slate-500 font-bold">يرجى تعبئة كافة الحقول الفنية لضمان سرعة المعالجة</CardDescription>
             </div>
             <Button variant="ghost" onClick={() => setShowNewForm(false)} className="rounded-full hover:bg-white text-slate-500 font-black">
               <ArrowRight className="w-5 h-5 ml-2" /> العودة للسجل
@@ -148,7 +172,16 @@ export function AgentView() {
                   <Input required dir="ltr" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="banking-input h-12 text-right" />
                 </div>
                 <div className="space-y-2 text-right">
-                  <Label className="font-black text-slate-700 mr-1 text-xs">التوجيه الفني</Label>
+                  <Label className="font-black text-slate-700 mr-1 text-xs">وسيلة استلام البلاغ</Label>
+                  <Select value={formData.intakeMethod} onValueChange={(v) => setFormData({...formData, intakeMethod: v})} required>
+                    <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر الوسيلة" /></SelectTrigger>
+                    <SelectContent dir="rtl">
+                      {INTAKE_METHODS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-right">
+                  <Label className="font-black text-slate-700 mr-1 text-xs">التوجيه الفني (الجهة المعنية)</Label>
                   <Select onValueChange={(v) => setFormData({...formData, serviceType: v})} required>
                     <SelectTrigger className="banking-input h-12 text-right"><SelectValue placeholder="اختر القسم" /></SelectTrigger>
                     <SelectContent dir="rtl">
@@ -156,9 +189,13 @@ export function AgentView() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2 text-right">
+                  <Label className="font-black text-slate-700 mr-1 text-xs">نوع المشكلة الفرعي</Label>
+                  <Input required placeholder="مثلاً: إعادة تعيين رقم سري، تجميد حساب..." value={formData.subIssue} onChange={e => setFormData({...formData, subIssue: e.target.value})} className="banking-input h-12 text-right" />
+                </div>
               </div>
               <div className="space-y-2 text-right">
-                <Label className="font-black text-slate-700 mr-1 text-xs">ملاحظات البلاغ</Label>
+                <Label className="font-black text-slate-700 mr-1 text-xs">ملاحظات وتفاصيل البلاغ</Label>
                 <Textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="banking-input min-h-[120px] text-right" />
               </div>
               <div className="flex justify-end gap-3 pt-6 border-t">
@@ -175,7 +212,7 @@ export function AgentView() {
           <CardHeader className="p-8 border-b bg-white">
             <div className="flex flex-col md:flex-row-reverse justify-between items-center gap-6">
               <CardTitle className="text-2xl font-black text-primary flex items-center gap-3 justify-end">
-                 <Inbox className="w-6 h-6" /> البلاغات الأخيرة
+                 <Inbox className="w-6 h-6" /> البلاغات الصادرة منك
               </CardTitle>
               <div className="relative w-full md:w-80">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -192,35 +229,42 @@ export function AgentView() {
             </Tabs>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-primary">
-                <TableRow className="border-none hover:bg-primary">
-                  <TableHead className="text-right h-14 font-black text-white pr-8">رقم البلاغ</TableHead>
-                  <TableHead className="text-right h-14 font-black text-white">العميل</TableHead>
-                  <TableHead className="text-right h-14 font-black text-white">القسم الموجه له</TableHead>
-                  <TableHead className="text-right h-14 font-black text-white">الحالة</TableHead>
-                  <TableHead className="text-center h-14 font-black text-white pl-8">الإجراء</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTickets.map((t, idx) => (
-                  <TableRow key={t.id} className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                    <TableCell className="py-4 font-black text-slate-800 pr-8 text-right">
-                       <span className="bg-primary/5 px-3 py-1 rounded-full text-xs">{t.ticketID}</span>
-                    </TableCell>
-                    <TableCell className="py-4 text-right font-black">{t.customerName}</TableCell>
-                    <TableCell className="py-4 text-right font-bold text-slate-500">{SERVICE_ENTITIES.find(e => e.id === t.serviceType)?.label || t.serviceType}</TableCell>
-                    <TableCell className="py-4 text-right">{getStatusBadge(t.status)}</TableCell>
-                    <TableCell className="py-4 text-center pl-8">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black hover:bg-primary hover:text-white">عرض التفاصيل</Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-primary">
+                  <TableRow className="border-none hover:bg-primary">
+                    <TableHead className="text-right h-14 font-black text-white pr-8">رقم البلاغ</TableHead>
+                    <TableHead className="text-right h-14 font-black text-white">العميل</TableHead>
+                    <TableHead className="text-right h-14 font-black text-white">نوع المشكلة</TableHead>
+                    <TableHead className="text-right h-14 font-black text-white">الحالة</TableHead>
+                    <TableHead className="text-center h-14 font-black text-white pl-8">الإجراء</TableHead>
                   </TableRow>
-                ))}
-                {filteredTickets.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="py-20 text-center font-bold text-slate-400">لا توجد بلاغات مطابقة للبحث</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredTickets.map((t, idx) => (
+                    <TableRow key={t.id} className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                      <TableCell className="py-4 font-black text-slate-800 pr-8 text-right">
+                         <span className="bg-primary/5 px-3 py-1 rounded-full text-xs">{t.ticketID}</span>
+                      </TableCell>
+                      <TableCell className="py-4 text-right">
+                         <div className="font-black text-sm">{t.customerName}</div>
+                         <div className="text-[10px] text-slate-400 font-mono">{t.cif}</div>
+                      </TableCell>
+                      <TableCell className="py-4 text-right">
+                        <Badge variant="outline" className="font-bold border-slate-200 text-slate-500">{t.subIssue}</Badge>
+                      </TableCell>
+                      <TableCell className="py-4 text-right">{getStatusBadge(t.status)}</TableCell>
+                      <TableCell className="py-4 text-center pl-8">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black hover:bg-primary hover:text-white">عرض التفاصيل</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredTickets.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-20 text-center font-bold text-slate-400">لا توجد بلاغات حالياً</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -243,7 +287,7 @@ export function AgentView() {
                 </div>
               </div>
               <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="bg-slate-50 p-4 rounded-[20px] flex items-center gap-3 flex-row-reverse">
                       <UserCircle className="w-5 h-5 text-primary" />
                       <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">العميل</span><p className="font-black text-sm text-right">{selectedTicket.customerName}</p></div>
@@ -253,10 +297,23 @@ export function AgentView() {
                       <div className="text-right"><span className="text-[10px] text-slate-400 block font-black text-right">رقم الحساب</span><p className="font-mono font-black text-sm text-right">{selectedTicket.cif}</p></div>
                    </div>
                 </div>
-                <div className="bg-white border p-6 rounded-[24px] space-y-3">
-                   <div className="flex items-center gap-2 text-primary font-black flex-row-reverse"><MessageSquare className="w-4 h-4" /> <span>وصف المشكلة</span></div>
-                   <p className="text-slate-600 font-medium leading-relaxed text-right">{selectedTicket.description}</p>
+                <div className="bg-white border p-6 rounded-[24px] space-y-4 shadow-sm">
+                   <div className="flex items-center gap-2 text-primary font-black flex-row-reverse">
+                      <MessageSquare className="w-4 h-4" /> 
+                      <span>تفاصيل المشكلة ({selectedTicket.subIssue})</span>
+                   </div>
+                   <p className="text-slate-600 font-medium leading-relaxed text-right bg-slate-50/30 p-4 rounded-xl">{selectedTicket.description}</p>
                 </div>
+                
+                {selectedTicket.specialistResponse && (
+                  <div className="bg-green-50 border border-green-100 p-6 rounded-[24px] space-y-3">
+                     <div className="flex items-center gap-2 text-green-700 font-black flex-row-reverse">
+                        <CheckCircle2 className="w-4 h-4" /> 
+                        <span>الرد الفني والحل المتخذ</span>
+                     </div>
+                     <p className="text-green-800 font-bold leading-relaxed text-right">{selectedTicket.specialistResponse}</p>
+                  </div>
+                )}
               </div>
               <div className="p-6 border-t bg-slate-50 flex justify-end">
                 <Button variant="outline" onClick={() => setSelectedTicket(null)} className="rounded-full font-black px-8">إغلاق النافذة</Button>

@@ -7,8 +7,7 @@ import { SpecialistView } from '@/components/dashboard/SpecialistView';
 import { AdminView } from '@/components/dashboard/AdminView';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
-  AlertCircle, ShieldCheck, Copy, Check, ExternalLink, 
-  Loader2, LogOut, Info, Rocket, Database
+  ShieldCheck, Copy, Check, Loader2, LogOut, Rocket, Database
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,23 +59,22 @@ export default function DashboardPage() {
       <div className="max-w-4xl mx-auto mt-6 space-y-8 text-right pb-20" dir="rtl">
         <Card className="banking-card border-none shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
           <CardHeader className="premium-gradient text-white p-10">
-            <div className="flex items-center gap-6 justify-start">
+            <div className="flex items-center gap-6 justify-start flex-row-reverse">
               <div className="p-4 bg-white/20 rounded-[20px] backdrop-blur-md">
                 <ShieldCheck className="h-10 w-10 text-white" />
               </div>
-              <div>
+              <div className="text-right">
                 <CardTitle className="text-3xl font-black">تنشيط الصلاحيات المصرفية</CardTitle>
-                <p className="text-white/80 text-base mt-1 font-bold">يجب ربط هويتك بملف وظيفي في النظام</p>
+                <p className="text-white/80 text-base mt-1 font-bold">يجب ربط هويتك بملف وظيفي في النظام للبدء</p>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-10 space-y-10 bg-white">
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 text-primary font-black text-xl mb-4 justify-start">
+              <div className="space-y-6 text-right">
+                <div className="flex items-center gap-3 text-primary font-black text-xl mb-4 justify-end">
                   <Rocket className="w-6 h-6" />
-                  <h3>التفعيل التلقائي (موصى به)</h3>
+                  <h3>التفعيل التلقائي (بلمسة واحدة)</h3>
                 </div>
                 <p className="text-slate-600 leading-relaxed font-bold">
                   سيقوم النظام بربط حسابك كـ <span className="text-primary">{autoValues.name}</span> في قسم <span className="text-secondary">{autoValues.dept}</span> فوراً.
@@ -87,18 +85,18 @@ export default function DashboardPage() {
                   disabled={isActivating}
                 >
                   {isActivating ? <Loader2 className="animate-spin h-6 w-6" /> : <ShieldCheck className="w-8 h-8" />}
-                  تفعيل حسابي الآن
+                  تفعيل صلاحياتي الآن
                 </Button>
               </div>
 
-              <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 space-y-6">
-                <div className="flex items-center gap-3 text-slate-800 font-black text-lg justify-start">
+              <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 space-y-6 text-right">
+                <div className="flex items-center gap-3 text-slate-800 font-black text-lg justify-end">
                   <Database className="w-5 h-5 text-secondary" />
                   <h3>بيانات الربط اليدوي (Firestore)</h3>
                 </div>
                 <div className="space-y-4">
                   <Label className="text-[10px] text-primary font-black uppercase block text-right">Document ID (UID)</Label>
-                  <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-[14px] border border-slate-200">
+                  <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-[14px] border border-slate-200 flex-row-reverse">
                     <p className="font-mono font-black text-primary text-xs break-all">{firebaseUser.uid}</p>
                     <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full shrink-0" onClick={handleCopyUid}>
                       {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
