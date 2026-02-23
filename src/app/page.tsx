@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock } from 'lucide-react';
+import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -23,18 +23,17 @@ export default function Home() {
     { name: 'أخصائي البطائق', email: 'cards.ops@bank.com', role: 'Specialist', dept: 'Cards', icon: CreditCard },
     { name: 'موظف الاتصال (الكول سنتر)', email: 'callcenter.agent@bank.com', role: 'Agent', dept: 'Support', icon: Headset },
     { name: 'أخصائي خدمة العملاء الرقمية', email: 'cs.digital@bank.com', role: 'Specialist', dept: 'Digital', icon: MonitorSmartphone },
+    { name: 'أخصائي مشاكل التطبيق', email: 'app.specialist@bank.com', role: 'Specialist', dept: 'App', icon: Smartphone },
   ];
 
   const handleQuickLogin = async (emp: any) => {
     setLoading(emp.email);
     try {
-      // محاولة الدخول الطبيعي عبر Firebase
       await login(emp.email, 'password123');
       await setupDemoProfile(emp.role, emp.dept, emp.name);
       router.push('/dashboard');
     } catch (error) {
       console.warn("Firebase Auth bypassed for demo stability:", error);
-      // في حال فشل Firebase، نستخدم نظام العبور المباشر لضمان عمل النظام
       bypassLogin({
         id: 'dev-' + emp.role.toLowerCase() + '-' + emp.dept.toLowerCase(),
         name: emp.name,
@@ -50,7 +49,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center p-6 font-body" dir="rtl">
-      <div className="w-full max-w-2xl space-y-8 animate-in fade-in zoom-in-95 duration-700">
+      <div className="w-full max-w-3xl space-y-8 animate-in fade-in zoom-in-95 duration-700">
         <div className="flex flex-col items-center gap-4 mb-4">
           <div className="relative">
             {logo && (
@@ -81,23 +80,23 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {employees.map((emp) => (
                 <Button 
                   key={emp.email}
                   variant="outline" 
                   disabled={!!loading}
                   onClick={() => handleQuickLogin(emp)}
-                  className="h-28 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all group relative overflow-hidden"
+                  className="h-28 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all group relative overflow-hidden text-center p-4"
                 >
                   {loading === emp.email ? (
                     <Loader2 className="h-8 w-8 text-primary animate-spin" />
                   ) : (
                     <emp.icon className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
                   )}
-                  <div className="text-right">
-                    <span className="block font-black text-slate-800">{emp.name}</span>
-                    <span className="text-[10px] text-slate-400 font-bold">{emp.email}</span>
+                  <div className="flex flex-col items-center">
+                    <span className="block font-black text-slate-800 text-sm">{emp.name}</span>
+                    <span className="text-[9px] text-slate-400 font-bold">{emp.email}</span>
                   </div>
                 </Button>
               ))}
