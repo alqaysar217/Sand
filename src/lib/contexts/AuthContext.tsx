@@ -60,9 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      // تسجيل الخروج من أي جلسة سابقة لضمان الدخول النظيف
+      if (auth.currentUser) {
+        await signOut(auth);
+      }
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
         } catch (signUpErr) {

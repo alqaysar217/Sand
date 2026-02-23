@@ -50,9 +50,12 @@ export function SpecialistView() {
   // جلب البلاغات الموجهة لقسم الأخصائي
   const deptTicketsQuery = useMemoFirebase(() => {
     if (!db || !user?.department) return null;
+    
+    // ربط مسميات الأقسام بالقيم المستخدمة في خدمة العملاء
     const deptName = user.department === 'Cards' ? 'إدارة البطائق' : 
                    user.department === 'Support' ? 'كول سنتر' : 
-                   user.department === 'App' ? 'مشاكل التطبيق' : user.department;
+                   user.department === 'App' ? 'مشاكل التطبيق' : 
+                   user.department === 'Digital' ? 'خدمة العملاء' : user.department;
     
     return query(
       collection(db, 'tickets'),
