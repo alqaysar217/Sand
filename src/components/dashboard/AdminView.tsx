@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -23,13 +22,16 @@ import {
   TrendingUp,
   PieChart as PieChartIcon,
   BarChart3,
-  UserPlus
+  UserPlus,
+  RefreshCcw,
+  ShieldAlert
 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -39,7 +41,6 @@ export function AdminView() {
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isSaving, setIsSaving] = useState(false);
 
-  // ربط التنقل من القائمة الجانبية بالتبويبات
   useEffect(() => {
     const handleSync = (e: any) => {
       const action = e.detail;
@@ -51,23 +52,20 @@ export function AdminView() {
     return () => window.removeEventListener('sidebar-nav', handleSync);
   }, []);
 
-  // جلب إعدادات النظام
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
 
-  // جلب كافة التذاكر للإحصائيات
   const allTicketsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
   }, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
-  // جلب كافة الموظفين
   const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
   const { data: appUsers } = useCollection(usersQuery);
 
   const stats = useMemo(() => {
-    if (!tickets) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [] };
+    if (!tickets || tickets.length === 0) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [] };
     const deptMap: Record<string, number> = {};
     const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0, 'Escalated': 0, 'Rejected': 0 };
 
@@ -113,6 +111,18 @@ export function AdminView() {
     }
   };
 
+  const handleClearAllTickets = async () => {
+    if (!tickets || !db) return;
+    try {
+      tickets.forEach(t => {
+        deleteDocumentNonBlocking(doc(db, 'tickets', t.id));
+      });
+      toast({ title: "تم المسح بنجاح", description: "النظام الآن جاهز للاختبار بدون بيانات قديمة." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل مسح البيانات." });
+    }
+  };
+
   return (
     <div className="space-y-8 text-right" dir="rtl">
       <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} dir="rtl" className="w-full">
@@ -146,18 +156,25 @@ export function AdminView() {
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 h-[350px]">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.deptData}>
-                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                         <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
-                         <YAxis orientation="right" fontSize={12} fontWeight="bold" />
-                         <Tooltip 
-                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', textAlign: 'right' }}
-                            itemStyle={{ fontWeight: 'bold' }}
-                         />
-                         <Bar dataKey="tickets" name="عدد البلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                   </ResponsiveContainer>
+                   {stats.total > 0 ? (
+                     <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={stats.deptData}>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                           <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
+                           <YAxis orientation="right" fontSize={12} fontWeight="bold" />
+                           <Tooltip 
+                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', textAlign: 'right' }}
+                              itemStyle={{ fontWeight: 'bold' }}
+                           />
+                           <Bar dataKey="tickets" name="عدد البلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                     </ResponsiveContainer>
+                   ) : (
+                     <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
+                        <BarChart3 className="w-12 h-12 opacity-20" />
+                        <p className="font-bold">لا توجد بيانات كافية لعرض الرسم البياني</p>
+                     </div>
+                   )}
                 </CardContent>
              </Card>
              <Card className="banking-card border-none shadow-xl">
@@ -167,24 +184,31 @@ export function AdminView() {
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 h-[350px]">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                         <Pie 
-                            data={stats.statusData} 
-                            cx="50%" 
-                            cy="50%" 
-                            innerRadius={70} 
-                            outerRadius={100} 
-                            paddingAngle={8} 
-                            dataKey="value"
-                            label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                         >
-                            {stats.statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                         </Pie>
-                         <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', textAlign: 'right' }} />
-                         <Legend verticalAlign="bottom" height={36} />
-                      </PieChart>
-                   </ResponsiveContainer>
+                   {stats.total > 0 ? (
+                     <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                           <Pie 
+                              data={stats.statusData} 
+                              cx="50%" 
+                              cy="50%" 
+                              innerRadius={70} 
+                              outerRadius={100} 
+                              paddingAngle={8} 
+                              dataKey="value"
+                              label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                           >
+                              {stats.statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                           </Pie>
+                           <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', textAlign: 'right' }} />
+                           <Legend verticalAlign="bottom" height={36} />
+                        </PieChart>
+                     </ResponsiveContainer>
+                   ) : (
+                     <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
+                        <PieChartIcon className="w-12 h-12 opacity-20" />
+                        <p className="font-bold">لا توجد بلاغات مسجلة حالياً</p>
+                     </div>
+                   )}
                 </CardContent>
              </Card>
           </div>
@@ -214,11 +238,44 @@ export function AdminView() {
                 items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} 
                 onSave={newList => handleUpdateConfigList('intakeMethods', newList)} 
               />
-              <ConfigSection 
-                title="أنواع المشاكل" 
-                items={config?.issueTypes || ['تغيير رمز pin أو تأخره', 'الاستعلام عن حوالة']} 
-                onSave={newList => handleUpdateConfigList('issueTypes', newList)} 
-              />
+              <div className="md:col-span-2 space-y-6">
+                <Card className="banking-card border-none shadow-xl bg-red-50/30 border border-red-100 overflow-hidden">
+                   <CardHeader className="p-6 border-b border-red-100 flex flex-row-reverse items-center justify-between bg-red-50/50">
+                      <CardTitle className="text-red-700 font-black flex items-center gap-2">
+                        <ShieldAlert className="w-5 h-5" /> إجراءات النظام المتقدمة (للاختبار)
+                      </CardTitle>
+                   </CardHeader>
+                   <CardContent className="p-8">
+                      <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                         <div className="text-right">
+                            <h4 className="font-black text-slate-800">مسح كافة البلاغات من النظام</h4>
+                            <p className="text-xs text-slate-500 font-bold mt-1">سيتم حذف جميع بلاغات العملاء المسجلة في قاعدة البيانات نهائياً.</p>
+                         </div>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                               <Button variant="destructive" className="rounded-full px-8 h-12 font-black shadow-lg shadow-red-500/20">
+                                  <Trash2 className="w-5 h-5 ml-2" /> مسح كافة البيانات
+                               </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                               <AlertDialogHeader>
+                                  <AlertDialogTitle className="font-black text-right text-red-700">تنبيه أمني خطير</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-right font-bold text-slate-500">
+                                     أنت على وشك حذف كافة البلاغات من النظام. هذا الإجراء سيقوم بتفريغ قاعدة البيانات تماماً لتبدأ الاختبار من الصفر. لا يمكن التراجع عن هذا الفعل.
+                                  </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter className="flex-row-reverse gap-3">
+                                  <AlertDialogCancel className="rounded-full font-black">إلغاء العملية</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleClearAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
+                                     تأكيد المسح الشامل
+                                  </AlertDialogAction>
+                               </AlertDialogFooter>
+                            </AlertDialogContent>
+                         </AlertDialog>
+                      </div>
+                   </CardContent>
+                </Card>
+              </div>
            </div>
         </TabsContent>
 
@@ -226,7 +283,7 @@ export function AdminView() {
            <Card className="banking-card border-none shadow-xl overflow-hidden">
               <CardHeader className="p-8 border-b bg-white">
                  <CardTitle className="text-2xl font-black text-primary">إدارة موظفي النظام</CardTitle>
-                 <p className="text-slate-400 font-bold mt-1">عرض الموظفين المسجلين وصلاحياتهم الحالية (نظام Zebra Striping)</p>
+                 <p className="text-slate-400 font-bold mt-1">عرض الموظفين المسجلين وصلاحياتهم الحالية</p>
               </CardHeader>
               <CardContent className="p-0">
                  <div className="overflow-x-auto">
