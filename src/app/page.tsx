@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, ArrowLeft, Loader2, Info, Copy, Check, Database } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, Loader2, Info, Copy, Check, Database, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from 'next/image';
@@ -212,20 +213,27 @@ export default function Home() {
               </form>
 
               <div className="mt-10 pt-8 border-t border-slate-50">
-                <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">خيارات الدخول السريع</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">خيارات الدخول السريع للواجهات الجديدة</p>
                 <div className="grid grid-cols-1 gap-3">
-                  <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
-                    <Shield className="h-5 w-5 text-accent" />
-                    <div className="text-right">
-                      <p className="font-bold text-sm text-slate-800">بلخرم (المدير العام)</p>
-                      <p className="text-[10px] text-slate-400">صلاحيات الرقابة والإشراف</p>
-                    </div>
-                  </Button>
                   <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('cs.frontline@bank.com', 'CS_GUEST_99')}>
                     <Info className="h-5 w-5 text-secondary" />
                     <div className="text-right">
                       <p className="font-bold text-sm text-slate-800">موظف خدمة العملاء</p>
                       <p className="text-[10px] text-slate-400">إدارة البلاغات والمتابعة</p>
+                    </div>
+                  </Button>
+                  <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('cards.ops@bank.com', 'CARDS_SPECIALIST_101')}>
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <div className="text-right">
+                      <p className="font-bold text-sm text-slate-800">أخصائي معالجة البطائق</p>
+                      <p className="text-[10px] text-slate-400">فحص البلاغات والرد الفني الذكي</p>
+                    </div>
+                  </Button>
+                  <Button variant="outline" className="justify-between h-auto py-4 px-5 rounded-[20px] border-slate-100 hover:bg-slate-50 transition-all group" onClick={() => setDemoLogin('balkharam.admin@bank.com', 'ADMIN773362423')}>
+                    <Shield className="h-5 w-5 text-accent" />
+                    <div className="text-right">
+                      <p className="font-bold text-sm text-slate-800">بلخرم (المدير العام)</p>
+                      <p className="text-[10px] text-slate-400">صلاحيات الرقابة والإشراف</p>
                     </div>
                   </Button>
                 </div>
