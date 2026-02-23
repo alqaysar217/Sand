@@ -16,17 +16,22 @@ import {
   Loader2,
   ShieldCheck,
   Trash2,
-  CheckCircle2
+  CheckCircle2,
+  Edit2,
+  Save,
+  X
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
 export function AdminView() {
   const db = useFirestore();
+  const { toast } = useToast();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -41,7 +46,7 @@ export function AdminView() {
   }, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
-  // جلب كافة الموظفين
+  // جلب كافة الموظفين (المسجلين في النظام)
   const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
   const { data: appUsers } = useCollection(usersQuery);
 
@@ -65,32 +70,33 @@ export function AdminView() {
     };
   }, [tickets]);
 
-  const handleUpdateConfig = async (type: 'serviceTypes' | 'intakeMethods' | 'issueTypes' | 'staffNames', action: 'add' | 'delete', value: string) => {
-    if (!config || !db) return;
+  const handleUpdateConfigList = async (type: string, newList: string[]) => {
+    if (!db) return;
     setIsSaving(true);
-    const updatedList = action === 'add' 
-      ? [...(config[type] || []), value]
-      : (config[type] || []).filter((i: string) => i !== value);
-    
-    setDocumentNonBlocking(doc(db, 'settings', 'system-config'), {
-      ...config,
-      [type]: updatedList
-    }, { merge: true });
-    
-    setIsSaving(false);
+    try {
+      setDocumentNonBlocking(doc(db, 'settings', 'system-config'), {
+        ...config,
+        [type]: newList
+      }, { merge: true });
+      toast({ title: "تم التحديث", description: "تم حفظ التغييرات في القائمة بنجاح." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث الإعدادات." });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="space-y-8 text-right" dir="rtl">
       <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} dir="rtl" className="w-full">
-        <div className="flex justify-between items-center flex-row-reverse mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
           <div className="text-right">
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
                <ShieldCheck className="w-8 h-8" /> لوحة قيادة المدير العام
             </h1>
             <p className="text-slate-500 font-bold mt-1">إدارة قوائم النظام والموظفين والعمليات</p>
           </div>
-          <TabsList className="bg-slate-100 p-1 rounded-full h-auto">
+          <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
             <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الإحصائيات</TabsTrigger>
             <TabsTrigger value="settings" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">إدارة القوائم</TabsTrigger>
             <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white">الموظفين</TabsTrigger>
@@ -138,39 +144,67 @@ export function AdminView() {
 
         <TabsContent value="settings" className="space-y-6 animate-in fade-in duration-500 mt-0">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ConfigSection title="الجهات المعنية" items={config?.serviceTypes || ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق']} onAdd={v => handleUpdateConfig('serviceTypes', 'add', v)} onDelete={v => handleUpdateConfig('serviceTypes', 'delete', v)} />
-              <ConfigSection title="أسماء موظفي العلاقات" items={config?.staffNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس', 'عبدالله باخميس']} onAdd={v => handleUpdateConfig('staffNames', 'add', v)} onDelete={v => handleUpdateConfig('staffNames', 'delete', v)} />
-              <ConfigSection title="وسائل استلام البلاغات" items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} onAdd={v => handleUpdateConfig('intakeMethods', 'add', v)} onDelete={v => handleUpdateConfig('intakeMethods', 'delete', v)} />
-              <ConfigSection title="أنواع المشاكل" items={config?.issueTypes || ['تغيير رمز pin أو تأخره', 'الاستعلام عن حوالة']} onAdd={v => handleUpdateConfig('issueTypes', 'add', v)} onDelete={v => handleUpdateConfig('issueTypes', 'delete', v)} />
+              <ConfigSection 
+                title="الجهات المعنية" 
+                items={config?.serviceTypes || ['كول سنتر', 'إدارة البطائق', 'مشاكل التطبيق']} 
+                onSave={newList => handleUpdateConfigList('serviceTypes', newList)} 
+              />
+              <ConfigSection 
+                title="أسماء موظفي العلاقات" 
+                items={config?.staffNames || ['محمد بلخرم', 'إبراهيم العمودي', 'وليد بن قبوس', 'عبدالله باخميس']} 
+                onSave={newList => handleUpdateConfigList('staffNames', newList)} 
+              />
+              <ConfigSection 
+                title="وسائل استلام البلاغات" 
+                items={config?.intakeMethods || ['واتساب', 'اتصال', 'من خلال الفروع']} 
+                onSave={newList => handleUpdateConfigList('intakeMethods', newList)} 
+              />
+              <ConfigSection 
+                title="أنواع المشاكل" 
+                items={config?.issueTypes || ['تغيير رمز pin أو تأخره', 'الاستعلام عن حوالة']} 
+                onSave={newList => handleUpdateConfigList('issueTypes', newList)} 
+              />
            </div>
         </TabsContent>
 
         <TabsContent value="users" className="animate-in fade-in duration-500 mt-0">
-           <Card className="banking-card border-none shadow-xl">
-              <CardHeader className="p-8 border-b bg-white flex flex-row-reverse justify-between items-center">
-                 <CardTitle className="text-2xl font-black text-primary">إدارة الموظفين</CardTitle>
+           <Card className="banking-card border-none shadow-xl overflow-hidden">
+              <CardHeader className="p-8 border-b bg-white">
+                 <CardTitle className="text-2xl font-black text-primary">إدارة موظفي النظام</CardTitle>
+                 <p className="text-slate-400 font-bold mt-1">عرض الموظفين المسجلين وصلاحياتهم الحالية</p>
               </CardHeader>
               <CardContent className="p-0">
-                 <Table>
-                    <TableHeader className="bg-slate-50">
-                       <TableRow>
-                          <TableHead className="text-right font-black">الاسم</TableHead>
-                          <TableHead className="text-right font-black">البريد الإلكتروني</TableHead>
-                          <TableHead className="text-right font-black">الدور</TableHead>
-                          <TableHead className="text-right font-black">القسم</TableHead>
-                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                       {appUsers?.map((u, idx) => (
-                          <TableRow key={u.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                             <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
-                             <TableCell className="text-right">{u.email}</TableCell>
-                             <TableCell className="text-right"><Badge variant="outline" className="font-black text-primary">{u.role}</Badge></TableCell>
-                             <TableCell className="text-right">{u.department}</TableCell>
+                 <div className="overflow-x-auto">
+                    <Table>
+                       <TableHeader className="bg-primary">
+                          <TableRow className="hover:bg-primary border-none">
+                             <TableHead className="text-right font-black text-white h-14 pr-8">الاسم</TableHead>
+                             <TableHead className="text-right font-black text-white h-14">البريد الإلكتروني</TableHead>
+                             <TableHead className="text-right font-black text-white h-14">الدور الوظيفي</TableHead>
+                             <TableHead className="text-right font-black text-white h-14 pl-8">القسم</TableHead>
                           </TableRow>
-                       ))}
-                    </TableBody>
-                 </Table>
+                       </TableHeader>
+                       <TableBody>
+                          {appUsers?.map((u, idx) => (
+                             <TableRow key={u.id} className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
+                                <TableCell className="text-right">{u.email}</TableCell>
+                                <TableCell className="text-right">
+                                   <Badge className={`rounded-full px-4 font-black ${
+                                      u.role === 'Admin' ? 'bg-red-500' : u.role === 'Specialist' ? 'bg-primary' : 'bg-secondary'
+                                   }`}>
+                                      {u.role === 'Admin' ? 'مدير' : u.role === 'Specialist' ? 'أخصائي' : 'موظف'}
+                                   </Badge>
+                                </TableCell>
+                                <TableCell className="text-right font-bold text-slate-500 pl-8">{u.department}</TableCell>
+                             </TableRow>
+                          ))}
+                          {(!appUsers || appUsers.length === 0) && (
+                             <TableRow><TableCell colSpan={4} className="py-20 text-center font-bold text-slate-400">لا يوجد موظفين مسجلين حالياً</TableCell></TableRow>
+                          )}
+                       </TableBody>
+                    </Table>
+                 </div>
               </CardContent>
            </Card>
         </TabsContent>
@@ -181,13 +215,15 @@ export function AdminView() {
 
 function StatCard({ icon: Icon, title, value, color }: any) {
   return (
-    <Card className={`banking-card border-none shadow-lg ${color.startsWith('bg') ? color + ' text-white' : ''}`}>
+    <Card className={`banking-card border-none shadow-lg overflow-hidden ${color.startsWith('bg') ? color + ' text-white' : 'bg-white'}`}>
       <CardContent className="pt-6">
          <div className="flex justify-between items-start flex-row-reverse">
-            <Icon className={`w-8 h-8 opacity-40 ${!color.startsWith('bg') ? color : ''}`} />
+            <div className={`p-3 rounded-2xl ${color.startsWith('bg') ? 'bg-white/20' : 'bg-slate-50'}`}>
+               <Icon className={`w-6 h-6 ${!color.startsWith('bg') ? color : 'text-white'}`} />
+            </div>
             <div className="text-right">
               <p className={`text-[10px] font-black uppercase tracking-widest ${color.startsWith('bg') ? 'text-white/70' : 'text-slate-400'}`}>{title}</p>
-              <h3 className={`text-3xl font-black ${!color.startsWith('bg') ? color : ''}`}>{value}</h3>
+              <h3 className={`text-3xl font-black mt-1 ${!color.startsWith('bg') ? 'text-slate-900' : 'text-white'}`}>{value}</h3>
             </div>
          </div>
       </CardContent>
@@ -195,23 +231,118 @@ function StatCard({ icon: Icon, title, value, color }: any) {
   );
 }
 
-function ConfigSection({ title, items, onAdd, onDelete }: { title: string, items: string[], onAdd: (v: string) => void, onDelete: (v: string) => void }) {
-   const [val, setVal] = useState('');
+interface ConfigSectionProps {
+  title: string;
+  items: string[];
+  onSave: (newList: string[]) => void;
+}
+
+function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
+   const [newItem, setNewItem] = useState('');
+   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+   const [editingValue, setEditingValue] = useState('');
+
+   const handleAdd = () => {
+      if (newItem.trim()) {
+         onSave([...items, newItem.trim()]);
+         setNewItem('');
+      }
+   };
+
+   const handleDelete = (index: number) => {
+      const newList = items.filter((_, i) => i !== index);
+      onSave(newList);
+   };
+
+   const handleStartEdit = (index: number, val: string) => {
+      setEditingIndex(index);
+      setEditingValue(val);
+   };
+
+   const handleSaveEdit = () => {
+      if (editingIndex !== null && editingValue.trim()) {
+         const newList = [...items];
+         newList[editingIndex] = editingValue.trim();
+         onSave(newList);
+         setEditingIndex(null);
+      }
+   };
+
    return (
-      <Card className="banking-card border-none shadow-xl">
-         <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black text-primary">{title}</CardTitle></CardHeader>
-         <CardContent className="p-6 space-y-4">
+      <Card className="banking-card border-none shadow-xl overflow-hidden">
+         <CardHeader className="bg-primary/5 p-6 border-b flex flex-row-reverse items-center justify-between">
+            <CardTitle className="text-lg font-black text-primary">{title}</CardTitle>
+            <Badge variant="outline" className="font-black text-[10px]">{items.length} عنصر</Badge>
+         </CardHeader>
+         <CardContent className="p-6 space-y-6">
             <div className="flex gap-2 flex-row-reverse">
-               <Input value={val} onChange={e => setVal(e.target.value)} placeholder="إضافة جديد..." className="banking-input text-right" />
-               <Button size="icon" onClick={() => { if(val) onAdd(val); setVal(''); }} className="bg-primary rounded-xl"><Plus className="w-4 h-4" /></Button>
+               <Input 
+                  value={newItem} 
+                  onChange={e => setNewItem(e.target.value)} 
+                  placeholder="إضافة جديد..." 
+                  className="banking-input h-11 text-right" 
+                  onKeyPress={e => e.key === 'Enter' && handleAdd()}
+               />
+               <Button size="icon" onClick={handleAdd} className="bg-primary h-11 w-11 rounded-xl shadow-lg shadow-primary/20 shrink-0">
+                  <Plus className="w-5 h-5" />
+               </Button>
             </div>
-            <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
-               {items.map(item => (
-                  <div key={item} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl flex-row-reverse">
-                     <span className="font-bold text-sm">{item}</span>
-                     <Button variant="ghost" size="icon" onClick={() => onDelete(item)} className="text-red-400 h-8 w-8 hover:text-red-600"><Trash2 className="w-4 h-4" /></Button>
+            
+            <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
+               {items.map((item, idx) => (
+                  <div 
+                     key={idx} 
+                     className={`flex items-center justify-between p-3 rounded-2xl flex-row-reverse transition-all border ${
+                        idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                     } ${editingIndex === idx ? 'border-primary ring-2 ring-primary/10' : 'border-transparent'}`}
+                  >
+                     {editingIndex === idx ? (
+                        <div className="flex items-center gap-2 w-full flex-row-reverse">
+                           <Input 
+                              value={editingValue} 
+                              onChange={e => setEditingValue(e.target.value)} 
+                              className="h-9 banking-input text-right text-sm font-bold"
+                              autoFocus
+                           />
+                           <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" onClick={handleSaveEdit} className="h-8 w-8 text-green-600 hover:bg-green-50">
+                                 <Save className="w-4 h-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => setEditingIndex(null)} className="h-8 w-8 text-slate-400">
+                                 <X className="w-4 h-4" />
+                              </Button>
+                           </div>
+                        </div>
+                     ) : (
+                        <>
+                           <span className="font-bold text-sm text-slate-700">{item}</span>
+                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button 
+                                 variant="ghost" 
+                                 size="icon" 
+                                 onClick={() => handleStartEdit(idx, item)} 
+                                 className="text-slate-400 h-8 w-8 hover:text-primary hover:bg-primary/5"
+                              >
+                                 <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button 
+                                 variant="ghost" 
+                                 size="icon" 
+                                 onClick={() => handleDelete(idx)} 
+                                 className="text-slate-400 h-8 w-8 hover:text-red-500 hover:bg-red-50"
+                              >
+                                 <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                           </div>
+                        </>
+                     )}
                   </div>
                ))}
+               {items.length === 0 && (
+                  <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                     <p className="text-xs font-bold text-slate-400">القائمة فارغة، ابدأ بالإضافة</p>
+                  </div>
+               )}
             </div>
          </CardContent>
       </Card>
