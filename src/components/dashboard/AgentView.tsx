@@ -14,7 +14,7 @@ import {
   Plus, Search, Loader2, Inbox, Headset,
   Phone, Share2, MessageSquare, ImageIcon, User, Paperclip, X, Upload,
   Clock, CheckCircle2, AlertTriangle, FileText, UserCheck, MessageCircle,
-  Trash2, ShieldCheck
+  Trash2, ShieldCheck, Bell, Info
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -55,7 +55,7 @@ export function AgentView() {
       const action = e.detail;
       if (action === 'new-ticket') {
         setShowNewForm(true);
-      } else if (['all', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
+      } else if (['all', 'notifications', 'New', 'Pending', 'Escalated', 'Rejected', 'Resolved'].includes(action)) {
         setShowNewForm(false);
         setActiveTab(action);
       }
@@ -64,21 +64,32 @@ export function AgentView() {
     return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
   }, []);
 
-  const agentTicketsQuery = useMemoFirebase(() => {
-    if (!db || !user?.id) return null;
-    return query(collection(db, 'tickets'), where('createdByAgentId', '==', user.id), orderBy('createdAt', 'desc'));
-  }, [db, user?.id]);
+  const allTicketsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    // عرض كافة البلاغات للجميع لضمان الشفافية
+    return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
+  }, [db]);
 
-  const { data: tickets } = useCollection(agentTicketsQuery);
+  const { data: tickets } = useCollection(allTicketsQuery);
 
   const filteredTickets = useMemo(() => {
-    if (!tickets) return [];
+    if (!tickets || !user) return [];
     return tickets.filter(t => {
       const matchesSearch = (t.ticketID || '').includes(searchQuery) || (t.customerName || '').includes(searchQuery) || (t.cif || '').includes(searchQuery);
-      const matchesStatus = activeTab === 'all' || t.status === activeTab;
-      return matchesSearch && matchesStatus;
+      
+      let matchesTab = false;
+      if (activeTab === 'all') {
+        matchesTab = true;
+      } else if (activeTab === 'notifications') {
+        // الإشعارات تظهر فقط بلاغات المستخدم التي تم تحديثها
+        matchesTab = t.createdByAgentId === user.id && t.status !== 'New';
+      } else {
+        matchesTab = t.status === activeTab;
+      }
+      
+      return matchesSearch && matchesTab;
     });
-  }, [tickets, searchQuery, activeTab]);
+  }, [tickets, searchQuery, activeTab, user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,7 +125,7 @@ export function AgentView() {
       subIssue: formData.subIssue,
       description: formData.description,
       createdByAgentId: user.id,
-      createdByAgentName: user.name, // تلقائياً من الملف الشخصي
+      createdByAgentName: user.name,
       attachments: attachments,
       logs: [{ 
         action: `تم رفع البلاغ وتوجيهه إلى ${formData.serviceType} بواسطة: ${user.name}`, 
@@ -159,7 +170,9 @@ export function AgentView() {
              <Headset className="w-8 h-8" /> محطة عمل الكول سنتر
           </h1>
           <p className="text-slate-500 font-bold mt-1">
-            {showNewForm ? "تعبئة بيانات البلاغ الجديد" : `عرض البلاغات: ${activeTab === 'all' ? 'الكل' : getStatusBadge(activeTab).props.children}`}
+            {showNewForm ? "تعبئة بيانات البلاغ الجديد" : 
+             activeTab === 'notifications' ? "إشعارات التحديثات على بلاغاتك" :
+             `عرض البلاغات: ${activeTab === 'all' ? 'الكل' : getStatusBadge(activeTab).props.children}`}
           </p>
         </div>
         {!showNewForm && (
@@ -310,7 +323,8 @@ export function AgentView() {
           <CardHeader className="p-8 border-b bg-white">
             <div className="flex flex-col md:flex-row-reverse justify-between items-center gap-6">
               <CardTitle className="text-2xl font-black text-primary flex items-center gap-3">
-                 <Inbox className="w-6 h-6" /> سجل البلاغات الصادرة
+                 {activeTab === 'notifications' ? <Bell className="w-6 h-6 text-red-500" /> : <Inbox className="w-6 h-6" />}
+                 {activeTab === 'notifications' ? "إشعارات التحديثات" : "سجل كافة البلاغات"}
               </CardTitle>
               <div className="relative w-full md:w-80">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -335,31 +349,38 @@ export function AgentView() {
                     <TableCell className="font-black pr-8 text-right"><Badge variant="outline">{t.ticketID}</Badge></TableCell>
                     <TableCell className="text-right font-bold">{t.customerName}</TableCell>
                     <TableCell className="text-right font-bold text-slate-500">{t.serviceType}</TableCell>
-                    <TableCell className="text-right">{getStatusBadge(t.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        {t.createdByAgentId === user?.id && t.status !== 'New' && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="تحديث جديد" />}
+                        {getStatusBadge(t.status)}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-center pl-8">
                       <div className="flex items-center justify-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setSelectedTicket(t)} className="rounded-full font-black border-primary text-primary">عرض التفاصيل</Button>
-                        <AlertDialog>
-                           <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
-                                 <Trash2 className="w-4 h-4" />
-                              </Button>
-                           </AlertDialogTrigger>
-                           <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
-                              <AlertDialogHeader>
-                                 <AlertDialogTitle className="font-black text-right">تأكيد حذف البلاغ</AlertDialogTitle>
-                                 <AlertDialogDescription className="text-right font-bold">
-                                    هل أنت متأكد من رغبتك في حذف البلاغ رقم {t.ticketID}؟ لا يمكن التراجع عن هذا الإجراء.
-                                 </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter className="flex-row-reverse gap-3">
-                                 <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
-                                 <AlertDialogAction onClick={() => handleDeleteTicket(t.id)} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
-                                    تأكيد الحذف
-                                 </AlertDialogAction>
-                              </AlertDialogFooter>
-                           </AlertDialogContent>
-                        </AlertDialog>
+                        {t.createdByAgentId === user?.id && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="font-black text-right">تأكيد حذف البلاغ</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-right font-bold">
+                                      هل أنت متأكد من رغبتك في حذف البلاغ رقم {t.ticketID}؟ لا يمكن التراجع عن هذا الإجراء.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex-row-reverse gap-3">
+                                  <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteTicket(t.id)} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
+                                      تأكيد الحذف
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -367,7 +388,7 @@ export function AgentView() {
                 {filteredTickets?.length === 0 && (
                    <TableRow>
                       <TableCell colSpan={5} className="text-center py-20 font-black text-slate-400">
-                        {searchQuery || activeTab !== 'all' ? "لا توجد نتائج مطابقة لبحثك" : "لا توجد بلاغات صادرة حالياً"}
+                        {activeTab === 'notifications' ? "لا توجد تحديثات جديدة على بلاغاتك" : "لا توجد بلاغات مطابقة لبحثك"}
                       </TableCell>
                    </TableRow>
                 )}
@@ -391,18 +412,20 @@ export function AgentView() {
                       </div>
                       <div className="flex items-center gap-3">
                         {getStatusBadge(selectedTicket.status)}
-                        <Button 
-                          variant="destructive" 
-                          size="icon" 
-                          className="rounded-full h-9 w-9 shadow-lg" 
-                          onClick={() => {
-                            if(confirm(`هل أنت متأكد من حذف البلاغ ${selectedTicket.ticketID}؟`)) {
-                              handleDeleteTicket(selectedTicket.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {selectedTicket.createdByAgentId === user?.id && (
+                          <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="rounded-full h-9 w-9 shadow-lg" 
+                            onClick={() => {
+                              if(confirm(`هل أنت متأكد من حذف البلاغ ${selectedTicket.ticketID}؟`)) {
+                                handleDeleteTicket(selectedTicket.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                    </div>
                 </DialogHeader>
@@ -484,7 +507,8 @@ export function AgentView() {
                       )}
                    </div>
 
-                   {(selectedTicket.assignedToSpecialistName || selectedTicket.specialistResponse) && (
+                   {/* حماية الردود الفنية: تظهر فقط لصاحب البلاغ */}
+                   {selectedTicket.assignedToSpecialistName && (
                      <div className="space-y-4 pt-4 border-t border-slate-100">
                         <h4 className="font-black text-green-600 flex items-center gap-2 justify-end">
                            المعالجة والرد الفني <UserCheck className="w-4 h-4" />
@@ -499,11 +523,19 @@ export function AgentView() {
                                 <Badge className="bg-green-600">تم الحل في: {new Date(selectedTicket.resolvedAt).toLocaleDateString('ar-SA')}</Badge>
                               )}
                            </div>
+                           
                            <div className="pt-4 border-t border-green-100">
                               <span className="text-[10px] text-slate-400 font-black block mb-2 uppercase flex items-center gap-1 justify-end">الرد والحل التقني <MessageCircle className="w-3 h-3" /></span>
-                              <p className="font-bold text-slate-700 leading-relaxed italic">
-                                 {selectedTicket.specialistResponse || 'لا يوجد رد فني مسجل حالياً'}
-                              </p>
+                              {selectedTicket.createdByAgentId === user?.id ? (
+                                <p className="font-bold text-slate-700 leading-relaxed italic">
+                                   {selectedTicket.specialistResponse || 'جاري كتابة الرد الفني...'}
+                                </p>
+                              ) : (
+                                <div className="flex items-center gap-2 justify-end text-slate-400 bg-white/50 p-3 rounded-xl border border-dashed">
+                                  <p className="text-xs font-bold">تمت المعالجة من قبل القسم المختص (الرد التفصيلي متاح لرافع البلاغ فقط)</p>
+                                  <Info className="w-4 h-4" />
+                                </div>
+                              )}
                            </div>
                         </div>
                      </div>
@@ -520,7 +552,8 @@ export function AgentView() {
                                <div className="flex-1 text-right">
                                   <p className="text-sm font-bold text-slate-700">{log.action}</p>
                                   <p className="text-[10px] text-slate-400 mt-1">بواسطة: {log.userName} | {new Date(log.timestamp).toLocaleString('ar-SA')}</p>
-                                  {log.note && (
+                                  {/* الملاحظات في السجل تظهر فقط لصاحب البلاغ */}
+                                  {log.note && selectedTicket.createdByAgentId === user?.id && (
                                     <p className="text-xs bg-white border p-3 rounded-xl mt-2 text-slate-500 font-medium">ملاحظة: {log.note}</p>
                                   )}
                                </div>

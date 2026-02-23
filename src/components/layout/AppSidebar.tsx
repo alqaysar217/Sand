@@ -17,7 +17,8 @@ import {
   Send,
   XCircle,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Bell
 } from 'lucide-react';
 import {
   Sidebar,
@@ -51,23 +52,14 @@ export function AppSidebar() {
 
   const ticketsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
-    if (user.role === 'Admin') {
-      return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-    } else if (user.role === 'Specialist') {
-      return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-    } else {
-      return query(
-        collection(db, 'tickets'),
-        where('createdByAgentId', '==', user.id),
-        orderBy('createdAt', 'desc')
-      );
-    }
+    // الجميع الآن يرى كافة البلاغات لضمان الشفافية ومنع التكرار
+    return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
   }, [db, user]);
 
   const { data: tickets } = useCollection(ticketsQuery);
 
   const counts = useMemo(() => {
-    if (!tickets) return {};
+    if (!tickets || !user) return {};
     return {
       all: tickets.length,
       New: tickets.filter(t => t.status === 'New').length,
@@ -75,8 +67,10 @@ export function AppSidebar() {
       Escalated: tickets.filter(t => t.status === 'Escalated').length,
       Resolved: tickets.filter(t => t.status === 'Resolved').length,
       Rejected: tickets.filter(t => t.status === 'Rejected').length,
+      // الإشعارات: البلاغات التي رفعها الموظف وحصلت على تحديث (ليست جديدة)
+      notifications: tickets.filter(t => t.createdByAgentId === user.id && t.status !== 'New').length,
     };
-  }, [tickets]);
+  }, [tickets, user]);
 
   if (!user) return null;
 
@@ -92,6 +86,7 @@ export function AppSidebar() {
       return [
         { title: 'كل البلاغات', icon: LayoutDashboard, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
         { title: 'بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
+        { title: 'الإشعارات', icon: Bell, action: 'notifications', count: counts.notifications, badgeColor: 'bg-red-500' },
         { title: 'جديد', icon: AlertCircle, action: 'New', count: counts.New, badgeColor: 'bg-blue-600' },
         { title: 'قيد المعالجة', icon: Clock, action: 'Pending', count: counts.Pending, badgeColor: 'bg-amber-500' },
         { title: 'محالة للأقسام', icon: Send, action: 'Escalated', count: counts.Escalated, badgeColor: 'bg-red-600' },
