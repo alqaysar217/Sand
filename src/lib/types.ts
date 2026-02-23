@@ -7,6 +7,7 @@ export type IntakeMethod = 'واتساب' | 'اتصال' | 'من خلال الف
 
 export interface UserProfile {
   id: string;
+  username: string; // BIM ID
   name: string;
   email: string;
   role: UserRole;
@@ -33,12 +34,12 @@ export interface Ticket {
   customerName: string;
   cif: string;
   phoneNumber: string;
-  serviceType: ServiceType; // الجهة المعنية
-  subIssue: string; // نوع المشكلة
-  intakeMethod: IntakeMethod; // وسيلة استلام البلاغ
-  description: string; // تفاصيل المشكلة
+  serviceType: ServiceType;
+  subIssue: string;
+  intakeMethod: IntakeMethod;
+  description: string;
   createdByAgentId: string;
-  createdByAgentName: string; // اسم الموظف الذي رفع البلاغ
+  createdByAgentName: string;
   assignedToSpecialistId?: string;
   assignedToSpecialistName?: string;
   specialistResponse?: string;
@@ -52,12 +53,11 @@ export interface Ticket {
   logs?: TicketLog[];
 }
 
-// إعدادات النظام القابلة للإدارة من المدير
 export interface SystemConfig {
   specialistNames: string[];
   csNames: string[];
   agentNames: string[];
-  appSpecialistNames: string[]; // أخصائيي التطبيق
+  appSpecialistNames: string[];
   intakeMethods: string[];
   issueTypes: string[];
 }

@@ -8,12 +8,13 @@
       "description": "Represents a user within the system, including their identification, role, and departmental assignment.",
       "properties": {
         "id": { "type": "string" },
+        "username": { "type": "string", "description": "The unique BIM ID of the user (e.g., BIM0100)" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["Admin", "Agent", "Specialist"] },
         "department": { "type": "string" }
       },
-      "required": ["id", "name", "email", "role", "department"]
+      "required": ["id", "username", "name", "email", "role", "department"]
     },
     "ComplaintTicket": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -28,9 +29,9 @@
         "customerName": { "type": "string" },
         "cif": { "type": "string" },
         "phoneNumber": { "type": "string" },
-        "serviceType": { "type": "string", "description": "Target entity for the ticket" },
-        "subIssue": { "type": "string", "description": "Type of service/problem" },
-        "intakeMethod": { "type": "string", "enum": ["WhatsApp", "Call", "Branch"] },
+        "serviceType": { "type": "string" },
+        "subIssue": { "type": "string" },
+        "intakeMethod": { "type": "string" },
         "description": { "type": "string" },
         "createdByAgentId": { "type": "string" },
         "createdByAgentName": { "type": "string" },
@@ -60,6 +61,10 @@
       {
         "path": "/tickets/{ticketId}",
         "definition": { "entityName": "ComplaintTicket" }
+      },
+      {
+        "path": "/settings/system-config",
+        "definition": { "entityName": "SystemConfig" }
       }
     ]
   }

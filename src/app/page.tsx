@@ -5,45 +5,51 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Shield, MonitorSmartphone, Headset, CreditCard, UserCog, Loader2, Lock, Smartphone, X } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function Home() {
   const router = useRouter();
-  const { login, setupDemoProfile, bypassLogin } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  
   const logo = PlaceHolderImages.find(img => img.id === 'sanad-logo');
 
   const employees = [
-    { name: 'المدير العام', email: 'admin.bank@bank.com', role: 'Admin', dept: 'Operations', icon: UserCog },
-    { name: 'أخصائي البطائق', email: 'cards.ops@bank.com', role: 'Specialist', dept: 'Cards', icon: CreditCard },
-    { name: 'موظف الاتصال (الكول سنتر)', email: 'callcenter.agent@bank.com', role: 'Agent', dept: 'Support', icon: Headset },
-    { name: 'أخصائي خدمة العملاء الرقمية', email: 'cs.digital@bank.com', role: 'Specialist', dept: 'Digital', icon: MonitorSmartphone },
-    { name: 'أخصائي مشاكل التطبيق', email: 'app.specialist@bank.com', role: 'Specialist', dept: 'App', icon: Smartphone },
+    { id: 'admin', name: 'المدير العام', role: 'Admin', dept: 'Operations', icon: UserCog, defaultUsername: 'BIM0100' },
+    { id: 'cards', name: 'أخصائي البطائق', role: 'Specialist', dept: 'Cards', icon: CreditCard },
+    { id: 'callcenter', name: 'موظف الاتصال (الكول سنتر)', role: 'Agent', dept: 'Support', icon: Headset },
+    { id: 'digital', name: 'أخصائي خدمة العملاء الرقمية', role: 'Specialist', dept: 'Digital', icon: MonitorSmartphone },
+    { id: 'app', name: 'أخصائي مشاكل التطبيق', role: 'Specialist', dept: 'App', icon: Smartphone },
   ];
 
-  const handleQuickLogin = async (emp: any) => {
-    setLoading(emp.email);
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEmp) return;
+    
+    setLoading(true);
     try {
-      await login(emp.email, 'password123');
-      await setupDemoProfile(emp.role, emp.dept, emp.name);
+      await login(credentials.username, credentials.password);
+      toast({ title: "تم تسجيل الدخول", description: `مرحباً بك في محطة العمل، ${selectedEmp.name}` });
       router.push('/dashboard');
-    } catch (error) {
-      console.warn("Firebase Auth bypassed for demo stability:", error);
-      bypassLogin({
-        id: 'dev-' + emp.role.toLowerCase() + '-' + emp.dept.toLowerCase(),
-        name: emp.name,
-        email: emp.email,
-        role: emp.role,
-        department: emp.dept
+    } catch (error: any) {
+      console.error(error);
+      toast({ 
+        variant: "destructive", 
+        title: "خطأ في الدخول", 
+        description: "اسم المستخدم أو كلمة المرور غير صحيحة، أو الحساب غير مخول لهذا القسم." 
       });
-      router.push('/dashboard');
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
 
@@ -83,20 +89,18 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {employees.map((emp) => (
                 <Button 
-                  key={emp.email}
+                  key={emp.id}
                   variant="outline" 
-                  disabled={!!loading}
-                  onClick={() => handleQuickLogin(emp)}
+                  onClick={() => {
+                    setSelectedEmp(emp);
+                    setCredentials({ ...credentials, username: emp.defaultUsername || '' });
+                  }}
                   className="h-28 flex flex-col gap-2 rounded-[24px] border-slate-100 hover:border-primary hover:bg-primary/5 transition-all group relative overflow-hidden text-center p-4"
                 >
-                  {loading === emp.email ? (
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                  ) : (
-                    <emp.icon className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
-                  )}
+                  <emp.icon className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
                   <div className="flex flex-col items-center">
                     <span className="block font-black text-slate-800 text-sm">{emp.name}</span>
-                    <span className="text-[9px] text-slate-400 font-bold">{emp.email}</span>
+                    <span className="text-[9px] text-slate-400 font-bold">{emp.dept} Portal</span>
                   </div>
                 </Button>
               ))}
@@ -115,6 +119,50 @@ export default function Home() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!selectedEmp} onOpenChange={() => setSelectedEmp(null)}>
+        <DialogContent className="max-w-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
+          <DialogHeader className="p-8 bg-primary/5 border-b">
+            <DialogTitle className="text-2xl font-black text-primary text-right flex items-center gap-3 justify-end">
+               {selectedEmp?.name} <Lock className="w-6 h-6" />
+            </DialogTitle>
+            <DialogDescription className="text-right font-bold text-slate-500">
+               يرجى إدخال بيانات الهوية المصرفية (BIM ID) للمتابعة
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleLoginSubmit} className="p-8 space-y-6">
+            <div className="space-y-3 text-right">
+              <Label className="font-black text-sm text-slate-600 mr-1">اسم المستخدم (BIM ID)</Label>
+              <Input 
+                required 
+                value={credentials.username}
+                onChange={e => setCredentials({...credentials, username: e.target.value})}
+                placeholder="BIMxxxx" 
+                className="banking-input h-14 text-right font-mono text-lg" 
+              />
+            </div>
+            <div className="space-y-3 text-right">
+              <Label className="font-black text-sm text-slate-600 mr-1">كلمة المرور</Label>
+              <Input 
+                required 
+                type="password"
+                value={credentials.password}
+                onChange={e => setCredentials({...credentials, password: e.target.value})}
+                placeholder="••••••••" 
+                className="banking-input h-14 text-right" 
+              />
+            </div>
+            <div className="pt-4 flex flex-col gap-3">
+              <Button type="submit" disabled={loading} className="banking-button premium-gradient text-white h-14 w-full rounded-full font-black text-lg shadow-xl">
+                {loading ? <Loader2 className="animate-spin" /> : "تسجيل الدخول للنظام"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSelectedEmp(null)} className="rounded-full font-black">
+                إلغاء والعودة
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

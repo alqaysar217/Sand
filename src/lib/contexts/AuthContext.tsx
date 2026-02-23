@@ -1,18 +1,21 @@
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, getAuth } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
 
 interface AuthContextType {
   user: UserProfile | null;
   firebaseUser: any;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  setupDemoProfile: (role: UserRole, dept: Department, name: string) => Promise<void>;
-  bypassLogin: (profile: UserProfile) => void;
+  createEmployeeAccount: (data: { name: string, username: string, role: UserRole, dept: Department, password: string }) => Promise<void>;
+  updateAdminPassword: (newPassword: string) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -24,7 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const auth = useFirebaseAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [mockUser, setMockUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const snapshotUnsubscribe = useRef<(() => void) | null>(null);
@@ -32,13 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUserLoading) {
       setLoading(true);
-      return;
-    }
-
-    // إذا تم تفعيل وضع العبور المباشر
-    if (mockUser) {
-      setProfile(mockUser);
-      setLoading(false);
       return;
     }
 
@@ -75,53 +70,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         snapshotUnsubscribe.current();
       }
     };
-  }, [firebaseUser, isUserLoading, db, mockUser]);
+  }, [firebaseUser, isUserLoading, db]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
+    // BIM ID التحويل إلى بريد إلكتروني وهمي للتعامل مع نظام فيربيس
+    const email = `${username.toLowerCase()}@sanad.bank`;
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      // محاولة إنشاء الحساب إذا لم يكن موجوداً أو هناك خطأ في الاعتمادات (لأغراض العرض التقديمي)
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      console.error("Login error:", err);
+      // إذا كان المدير يدخل لأول مرة بالبيانات الافتراضية
+      if (username === 'BIM0100' && password === 'ha892019' && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
         try {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } catch (signUpErr: any) {
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            id: cred.user.uid,
+            username: 'BIM0100',
+            name: 'المدير العام',
+            email: email,
+            role: 'Admin',
+            department: 'Operations'
+          });
+          return;
+        } catch (createErr) {
           throw err;
         }
-      } else {
-        throw err;
       }
+      throw err;
     }
   };
 
-  const setupDemoProfile = async (role: UserRole, dept: Department, name: string) => {
-    if (mockUser) return;
-    if (!auth.currentUser || !db) return;
+  const createEmployeeAccount = async (data: { name: string, username: string, role: UserRole, dept: Department, password: string }) => {
+    if (!db || !auth.currentUser) return;
+    
+    // استخدام تطبيق ثانوي لإنشاء المستخدم الجديد دون تسجيل خروج المدير الحالي
+    const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
+    const secondaryAuth = getAuth(secondaryApp);
+    
+    const email = `${data.username.toLowerCase()}@sanad.bank`;
+    
     try {
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await setDoc(userRef, {
-        id: auth.currentUser.uid,
-        name: name,
-        email: auth.currentUser.email,
-        role: role,
-        department: dept
-      }, { merge: true });
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, data.password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        id: cred.user.uid,
+        username: data.username,
+        name: data.name,
+        email: email,
+        role: data.role,
+        department: data.dept
+      });
+      await signOut(secondaryAuth);
     } catch (err) {
-      console.error("Setup profile error:", err);
+      console.error("Create account error:", err);
+      throw err;
     }
   };
 
-  const bypassLogin = (profile: UserProfile) => {
-    setMockUser(profile);
+  const updateAdminPassword = async (newPassword: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+    } catch (err) {
+      console.error("Update password error:", err);
+      throw err;
+    }
   };
 
   const logout = async () => {
     setLoading(true);
-    if (mockUser) {
-      setMockUser(null);
-    } else {
-      await signOut(auth);
-    }
+    await signOut(auth);
     setProfile(null);
     setLoading(false);
   };
@@ -132,8 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       firebaseUser,
       login, 
       logout,
-      setupDemoProfile,
-      bypassLogin,
+      createEmployeeAccount,
+      updateAdminPassword,
       loading,
       error 
     }}>
