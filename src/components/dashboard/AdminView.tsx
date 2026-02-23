@@ -46,7 +46,7 @@ export function AdminView() {
   }, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
-  // جلب كافة الموظفين (المسجلين في النظام)
+  // جلب كافة الموظفين
   const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
   const { data: appUsers } = useCollection(usersQuery);
 
@@ -78,7 +78,7 @@ export function AdminView() {
         ...config,
         [type]: newList
       }, { merge: true });
-      toast({ title: "تم التحديث", description: "تم حفظ التغييرات في القائمة بنجاح." });
+      toast({ title: "تم التحديث", description: "تم حفظ التغييرات بنجاح." });
     } catch (err) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث الإعدادات." });
     } finally {
@@ -292,7 +292,7 @@ function ConfigSection({ title, items, onSave }: ConfigSectionProps) {
                {items.map((item, idx) => (
                   <div 
                      key={idx} 
-                     className={`flex items-center justify-between p-3 rounded-2xl flex-row-reverse transition-all border ${
+                     className={`flex items-center justify-between p-3 rounded-2xl flex-row-reverse transition-all border group ${
                         idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                      } ${editingIndex === idx ? 'border-primary ring-2 ring-primary/10' : 'border-transparent'}`}
                   >
