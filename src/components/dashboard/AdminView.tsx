@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,18 @@ export function AdminView() {
   const db = useFirestore();
   const { toast } = useToast();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
+
+  // الاستماع لأحداث القائمة الجانبية
+  useEffect(() => {
+    const handleSidebarNav = (e: any) => {
+      const action = e.detail;
+      if (['stats', 'staff', 'options', 'users'].includes(action)) {
+        setActiveAdminTab(action);
+      }
+    };
+    window.addEventListener('sidebar-nav', handleSidebarNav);
+    return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
+  }, []);
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);

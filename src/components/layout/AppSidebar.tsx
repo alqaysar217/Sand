@@ -54,7 +54,6 @@ export function AppSidebar() {
     if (user.role === 'Admin') {
       return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
     } else if (user.role === 'Specialist') {
-      // الأخصائي يرى كل البلاغات الموجهة للأقسام
       return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
     } else {
       return query(
@@ -110,8 +109,9 @@ export function AppSidebar() {
     } else {
       return [
         { title: 'الإحصائيات', icon: BarChart3, action: 'stats' },
-        { title: 'إدارة الموظفين', icon: Users, action: 'users' },
-        { title: 'إعدادات النظام', icon: Settings, action: 'settings' },
+        { title: 'إدارة الكادر', icon: Users, action: 'staff' },
+        { title: 'خيارات النظام', icon: Settings, action: 'options' },
+        { title: 'حسابات النظام', icon: ShieldCheck, action: 'users' },
       ];
     }
   };
