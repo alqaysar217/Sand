@@ -97,7 +97,7 @@ export function AppSidebar() {
       case 'Agent':
         return [
           { title: 'الرئيسية (الكل)', icon: LayoutDashboard, action: 'home', count: counts.all },
-          { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket', isAction: true },
+          { title: 'رفع بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
           { title: 'بلاغات قيد العمل', icon: Clock, action: 'Pending', count: counts.Pending },
           { title: 'البلاغات المحالة', icon: Send, action: 'Escalated', count: counts.Escalated },
           { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected },
@@ -153,17 +153,15 @@ export function AppSidebar() {
                       className={`flex items-center gap-4 h-13 w-full px-5 justify-start text-right rounded-[18px] transition-all duration-300 ${
                         isActive 
                           ? 'bg-primary text-white shadow-lg' 
-                          : item.isAction 
-                            ? 'premium-gradient text-white hover:opacity-90 shadow-md' 
-                            : 'hover:bg-slate-50 text-slate-600'
+                          : 'hover:bg-slate-50 text-slate-600'
                       }`}
                     >
-                      <item.icon className={`w-5 h-5 ${isActive || item.isAction ? 'text-white' : 'text-slate-400'}`} />
+                      <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                       <span className="text-base font-bold">{item.title}</span>
                     </SidebarMenuButton>
                     {item.count !== undefined && item.count > 0 && (
                       <SidebarMenuBadge className={`left-4 right-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-bold border-2 border-white shadow-sm ${
-                        isActive || item.isAction ? 'bg-white text-primary' : 'bg-slate-100 text-slate-500'
+                        isActive ? 'bg-white text-primary' : 'bg-slate-100 text-slate-500'
                       }`}>
                         {item.count}
                       </SidebarMenuBadge>
