@@ -22,7 +22,6 @@ import {
   Fingerprint,
   Phone,
   Building2,
-  Share2,
   Calendar,
   Inbox,
   Paperclip,
@@ -199,7 +198,7 @@ export function SpecialistView() {
                    <Textarea 
                       value={response} 
                       onChange={(e) => setResponse(e.target.value)} 
-                      placeholder="يرجى كتابة التفاصيل التقنية للحل هنا ليتمكن الموظف من إبلاغ العميل..." 
+                      placeholder="يرجى كتابة التفاصيل التقنية للحل هنا..." 
                       className="banking-input min-h-[220px] p-8 text-lg border-slate-200 shadow-inner bg-slate-50/30 focus:bg-white" 
                    />
                    <div className="flex justify-end pt-6">
@@ -264,7 +263,7 @@ export function SpecialistView() {
     <div className="space-y-8 animate-in fade-in duration-700 text-right" dir="rtl">
       <div className="text-right">
         <h1 className="text-4xl font-black text-primary tracking-tight">محطة عمل الأخصائي</h1>
-        <p className="text-slate-500 font-medium mt-2">إدارة البلاغات الفنية الواردة لقسم <span className="text-secondary font-black bg-secondary/5 px-3 py-1 rounded-full border border-secondary/10">{user?.department}</span></p>
+        <p className="text-slate-500 font-medium mt-2">إدارة البلاغات الفنية لقسم <span className="text-secondary font-black bg-secondary/5 px-3 py-1 rounded-full border border-secondary/10">{user?.department}</span></p>
       </div>
 
       <Card className="banking-card overflow-hidden shadow-2xl border-none">
@@ -273,7 +272,6 @@ export function SpecialistView() {
             <div className="p-4 bg-primary/5 rounded-[22px]"><Clock className="w-8 h-8 text-primary" /></div>
             <div className="text-right">
               <CardTitle className="text-2xl text-primary font-black">المهام والعمليات الواردة</CardTitle>
-              <CardDescription className="text-slate-500 mt-1 font-medium text-lg">مراقبة ومعالجة البلاغات المصعدة من خدمة العملاء</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -285,11 +283,11 @@ export function SpecialistView() {
               <Table className="border-collapse">
                 <TableHeader>
                   <TableRow className="bg-primary border-none">
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px] pr-12">رقم البلاغ</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px]">العميل</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px]">نوع المشكلة</TableHead>
-                    <TableHead className="text-right h-18 font-black text-white uppercase text-[12px]">الحالة</TableHead>
-                    <TableHead className="text-center h-18 font-black text-white uppercase text-[12px] pl-12">الإجراء الفني</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white pr-12">رقم البلاغ</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white">العميل</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white">نوع المشكلة</TableHead>
+                    <TableHead className="text-right h-18 font-black text-white">الحالة</TableHead>
+                    <TableHead className="text-center h-18 font-black text-white pl-12">الإجراء</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -317,7 +315,7 @@ export function SpecialistView() {
                           <Button 
                              size="sm" 
                              onClick={(e) => { e.stopPropagation(); handleClaim(t); }} 
-                             className="banking-button premium-gradient text-white h-11 px-8 font-black text-xs shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+                             className="banking-button premium-gradient text-white h-11 px-8 font-black text-xs"
                           >
                              <div className="flex items-center gap-2">
                                <UserPlus className="w-4 h-4" />
@@ -325,11 +323,7 @@ export function SpecialistView() {
                              </div>
                           </Button>
                         ) : t.assignedToSpecialistId === user?.id ? (
-                          <Button 
-                             variant="outline" 
-                             size="sm" 
-                             className="rounded-full h-11 px-8 border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-xs shadow-sm"
-                          >
+                          <Button variant="outline" size="sm" className="rounded-full h-11 px-8 border-primary/20 hover:bg-primary hover:text-white font-black text-xs">
                              <div className="flex items-center gap-2">
                                <ExternalLink className="w-4 h-4" />
                                <span>فتح ومعالجة</span>
@@ -337,26 +331,12 @@ export function SpecialistView() {
                           </Button>
                         ) : (
                           <div className="flex items-center gap-2 text-slate-400 font-black text-[10px] bg-slate-100 px-4 py-2 rounded-full w-fit mx-auto border border-slate-200/50">
-                             <UserPlus className="w-3.5 h-3.5" />
                              <span>مستلم بواسطة {t.assignedToSpecialistName}</span>
                           </div>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
-                  {tickets?.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-40 bg-white">
-                         <div className="flex flex-col items-center gap-8 text-slate-300">
-                            <div className="p-12 bg-slate-50 rounded-full border border-slate-100 shadow-inner"><Inbox className="w-24 h-24 opacity-20" /></div>
-                            <div className="space-y-2">
-                               <p className="font-black text-3xl text-slate-400">لا توجد مهام حالياً</p>
-                               <p className="text-lg text-slate-300 font-medium">صندوق الوارد فارغ، جميع البلاغات تمت معالجتها</p>
-                            </div>
-                         </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </div>
