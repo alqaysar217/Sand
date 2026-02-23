@@ -52,7 +52,7 @@ export function SpecialistView() {
     );
   }, [db, user?.department]);
 
-  const { data: tickets, isLoading: isTicketsLoading, error: queryError } = useCollection(deptTicketsQuery);
+  const { data: tickets, isLoading: isTicketsLoading } = useCollection(deptTicketsQuery);
 
   const handleClaim = (ticket: any) => {
     if (!db || !user) return;
@@ -319,7 +319,10 @@ export function SpecialistView() {
                              onClick={(e) => { e.stopPropagation(); handleClaim(t); }} 
                              className="banking-button premium-gradient text-white h-11 px-8 font-black text-xs shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
                           >
-                             <UserPlus className="w-4 h-4 ml-2" /> استلام المهمة
+                             <div className="flex items-center gap-2">
+                               <UserPlus className="w-4 h-4" />
+                               <span>استلام المهمة</span>
+                             </div>
                           </Button>
                         ) : t.assignedToSpecialistId === user?.id ? (
                           <Button 
@@ -327,7 +330,10 @@ export function SpecialistView() {
                              size="sm" 
                              className="rounded-full h-11 px-8 border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-xs shadow-sm"
                           >
-                             <ExternalLink className="w-4 h-4 ml-2" /> فتح ومعالجة
+                             <div className="flex items-center gap-2">
+                               <ExternalLink className="w-4 h-4" />
+                               <span>فتح ومعالجة</span>
+                             </div>
                           </Button>
                         ) : (
                           <div className="flex items-center gap-2 text-slate-400 font-black text-[10px] bg-slate-100 px-4 py-2 rounded-full w-fit mx-auto border border-slate-200/50">
