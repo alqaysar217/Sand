@@ -10,9 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Users, AlertTriangle, Clock, FileSpreadsheet, Plus, ShieldCheck, Trash2, CheckCircle2, 
-  Edit2, Save, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, MessageSquare, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff
+  Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
+  Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -289,10 +289,17 @@ export function AdminView() {
                              <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
                              <TableCell className="text-right font-mono font-bold text-primary">{u.username || 'N/A'}</TableCell>
                              <TableCell className="text-right">
-                                <div className="flex items-center gap-2 justify-end">
-                                   <span className="font-mono text-xs">{visiblePasswords[u.id] ? u.password : '••••••••'}</span>
-                                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => togglePasswordVisibility(u.id)}>
-                                      {visiblePasswords[u.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                <div className="flex items-center gap-2 justify-end min-w-[120px]">
+                                   <span className="font-mono text-sm font-bold min-w-[80px] text-right">
+                                      {visiblePasswords[u.id] ? (u.password || 'غير متوفر') : '••••••••'}
+                                   </span>
+                                   <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8 hover:bg-slate-200 rounded-full shrink-0" 
+                                      onClick={() => togglePasswordVisibility(u.id)}
+                                   >
+                                      {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4 text-slate-500" /> : <Eye className="w-4 h-4 text-primary" />}
                                    </Button>
                                 </div>
                              </TableCell>
