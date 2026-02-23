@@ -228,9 +228,9 @@ export function AdminView() {
         <TabsContent value="stats" className="space-y-6 animate-in fade-in duration-500 mt-0">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
-            <StatCard icon={Clock} title="قيد العمل" value={stats.pending} color="text-amber-500" />
-            <StatCard icon={CheckCircle2} title="تم الحل" value={stats.resolved} color="text-green-600" />
-            <StatCard icon={AlertTriangle} title="بلاغات جديدة" value={stats.new} color="text-red-600" />
+            <StatCard icon={Clock} title="قيد العمل" value={stats.pending} valueColor="text-amber-500" />
+            <StatCard icon={CheckCircle2} title="تم الحل" value={stats.resolved} valueColor="text-green-600" />
+            <StatCard icon={AlertTriangle} title="بلاغات جديدة" value={stats.new} valueColor="text-red-600" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -357,7 +357,7 @@ export function AdminView() {
         <TabsContent value="options" className="animate-in fade-in duration-500 mt-0 space-y-8">
           <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
             <Card className="banking-card border-none shadow-xl">
-              <CardHeader className="bg-accent/5 p-6 border-b">
+              <CardHeader className="bg-accent/5 p-6 border-b text-right">
                 <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
                   إدارة تصنيفات النظام <ListTodo className="w-5 h-5 text-accent" />
                 </CardTitle>
@@ -511,8 +511,8 @@ export function AdminView() {
   );
 }
 
-function StatCard({ icon: Icon, title, value, color }: any) {
-  const isBgColor = color.startsWith('bg-');
+function StatCard({ icon: Icon, title, value, color, valueColor }: any) {
+  const isBgColor = color?.startsWith('bg-');
   
   return (
     <div className={cn(
@@ -525,13 +525,13 @@ function StatCard({ icon: Icon, title, value, color }: any) {
             "text-xs font-black mb-1",
             isBgColor ? "text-white/80" : "text-slate-500"
           )}>{title}</p>
-          <h3 className="text-3xl font-black tabular-nums">{value}</h3>
+          <h3 className={cn("text-3xl font-black tabular-nums", valueColor)}>{value}</h3>
         </div>
         <div className={cn(
           "p-4 rounded-2xl flex items-center justify-center",
           isBgColor ? "bg-white/20" : "bg-slate-50"
         )}>
-          <Icon className={cn("w-6 h-6", isBgColor ? "text-white" : color)} />
+          <Icon className={cn("w-6 h-6", isBgColor ? "text-white" : "text-primary")} />
         </div>
       </div>
     </div>
