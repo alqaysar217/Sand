@@ -99,7 +99,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const email = `${username.toLowerCase()}@sanad.bank`;
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (signInErr: any) {
+        // Bootstrap for Developer and GM if they don't exist
+        const isDev = username === 'BIM775258830' && password === 'ha892019';
+        const isGM = username === 'BIM0100' && password === 'BIM0100';
+        
+        if ((isDev || isGM) && (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential')) {
+           userCredential = await createUserWithEmailAndPassword(auth, email, password);
+           await setDoc(doc(db, 'users', userCredential.user.uid), {
+             id: userCredential.user.uid,
+             username: username,
+             name: isDev ? 'مطور النظام' : 'محمد بلخرم',
+             email: email,
+             role: 'Admin',
+             department: 'Operations',
+             allowedDepartments: ['Operations', 'Support', 'Cards', 'Digital', 'App'],
+             password: password,
+             createdAt: new Date().toISOString()
+           });
+        } else {
+          throw signInErr;
+        }
+      }
+
       const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
       
       if (userDoc.exists()) {
