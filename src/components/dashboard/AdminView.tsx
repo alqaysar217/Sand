@@ -164,7 +164,7 @@ export function AdminView() {
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
-      toast({ title: "تم تصفير النظام", description: "تم حذف كافة البلاغات بنجاح." });
+      toast({ title: "تم تصفير النظام", description: "تم حذف كافة البلاغات بنجاح من كافة الأقسام." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "فشل الحذف", description: err.message });
     } finally { setIsDeletingAll(false); }
@@ -213,10 +213,19 @@ export function AdminView() {
                    <Button variant="outline" className="rounded-full font-black border-red-600 text-red-600 hover:bg-red-50"><Eraser className="w-4 h-4 ml-2" /> تصفير البلاغات</Button>
                  </AlertDialogTrigger>
                  <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
-                   <AlertDialogHeader><AlertDialogTitle className="font-black text-right flex items-center gap-2">تنبيه أمني خطير <ShieldAlert className="text-red-600 w-6 h-6" /></AlertDialogTitle></AlertDialogHeader>
-                   <AlertDialogFooter className="flex-row-reverse gap-3">
-                     <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
-                     <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">{isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف الكل"}</AlertDialogAction>
+                   <AlertDialogHeader>
+                    <AlertDialogTitle className="font-black text-right flex items-center gap-2">تنبيه أمني خطير <ShieldAlert className="text-red-600 w-6 h-6" /></AlertDialogTitle>
+                    <AlertDialogDescription className="text-right font-bold text-slate-600 mt-2 leading-relaxed">
+                      أنت على وشك القيام بعملية **تصفير النظام بالكامل**. هذا الإجراء سيقوم بحذف **كافة البلاغات والشكاوى** من جميع الأقسام نهائياً. 
+                      <br/><br/>
+                      <span className="text-red-600">تحذير: لا يمكن التراجع عن هذا الإجراء أو استعادة البيانات بعد الحذف.</span>
+                    </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+                     <AlertDialogCancel className="rounded-full font-black">إلغاء والتراجع</AlertDialogCancel>
+                     <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black h-11 px-8 shadow-lg shadow-red-200">
+                        {isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف كافة البيانات"}
+                     </AlertDialogAction>
                    </AlertDialogFooter>
                  </AlertDialogContent>
                </AlertDialog>
@@ -238,7 +247,7 @@ export function AdminView() {
                 <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value">{stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /><Legend verticalAlign="bottom" align="center" /></PieChart></ResponsiveContainer>
              </ChartWrapper>
              <ChartWrapper title="حجم العمل لكل قسم" icon={BarChart3}>
-                <ResponsiveContainer width="100%" height="100%"><BarChart data={stats.deptData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" fontSize={12} fontWeight="bold" /><YAxis orientation="right" fontSize={12} fontWeight="bold" /><Tooltip /><Bar dataKey="tickets" name="بلاغات" fill="#2A3BFF" radius={[8, 8, 0, 0]} /></BarChart></ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%"><BarChart data={stats.deptData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" fontSize={12} fontWeight="bold" /><YAxis orientation="right" fontSize={12} fontWeight="bold" /><Tooltip /><Bar dataKey="tickets" name="بلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} /></BarChart></ResponsiveContainer>
              </ChartWrapper>
           </div>
         </TabsContent>
