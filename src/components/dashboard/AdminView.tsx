@@ -44,13 +44,10 @@ export function AdminView() {
 
   const isPrimaryAdmin = currentAdmin?.username === 'BIM0100';
 
-  // الاستماع لأحداث القائمة الجانبية لتغيير التبويب النشط
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
       const action = e.detail;
-      // مزامنة الأكشن مع التبويبات الموجودة
       if (['stats', 'users', 'options', 'staff'].includes(action)) {
-        // إذا كان الأكشن 'staff' نوجهه لتبويب 'users'
         setActiveAdminTab(action === 'staff' ? 'users' : action);
       }
     };
@@ -476,7 +473,19 @@ export function AdminView() {
                </DialogTitle>
             </DialogHeader>
             {editingUser && (
-              <form onSubmit={async (e) => { e.preventDefault(); setIsUpdatingUser(true); await updateEmployeeProfile(editingUser.id, editingUser); toast({title: "تم تحديث البيانات"}); setShowEditUserDialog(false); setIsUpdatingUser(false); }} className="p-8 space-y-6">
+              <form onSubmit={async (e) => { 
+                e.preventDefault(); 
+                setIsUpdatingUser(true); 
+                try {
+                  await updateEmployeeProfile(editingUser.id, editingUser); 
+                  toast({title: "تم تحديث البيانات بنجاح"}); 
+                  setShowEditUserDialog(false); 
+                } catch (err: any) {
+                  toast({variant: "destructive", title: "فشل التحديث", description: err.message});
+                } finally {
+                  setIsUpdatingUser(false); 
+                }
+              }} className="p-8 space-y-6">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="col-span-2 space-y-2">
                        <Label className="font-black text-xs">الاسم الكامل</Label>

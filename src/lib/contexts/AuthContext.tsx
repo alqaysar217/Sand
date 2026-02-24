@@ -86,13 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
         
-        // التحقق من صلاحيات المدير العام الأساسي (وصول مطلق)
         if (userData.username === 'BIM0100') {
           setCurrentSessionDept(targetDept);
           return;
         }
 
-        // التحقق من صلاحيات المدراء (وصول للأقسام المسموحة فقط)
         if (userData.role === 'Admin') {
           const isAllowed = userData.allowedDepartments?.includes(targetDept) || targetDept === 'Operations';
           if (!isAllowed) {
@@ -103,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // التحقق للموظفين (قسم واحد فقط)
         if (userData.department !== targetDept) {
           await signOut(auth);
           throw new Error(`عذراً، هويتك المصرفية مرتبطة بقسم (${userData.department}) فقط.`);
@@ -152,33 +149,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateEmployeeProfile = async (uid: string, data: Partial<UserProfile>) => {
     if (!db) return;
     const userRef = doc(db, 'users', uid);
+    const isSelfUpdate = auth.currentUser && uid === auth.currentUser.uid;
+    
+    // تحديث كلمة المرور في نظام الهوية أولاً
+    if (data.password) {
+      try {
+        if (isSelfUpdate && auth.currentUser) {
+          // إذا كان المدير العام يغير كلمة سره بنفسه
+          await updatePassword(auth.currentUser, data.password);
+        } else {
+          // إذا كان المدير يغير كلمة سر موظف آخر
+          const oldDoc = await getDoc(userRef);
+          if (oldDoc.exists()) {
+            const oldData = oldDoc.data();
+            if (data.password !== oldData.password) {
+              const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
+              const secondaryAuth = getAuth(secondaryApp);
+              const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password);
+              await updatePassword(userCred.user, data.password);
+              await signOut(secondaryAuth);
+            }
+          }
+        }
+      } catch (authErr) {
+        // تجاهل أخطاء المصادقة الخلفية إذا كان الحساب محدثاً مسبقاً
+      }
+    }
     
     const snap = await getDoc(userRef);
     if (snap.exists() && snap.data().username === 'BIM0100') {
-      // حماية المدير الأساسي من تغيير الصلاحيات أو القسم
-      const { role, department, username, ...safeData } = data;
+      // حماية المدير الأساسي من تغيير الصلاحيات أو القسم أو اسم المستخدم
+      const { role, department, username, allowedDepartments, ...safeData } = data;
       await updateDoc(userRef, safeData);
       return;
     }
 
-    if (data.password) {
-      try {
-        const oldDoc = await getDoc(userRef);
-        if (oldDoc.exists()) {
-          const oldData = oldDoc.data();
-          if (data.password !== oldData.password) {
-            const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
-            const secondaryAuth = getAuth(secondaryApp);
-            const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password);
-            await updatePassword(userCred.user, data.password);
-            await signOut(secondaryAuth);
-          }
-        }
-      } catch (authErr) {
-        // تجاهل أخطاء المصادقة الخلفية في حال تم تغيير كلمة المرور سابقاً
-      }
-    }
-    
     await updateDoc(userRef, data);
   };
 
