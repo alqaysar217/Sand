@@ -25,6 +25,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * وظيفة مساعدة لتحويل أخطاء Firebase التقنية إلى رسائل عربية مفهومة.
+ */
+function translateAuthError(error: any): string {
+  switch (error.code) {
+    case 'auth/weak-password':
+      return 'كلمة المرور ضعيفة جداً؛ يجب أن تتكون من 6 أحرف أو أرقام على الأقل لضمان أمن الحساب.';
+    case 'auth/requires-recent-login':
+      return 'انتهت صلاحية الجلسة الأمنية؛ يرجى تسجيل الخروج والدخول مرة أخرى لتغيير كلمة المرور.';
+    case 'auth/network-request-failed':
+      return 'فشل الاتصال بخادم الحماية؛ يرجى التحقق من استقرار الإنترنت لديك.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'بيانات الدخول (BIM ID أو كلمة المرور) غير صحيحة.';
+    case 'auth/email-already-in-use':
+      return 'اسم المستخدم (BIM ID) هذا مرتبط بحساب نشط بالفعل.';
+    default:
+      return error.message || 'حدث خطأ غير متوقع في نظام المصادقة.';
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: firebaseUser, isUserLoading } = useUser();
   const db = useFirestore();
@@ -108,13 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentSessionDept(targetDept);
       }
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
-      }
-      if (err.code === 'auth/network-request-failed') {
-        throw new Error('فشل الاتصال بخادم الحماية، يرجى التحقق من الشبكة.');
-      }
-      throw err;
+      throw new Error(translateAuthError(err));
     }
   };
 
@@ -147,8 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
     } catch (err: any) {
-      await deleteApp(secondaryApp);
-      throw err;
+      if (secondaryApp) {
+        try { await deleteApp(secondaryApp); } catch (e) {}
+      }
+      throw new Error(translateAuthError(err));
     }
   };
 
@@ -171,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await reauthenticateWithCredential(auth.currentUser, credential);
             await updatePassword(auth.currentUser, data.password);
           } else {
-            throw e;
+            throw new Error(translateAuthError(e));
           }
         }
       } else {
@@ -185,8 +203,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await signOut(secondaryAuth);
           await deleteApp(secondaryApp);
         } catch (authErr: any) {
-          await deleteApp(secondaryApp);
-          throw new Error(`فشل تحديث كلمة المرور في نظام الحماية: ${authErr.message}`);
+          if (secondaryApp) {
+            try { await deleteApp(secondaryApp); } catch (e) {}
+          }
+          throw new Error(`فشل تحديث كلمة المرور في نظام الحماية: ${translateAuthError(authErr)}`);
         }
       }
     }
@@ -226,6 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
          await reauthenticateWithCredential(auth.currentUser, credential);
          await updatePassword(auth.currentUser, newPassword);
          await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
+      } else {
+         throw new Error(translateAuthError(e));
       }
     }
   };
