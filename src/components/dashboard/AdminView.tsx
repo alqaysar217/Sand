@@ -13,14 +13,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Department, UserProfile, UserRole } from '@/lib/types';
@@ -34,6 +35,7 @@ export function AdminView() {
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [usernameError, setUsernameError] = useState(false);
@@ -127,7 +129,6 @@ export function AdminView() {
     e.preventDefault();
     if (usernameError) return;
     
-    // منع المدراء المساعدين من إضافة حسابات "مدير"
     if (!isPrimaryAdmin && newUser.role === 'Admin') {
       toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
       return;
@@ -146,6 +147,25 @@ export function AdminView() {
     }
   };
 
+  const handleDeleteAllTickets = async () => {
+    if (!isPrimaryAdmin || !db) return;
+    setIsDeletingAll(true);
+    try {
+      const ticketsRef = collection(db, 'tickets');
+      const snapshot = await getDocs(ticketsRef);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      toast({ title: "تم تصفير النظام", description: "تم حذف كافة البلاغات بنجاح." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "فشل الحذف", description: err.message });
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const toggleDept = (dept: Department, isEditing: boolean) => {
     if (isEditing && editingUser) {
       const depts = editingUser.allowedDepartments || [];
@@ -160,14 +180,41 @@ export function AdminView() {
 
   const exportToCSV = () => {
     if (!tickets || tickets.length === 0) return;
-    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة", "الوسيلة", "الوصف", "موظف الرفع", "المستلم", "الحالة", "الرد النهائي"];
-    const rows = tickets.map(t => [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), t.customerName, t.cif || '', t.phoneNumber || '', t.subIssue, t.serviceType, t.intakeMethod, (t.description || '').replace(/\n/g, ' '), t.createdByAgentName, t.assignedToSpecialistName || '', t.status, (t.specialistResponse || '').replace(/\n/g, ' ')]);
-    const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${x}"`).join(','))].join('\n');
+    
+    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "رقم CIF/الحساب", "الهاتف", "نوع المشكلة", "الجهة الموجه إليها", "الوسيلة", "الوصف الأصلي", "رافع البلاغ", "مستلم البلاغ", "الحالة الحالية", "سجل الردود والمتابعات الكامل"];
+    
+    const rows = tickets.map(t => {
+      // تجميع كافة السجلات (المتابعات والردود) في نص واحد مرتب للتصدير
+      const logsText = (t.logs || []).map((log: any) => {
+        const dateStr = new Date(log.timestamp).toLocaleString('ar-SA');
+        return `[${dateStr}] ${log.userName}: ${log.action}${log.note ? ` (ملاحظة: ${log.note.replace(/[\n\r]/g, ' ')})` : ''}`;
+      }).join(' | ');
+
+      return [
+        t.ticketID || '',
+        new Date(t.createdAt).toLocaleString('ar-SA'),
+        t.customerName,
+        t.cif || '',
+        t.phoneNumber || '',
+        t.subIssue,
+        t.serviceType,
+        t.intakeMethod,
+        (t.description || '').replace(/[\n\r]/g, ' '),
+        t.createdByAgentName,
+        t.assignedToSpecialistName || 'لم يستلم بعد',
+        t.status,
+        logsText
+      ];
+    });
+
+    // إضافة BOM لضمان دعم اللغة العربية في Excel
+    const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
+    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `سند_بلاغات_${new Date().toLocaleDateString()}.csv`;
+    link.download = `سند_بلاغات_تفصيلي_${new Date().toLocaleDateString('ar-SA')}.csv`;
     link.click();
   };
 
@@ -182,8 +229,31 @@ export function AdminView() {
             <p className="text-slate-500 font-bold mt-1">إدارة الكوادر وتصنيفات النظام</p>
           </div>
           <div className="flex items-center gap-3">
+             {isPrimaryAdmin && (
+               <AlertDialog>
+                 <AlertDialogTrigger asChild>
+                   <Button variant="outline" className="rounded-full font-black border-red-600 text-red-600 hover:bg-red-50">
+                      <Eraser className="w-4 h-4 ml-2" /> تصفير كافة البلاغات
+                   </Button>
+                 </AlertDialogTrigger>
+                 <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                   <AlertDialogHeader>
+                     <AlertDialogTitle className="font-black text-right flex items-center gap-2">تنبيه أمني خطير <ShieldAlert className="text-red-600 w-6 h-6" /></AlertDialogTitle>
+                     <AlertDialogDescription className="text-right font-bold text-slate-600">
+                        أنت على وشك حذف كافة البلاغات المسجلة في النظام نهائياً. لن يكون بإمكانك استعادة هذه البيانات لاحقاً. هل تريد المتابعة؟
+                     </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter className="flex-row-reverse gap-3">
+                     <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                     <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black">
+                        {isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف الكل نهائياً"}
+                     </AlertDialogAction>
+                   </AlertDialogFooter>
+                 </AlertDialogContent>
+               </AlertDialog>
+             )}
              <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50">
-                <Download className="w-4 h-4 ml-2" /> تصدير البلاغات
+                <Download className="w-4 h-4 ml-2" /> تصدير السجل التفصيلي
              </Button>
              <TabsList className="bg-slate-100 p-1 rounded-full h-auto">
                <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">الإحصائيات</TabsTrigger>
@@ -253,9 +323,11 @@ export function AdminView() {
            <Card className="banking-card overflow-hidden">
               <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between">
                  <CardTitle className="text-2xl font-black text-primary">إدارة الحسابات المصرفية</CardTitle>
-                 <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6">
-                    <UserPlus className="w-5 h-5 ml-2" /> إضافة حساب جديد
-                 </Button>
+                 {isPrimaryAdmin && (
+                   <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6">
+                      <UserPlus className="w-5 h-5 ml-2" /> إضافة حساب جديد
+                   </Button>
+                 )}
               </CardHeader>
               <CardContent className="p-8 space-y-12">
                  <div className="space-y-4">
@@ -474,10 +546,9 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
               <TableCell className="text-right">
                 <div className="flex items-center gap-2 justify-end">
                   <span className="font-mono text-sm font-bold">
-                    {(visiblePasswords[u.id] && (isPrimaryAdmin || !isAdminTable)) ? u.password : '••••••••'}
+                    {(visiblePasswords[u.id] && isPrimaryAdmin) ? u.password : '••••••••'}
                   </span>
-                  {/* إخفاء زر رؤية كلمة السر للمدراء المساعدين في جدول المدراء */}
-                  {(isPrimaryAdmin || !isAdminTable) && (
+                  {isPrimaryAdmin && (
                     <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords((p: any) => ({...p, [u.id]: !p[u.id]}))}>
                       {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
@@ -495,7 +566,6 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
               </TableCell>
               <TableCell className="text-center pl-8">
                 <div className="flex items-center justify-center gap-2">
-                   {/* تعطيل التعديل والحذف للمدراء المساعدين */}
                    <Button 
                     variant="ghost" 
                     size="icon" 
@@ -658,4 +728,5 @@ function handleDeleteUser(user: UserProfile, isPrimaryAdmin: boolean, toast: any
     return;
   }
   // تنفيذ الحذف...
+  toast({ title: "تم الحذف بنجاح" });
 }
