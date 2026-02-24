@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, orderBy, doc, arrayUnion, deleteField } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 export function AgentView() {
   const { user } = useAuth();
@@ -130,9 +131,11 @@ export function AgentView() {
       createdByAgentName: user.name,
       attachments: attachments,
       logs: [{ 
-        action: `تم رفع البلاغ وتوجيهه إلى ${formData.serviceType} بواسطة: ${user.name}`, 
+        action: `تم رفع البلاغ وتوجيهه إلى ${formData.serviceType}`, 
         timestamp: new Date().toISOString(), 
-        userName: user.name 
+        userName: user.name,
+        note: formData.description,
+        type: 'agent'
       }]
     };
 
@@ -168,7 +171,8 @@ export function AgentView() {
         action: `إعادة فتح البلاغ للمتابعة وتوجيهه إلى: ${followUpData.serviceType || selectedTicket.serviceType}`,
         timestamp: new Date().toISOString(),
         userName: user.name,
-        note: followUpData.description
+        note: followUpData.description,
+        type: 'agent'
       })
     };
 
@@ -479,41 +483,55 @@ export function AgentView() {
                    </div>
                 </DialogHeader>
                 
-                <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1 min-h-0">
-                   {isFollowUpMode ? (
+                <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1 min-h-0 bg-slate-50/30">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card className="banking-card p-6 border-none shadow-sm space-y-4 bg-white">
+                         <h4 className="font-black text-primary flex items-center gap-2 justify-end">
+                            بيانات العميل <User className="w-4 h-4" />
+                         </h4>
+                         <div className="grid grid-cols-2 gap-4 text-right">
+                            <div>
+                               <span className="text-[10px] text-slate-400 font-black block">الاسم الكامل</span>
+                               <p className="font-bold">{selectedTicket.customerName}</p>
+                            </div>
+                            <div>
+                               <span className="text-[10px] text-slate-400 font-black block">رقم CIF</span>
+                               <p className="font-mono font-bold">{selectedTicket.cif}</p>
+                            </div>
+                         </div>
+                      </Card>
+
+                      <Card className="banking-card p-6 border-none shadow-sm space-y-4 bg-white">
+                         <h4 className="font-black text-primary flex items-center gap-2 justify-end">
+                            تفاصيل التوجيه <Share2 className="w-4 h-4" />
+                         </h4>
+                         <div className="grid grid-cols-2 gap-4 text-right">
+                            <div>
+                               <span className="text-[10px] text-slate-400 font-black block">الجهة المعنية</span>
+                               <p className="font-bold text-accent">{selectedTicket.serviceType}</p>
+                            </div>
+                            <div>
+                               <span className="text-[10px] text-slate-400 font-black block">نوع المشكلة</span>
+                               <p className="font-bold">{selectedTicket.subIssue}</p>
+                            </div>
+                         </div>
+                      </Card>
+                   </div>
+
+                   {isFollowUpMode && (
                       <Card className="banking-card border-accent bg-accent/5 p-8 animate-in slide-in-from-top-4 duration-500">
                          <form onSubmit={handleFollowUpSubmit} className="space-y-6">
                             <div className="flex items-center gap-3 mb-4 flex-row-reverse">
                                <RefreshCcw className="w-6 h-6 text-accent" />
                                <h3 className="text-xl font-black text-accent">تحديث البلاغ للمتابعة</h3>
                             </div>
-                            
-                            <div className="space-y-3 text-right">
-                               <Label className="font-black text-sm mr-1">وصف المشكلة الجديدة أو سبب المتابعة</Label>
-                               <Textarea 
-                                 required 
-                                 value={followUpData.description} 
-                                 onChange={e => setFollowUpData({...followUpData, description: e.target.value})}
-                                 className="banking-input min-h-[120px] text-right border-accent/20 bg-white" 
-                                 placeholder="اكتب هنا التحديثات الجديدة للعميل..." 
-                               />
-                            </div>
-
-                            <div className="space-y-3 text-right">
-                               <Label className="font-black text-sm mr-1">توجيه المتابعة إلى قسم (اختياري)</Label>
-                               <Select 
-                                 value={followUpData.serviceType} 
-                                 onValueChange={(v) => setFollowUpData({...followUpData, serviceType: v})}
-                               >
-                                 <SelectTrigger className="banking-input h-14 text-right border-accent/20 bg-white"><SelectValue /></SelectTrigger>
-                                 <SelectContent dir="rtl">
-                                    <SelectItem value="إدارة البطائق">قسم البطائق (Cards)</SelectItem>
-                                    <SelectItem value="مشاكل التطبيق">التطبيق الإلكتروني (Mobile App)</SelectItem>
-                                    <SelectItem value="خدمة العملاء">خدمة العملاء (Digital CS)</SelectItem>
-                                 </SelectContent>
-                               </Select>
-                            </div>
-
+                            <Textarea 
+                               required 
+                               value={followUpData.description} 
+                               onChange={e => setFollowUpData({...followUpData, description: e.target.value})}
+                               className="banking-input min-h-[120px] text-right border-accent/20 bg-white" 
+                               placeholder="اكتب هنا التحديثات الجديدة للعميل..." 
+                            />
                             <div className="flex justify-end gap-3 pt-4">
                                <Button type="button" variant="ghost" onClick={() => setIsFollowUpMode(false)} className="rounded-full font-black">إلغاء</Button>
                                <Button type="submit" disabled={isSubmitting} className="banking-button bg-accent hover:bg-accent/90 text-white px-10 rounded-full font-black shadow-xl">
@@ -522,64 +540,55 @@ export function AgentView() {
                             </div>
                          </form>
                       </Card>
-                   ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="banking-card p-6 border-none shadow-md space-y-4">
-                           <h4 className="font-black text-primary flex items-center gap-2 justify-end">
-                              بيانات العميل <User className="w-4 h-4" />
-                           </h4>
-                           <div className="grid grid-cols-2 gap-4 text-right">
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">الاسم الكامل</span>
-                                 <p className="font-bold">{selectedTicket.customerName}</p>
-                              </div>
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">رقم CIF</span>
-                                 <p className="font-mono font-bold">{selectedTicket.cif}</p>
-                              </div>
-                              <div className="col-span-2">
-                                 <span className="text-[10px] text-slate-400 font-black block">رقم الهاتف</span>
-                                 <p className="font-bold">{selectedTicket.phoneNumber}</p>
-                              </div>
-                           </div>
-                        </Card>
-
-                        <Card className="banking-card p-6 border-none shadow-md space-y-4">
-                           <h4 className="font-black text-primary flex items-center gap-2 justify-end">
-                              تفاصيل التوجيه <Share2 className="w-4 h-4" />
-                           </h4>
-                           <div className="grid grid-cols-2 gap-4 text-right">
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">الجهة المعنية</span>
-                                 <p className="font-bold text-accent">{selectedTicket.serviceType}</p>
-                              </div>
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">وسيلة الاستلام</span>
-                                 <p className="font-bold">{selectedTicket.intakeMethod}</p>
-                              </div>
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">نوع المشكلة</span>
-                                 <p className="font-bold">{selectedTicket.subIssue}</p>
-                              </div>
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">موظف الرفع</span>
-                                 <p className="font-bold">{selectedTicket.createdByAgentName}</p>
-                              </div>
-                           </div>
-                        </Card>
-                     </div>
                    )}
 
-                   <div className="space-y-4">
-                      <h4 className="font-black text-slate-800 flex items-center gap-2 justify-end">
-                         وصف المشكلة الفنية <FileText className="w-4 h-4" />
+                   <div className="space-y-6">
+                      <h4 className="font-black text-slate-800 flex items-center gap-2 justify-end px-2">
+                         <MessageCircle className="w-5 h-5 text-primary" /> تسلسل أحداث البلاغ والمتابعة
                       </h4>
-                      <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 text-right">
-                         <p className="leading-relaxed font-medium whitespace-pre-wrap">{selectedTicket.description}</p>
+                      
+                      <div className="flex flex-col gap-6">
+                         {selectedTicket.logs?.map((log: any, idx: number) => {
+                            const isAgent = log.type === 'agent' || log.action.includes('رفع') || log.action.includes('متابعة');
+                            const isSpecialist = !isAgent;
+                            
+                            // إخفاء الرد الفني إذا لم يكن المستخدم هو من رفع البلاغ
+                            const canSeeNote = selectedTicket.createdByAgentId === user?.id || user?.role === 'Admin' || user?.role === 'Specialist';
+                            
+                            return (
+                               <div key={idx} className={cn(
+                                 "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
+                                 isAgent ? "self-end items-end" : "self-start items-start"
+                               )}>
+                                  <div className={cn(
+                                    "p-4 rounded-[24px] shadow-sm relative",
+                                    isAgent ? "bg-primary text-white rounded-tr-none" : "bg-white border text-slate-800 rounded-tl-none"
+                                  )}>
+                                     <div className="flex items-center gap-2 mb-2 flex-row-reverse opacity-80">
+                                        {isAgent ? <User className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3 text-green-600" />}
+                                        <span className="text-[10px] font-black">{log.userName}</span>
+                                        <span className="text-[9px]">• {new Date(log.timestamp).toLocaleString('ar-SA')}</span>
+                                     </div>
+                                     <p className="text-xs font-black mb-2 opacity-90">{log.action}</p>
+                                     {log.note && canSeeNote && (
+                                       <div className={cn(
+                                         "p-3 rounded-xl text-sm leading-relaxed whitespace-pre-wrap",
+                                         isAgent ? "bg-white/10" : "bg-slate-50 border border-dashed"
+                                       )}>
+                                          {log.note}
+                                       </div>
+                                     )}
+                                     {!canSeeNote && log.note && (
+                                       <p className="text-[10px] italic opacity-50">تم حجب تفاصيل الرد الفني للخصوصية</p>
+                                     )}
+                                  </div>
+                               </div>
+                            );
+                         })}
                       </div>
 
                       {selectedTicket.attachments?.length > 0 && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 pt-6 border-t">
                            <h5 className="text-[10px] font-black text-slate-400 flex items-center gap-1 justify-end uppercase tracking-widest">المرفقات الفنية</h5>
                            <div className="grid grid-cols-3 gap-4">
                               {selectedTicket.attachments.map((at: any, i: number) => (
@@ -590,67 +599,11 @@ export function AgentView() {
                                      className="w-full aspect-video object-cover rounded-xl cursor-pointer" 
                                      onClick={() => window.open(at.url)} 
                                    />
-                                   <div className="absolute inset-0 bg-primary/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
-                                      <ImageIcon className="text-white w-6 h-6" />
-                                   </div>
                                 </div>
                               ))}
                            </div>
                         </div>
                       )}
-                   </div>
-
-                   {selectedTicket.assignedToSpecialistName && (
-                     <div className="space-y-4 pt-4 border-t border-slate-100">
-                        <h4 className="font-black text-green-600 flex items-center gap-2 justify-end">
-                           المعالجة والرد الفني <UserCheck className="w-4 h-4" />
-                        </h4>
-                        <div className="bg-green-50/50 p-6 rounded-[24px] border border-green-100 space-y-4">
-                           <div className="flex justify-between items-center flex-row-reverse">
-                              <div>
-                                 <span className="text-[10px] text-slate-400 font-black block">الأخصائي المستلم</span>
-                                 <p className="font-black text-slate-800">{selectedTicket.assignedToSpecialistName || 'لم يتم التحديد'}</p>
-                              </div>
-                              {selectedTicket.resolvedAt && (
-                                <Badge className="bg-green-600">تم الحل في: {new Date(selectedTicket.resolvedAt).toLocaleDateString('ar-SA')}</Badge>
-                              )}
-                           </div>
-                           
-                           <div className="pt-4 border-t border-green-100">
-                              <span className="text-[10px] text-slate-400 font-black block mb-2 uppercase flex items-center gap-1 justify-end">الرد والحل التقني <MessageCircle className="w-3 h-3" /></span>
-                              {selectedTicket.createdByAgentId === user?.id ? (
-                                <p className="font-bold text-slate-700 leading-relaxed italic">
-                                   {selectedTicket.specialistResponse || 'جاري كتابة الرد الفني...'}
-                                </p>
-                              ) : (
-                                <div className="flex items-center gap-2 justify-end text-slate-400 bg-white/50 p-3 rounded-xl border border-dashed">
-                                  <p className="text-xs font-bold">تمت المعالجة من قبل القسم المختص (الرد التفصيلي متاح لرافع البلاغ فقط)</p>
-                                  <Info className="w-4 h-4" />
-                                </div>
-                              )}
-                           </div>
-                        </div>
-                     </div>
-                   )}
-
-                   <div className="space-y-4 pt-4 border-t border-slate-100 pb-8">
-                      <h4 className="font-black text-slate-400 flex items-center gap-2 justify-end">
-                         سجل تتبع العمليات <Clock className="w-4 h-4" />
-                      </h4>
-                      <div className="space-y-4">
-                         {selectedTicket.logs?.map((log: any, idx: number) => (
-                            <div key={idx} className="flex gap-4 flex-row-reverse items-start">
-                               <div className="w-2 h-2 mt-2 rounded-full bg-slate-200 shrink-0" />
-                               <div className="flex-1 text-right">
-                                  <p className="text-sm font-bold text-slate-700">{log.action}</p>
-                                  <p className="text-[10px] text-slate-400 mt-1">بواسطة: {log.userName} | {new Date(log.timestamp).toLocaleString('ar-SA')}</p>
-                                  {log.note && selectedTicket.createdByAgentId === user?.id && (
-                                    <p className="text-xs bg-white border p-3 rounded-xl mt-2 text-slate-500 font-medium">ملاحظة: {log.note}</p>
-                                  )}
-                               </div>
-                            </div>
-                         ))}
-                      </div>
                    </div>
                 </div>
 
