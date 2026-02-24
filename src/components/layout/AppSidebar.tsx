@@ -177,6 +177,7 @@ export function AppSidebar() {
         <div className="flex flex-col gap-1 items-center">
            <ShieldCheck className="w-4 h-4 text-primary/30" />
            <span>سند المصرفي v2.5</span>
+           <span>تم التطوير من قبل م/محمود حساني</span>
         </div>
       </SidebarFooter>
     </Sidebar>
