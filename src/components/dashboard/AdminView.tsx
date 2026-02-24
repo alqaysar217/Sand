@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Award, Download
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc } from 'firebase/firestore';
@@ -29,11 +29,10 @@ const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'
 export function AdminView() {
   const db = useFirestore();
   const { toast } = useToast();
-  const { createEmployeeAccount, updateAdminPassword, checkUsernameExists, updateEmployeeProfile } = useAuth();
+  const { createEmployeeAccount, updateAdminPassword, updateEmployeeProfile } = useAuth();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
@@ -146,81 +145,33 @@ export function AdminView() {
       return;
     }
 
-    // رؤوس الجدول باللغة العربية
-    const headers = [
-      "رقم البلاغ",
-      "تاريخ وتوقيت البلاغ",
-      "اسم العميل",
-      "رقم CIF / الحساب",
-      "رقم هاتف العميل",
-      "نوع المشكلة الفنية",
-      "الجهة الموجه إليها",
-      "وسيلة استلام الطلب",
-      "وصف المشكلة التفصيلي",
-      "موظف الرفع (Agent)",
-      "الأخصائي المستلم (Specialist)",
-      "حالة البلاغ الحالية",
-      "الرد الفني النهائي / الملاحظات"
-    ];
+    const headers = ["رقم البلاغ", "تاريخ وتوقيت البلاغ", "اسم العميل", "رقم CIF / الحساب", "رقم هاتف العميل", "نوع المشكلة الفنية", "الجهة الموجه إليها", "وسيلة استلام الطلب", "وصف المشكلة التفصيلي", "موظف الرفع (Agent)", "الأخصائي المستلم (Specialist)", "حالة البلاغ الحالية", "الرد الفني النهائي / الملاحظات"];
 
-    // معالجة البيانات لضمان التنسيق داخل Excel
     const rows = tickets.map(t => {
-      // تنظيف النصوص من الفواصل والأسطر الجديدة التي تكسر تنسيق CSV
-      const clean = (text: string) => {
-        if (!text) return "";
-        return text.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/"/g, '""').trim();
-      };
-
-      const statusMap: Record<string, string> = {
-        'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل بنجاح', 
-        'Escalated': 'محال للقسم المختص', 'Rejected': 'مرفوض'
-      };
-
-      return [
-        t.ticketID || '',
-        new Date(t.createdAt).toLocaleString('ar-SA'),
-        clean(t.customerName),
-        t.cif || '',
-        t.phoneNumber || '',
-        clean(t.subIssue),
-        clean(t.serviceType),
-        clean(t.intakeMethod),
-        clean(t.description),
-        clean(t.createdByAgentName),
-        clean(t.assignedToSpecialistName || 'لم يتم الاستلام بعد'),
-        statusMap[t.status] || t.status,
-        clean(t.specialistResponse || t.rejectionReason || 'لا يوجد رد بعد')
-      ];
+      const clean = (text: string) => text ? text.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/"/g, '""').trim() : "";
+      const statusMap: Record<string, string> = { 'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل بنجاح', 'Escalated': 'محال للقسم المختص', 'Rejected': 'مرفوض' };
+      return [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), clean(t.customerName), t.cif || '', t.phoneNumber || '', clean(t.subIssue), clean(t.serviceType), clean(t.intakeMethod), clean(t.description), clean(t.createdByAgentName), clean(t.assignedToSpecialistName || 'لم يتم الاستلام بعد'), statusMap[t.status] || t.status, clean(t.specialistResponse || t.rejectionReason || 'لا يوجد رد بعد')];
     });
 
-    // تجميع المحتوى مع استخدام علامات التنصيص لكل خلية لضمان التنسيق
-    const csvContent = [
-      headers.map(h => `"${h}"`).join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    // إضافة UTF-8 BOM لضمان فتح الملف باللغة العربية بشكل صحيح في Excel
+    const csvContent = [headers.map(h => `"${h}"`).join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
     const BOM = "\ufeff";
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", `تقرير_بلاغات_سند_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast({ title: "تم التصدير بنجاح", description: "تم تحميل تقرير البلاغات المنسق بنجاح." });
+    toast({ title: "تم التصدير بنجاح" });
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (usernameError) return;
     setIsCreatingUser(true);
     try {
       await createEmployeeAccount(newUser);
-      toast({ title: "تم إنشاء الحساب بنجاح", description: `الموظف ${newUser.name} (BIM ID: ${newUser.username}) جاهز للعمل.` });
+      toast({ title: "تم إنشاء الحساب بنجاح" });
       setShowAddUserDialog(false);
       setNewUser({ name: '', username: '', dept: 'Cards', password: '' });
     } catch (err: any) {
@@ -237,9 +188,10 @@ export function AdminView() {
     try {
       await updateEmployeeProfile(editingUser.id, {
         name: editingUser.name,
-        department: editingUser.department
+        department: editingUser.department,
+        password: editingUser.password // تحديث كلمة المرور في قاعدة البيانات
       });
-      toast({ title: "تم التحديث بنجاح", description: `تم تحديث بيانات الموظف ${editingUser.name}` });
+      toast({ title: "تم التحديث بنجاح" });
       setShowEditUserDialog(false);
       setEditingUser(null);
     } catch (err: any) {
@@ -253,30 +205,24 @@ export function AdminView() {
     if (!db) return;
     if (confirm('هل أنت متأكد من رغبتك في حذف هذا الحساب؟')) {
       deleteDocumentNonBlocking(doc(db, 'users', uid));
-      toast({ title: "تم الحذف", description: "تم حذف حساب الموظف من النظام." });
+      toast({ title: "تم الحذف" });
     }
   };
 
   const handleChangeAdminPass = async () => {
-    if (newPass.length < 6) {
-      toast({ variant: "destructive", title: "تنبيه", description: "كلمة السر يجب أن تكون 6 خانات على الأقل" });
-      return;
-    }
+    if (newPass.length < 6) return;
     try {
       await updateAdminPassword(newPass);
-      toast({ title: "تم تحديث كلمة السر", description: "يرجى استخدام كلمة السر الجديدة في المرة القادمة." });
+      toast({ title: "تم تحديث كلمة السر" });
       setShowChangePassDialog(false);
       setNewPass('');
     } catch (err) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث كلمة السر." });
+      toast({ variant: "destructive", title: "خطأ" });
     }
   };
 
   const togglePasswordVisibility = (userId: string) => {
-    setVisiblePasswords(prev => ({
-      ...prev,
-      [userId]: !prev[userId]
-    }));
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
   const handleAddConfigItem = (field: string) => {
@@ -284,25 +230,18 @@ export function AdminView() {
     if (!val || !db || !configRef) return;
     updateDocumentNonBlocking(configRef, { [field]: arrayUnion(val) });
     setNewItemValues({ ...newItemValues, [field]: '' });
-    toast({ title: "تمت الإضافة", description: "تم تحديث قائمة الخيارات بنجاح" });
   };
 
   const handleRemoveConfigItem = (field: string, val: string) => {
     if (!db || !configRef) return;
     updateDocumentNonBlocking(configRef, { [field]: arrayRemove(val) });
-    toast({ title: "تم الحذف", description: "تم إزالة الخيار من القائمة" });
   };
 
   const handleEditConfigItem = async (field: string, oldVal: string, newVal: string) => {
     if (!db || !configRef || !newVal.trim() || oldVal === newVal) return;
     const currentList = config?.[field] || [];
     const newList = currentList.map((item: string) => item === oldVal ? newVal : item);
-    try {
-      await updateDoc(configRef, { [field]: newList });
-      toast({ title: "تم التحديث", description: "تم تعديل الخيار بنجاح" });
-    } catch (err) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل تحديث الخيار" });
-    }
+    await updateDoc(configRef, { [field]: newList });
   };
 
   return (
@@ -332,7 +271,6 @@ export function AdminView() {
         </div>
 
         <TabsContent value="stats" className="space-y-8 animate-in fade-in duration-500 mt-0">
-          {/* ملخص الأرقام */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
             <StatCard icon={Clock} title="قيد المعالجة" value={stats.pending} valueColor="text-amber-500" />
@@ -340,7 +278,6 @@ export function AdminView() {
             <StatCard icon={AlertTriangle} title="بلاغات جديدة" value={stats.new} valueColor="text-red-600" />
           </div>
 
-          {/* توزيع الحالات وحجم العمل */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <Card className="banking-card border-none shadow-xl overflow-hidden">
                 <CardHeader className="text-right border-b bg-slate-50/50 p-6">
@@ -385,15 +322,12 @@ export function AdminView() {
              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3 justify-end">
                 <TrendingUp className="w-6 h-6 text-green-600" /> تقييم أداء الكوادر المصرفية
              </h2>
-             
              <div className="space-y-8">
-                {/* أداء موظفي الكول سنتر */}
                 <Card className="banking-card border-none shadow-xl overflow-hidden">
                    <CardHeader className="text-right border-b bg-primary/5 p-6">
                       <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
                          موظفي الكول سنتر (إنتاجية الرفع) <Headset className="w-5 h-5 text-primary" />
                       </CardTitle>
-                      <CardDescription className="text-right font-bold">إجمالي البلاغات المرفوعة بواسطة كل موظف</CardDescription>
                    </CardHeader>
                    <CardContent className="p-6 h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -407,8 +341,6 @@ export function AdminView() {
                       </ResponsiveContainer>
                    </CardContent>
                 </Card>
-
-                {/* أداء الأقسام الفنية بالتفصيل */}
                 <div className="grid grid-cols-1 gap-8">
                    <PerformanceSection title="أداء أخصائيي قسم البطائق (Cards)" icon={CreditCard} data={stats.cardsSpec} color="#1414B8" />
                    <PerformanceSection title="أداء أخصائيي خدمة العملاء (Digital)" icon={MonitorSmartphone} data={stats.digitalSpec} color="#10B981" />
@@ -524,11 +456,7 @@ export function AdminView() {
                   </div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">اسم المستخدم (BIM ID)</Label>
-                     <div className="relative">
-                        <Input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className={cn("banking-input h-12 font-mono text-right", usernameError ? "border-red-500" : "border-slate-200")} placeholder="BIM0101" />
-                        {isCheckingUsername && <Loader2 className="absolute left-3 top-3.5 w-5 h-5 animate-spin text-primary" />}
-                     </div>
-                     {usernameError && <p className="text-[10px] text-red-500 font-bold mr-1">{usernameError}</p>}
+                     <Input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="banking-input h-12 font-mono text-right" placeholder="BIM0101" />
                   </div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">تعيين القسم</Label>
@@ -549,7 +477,7 @@ export function AdminView() {
                </div>
                <DialogFooter className="flex-row-reverse gap-3 pt-6">
                   <Button type="button" variant="ghost" onClick={() => setShowAddUserDialog(false)} className="rounded-full font-black px-8 h-12">إلغاء</Button>
-                  <Button type="submit" disabled={isCreatingUser || !!usernameError} className="banking-button premium-gradient text-white h-12 px-10 rounded-full font-black shadow-lg">
+                  <Button type="submit" disabled={isCreatingUser} className="banking-button premium-gradient text-white h-12 px-10 rounded-full font-black shadow-lg">
                      {isCreatingUser ? <Loader2 className="animate-spin" /> : "إنشاء الحساب وتفعيله"}
                   </Button>
                </DialogFooter>
@@ -561,7 +489,7 @@ export function AdminView() {
          <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-blue-50 border-b">
                <DialogTitle className="text-2xl font-black text-blue-700 flex items-center gap-2 justify-end">
-                  <Edit2 className="w-6 h-6" /> تعديل بيانات الموظف
+                  <Edit2 className="w-6 h-6" /> تعديل بيانات الموظف والتحكم بالحساب
                </DialogTitle>
             </DialogHeader>
             {editingUser && (
@@ -583,11 +511,22 @@ export function AdminView() {
                           </SelectContent>
                        </Select>
                     </div>
+                    <div className="space-y-2">
+                       <Label className="font-black text-xs mr-1">تعيين كلمة مرور جديدة (اختياري)</Label>
+                       <Input 
+                        type="text" 
+                        value={editingUser.password || ''} 
+                        onChange={e => setEditingUser({...editingUser, password: e.target.value})} 
+                        className="banking-input h-12 text-right font-mono" 
+                        placeholder="اتركه كما هو لعدم التغيير" 
+                       />
+                       <p className="text-[10px] text-slate-400 font-bold mr-1">سيتم تحديث كلمة المرور في قاعدة البيانات ليتمكن الموظف من الدخول بها</p>
+                    </div>
                  </div>
                  <DialogFooter className="flex-row-reverse gap-3 pt-6">
                     <Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black px-8 h-12">إلغاء</Button>
                     <Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 hover:bg-blue-700 text-white h-12 px-10 rounded-full font-black shadow-lg">
-                       {isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}
+                       {isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ كافة التغييرات"}
                     </Button>
                  </DialogFooter>
               </form>
@@ -611,7 +550,6 @@ export function AdminView() {
                   <Button onClick={handleChangeAdminPass} className="banking-button premium-gradient text-white h-14 rounded-full font-black shadow-xl">
                      تحديث كلمة السر الآن
                   </Button>
-                  <Button variant="ghost" onClick={() => setShowChangePassDialog(false)} className="rounded-full font-black">إلغاء</Button>
                </div>
             </div>
          </DialogContent>
@@ -627,7 +565,6 @@ function PerformanceSection({ title, icon: Icon, data, color }: any) {
           <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
              {title} <Icon className="w-5 h-5" style={{ color }} />
           </CardTitle>
-          <CardDescription className="text-right font-bold">تحليل الإجراءات المتخذة: (حل، رفض، إحالة)</CardDescription>
        </CardHeader>
        <CardContent className="p-6 h-[300px]">
           {data.length > 0 ? (
@@ -646,7 +583,7 @@ function PerformanceSection({ title, icon: Icon, data, color }: any) {
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
                <AlertCircle className="w-8 h-8 opacity-20" />
-               <p className="font-black text-xs">لا توجد عمليات مسجلة لهذا القسم حالياً</p>
+               <p className="font-black text-xs">لا توجد عمليات مسجلة</p>
             </div>
           )}
        </CardContent>
@@ -657,10 +594,7 @@ function PerformanceSection({ title, icon: Icon, data, color }: any) {
 function StatCard({ icon: Icon, title, value, color, valueColor }: any) {
   const isBgColor = color?.startsWith('bg-');
   return (
-    <div className={cn(
-      "relative rounded-[24px] p-6 shadow-xl overflow-hidden",
-      isBgColor ? `${color} text-white` : "bg-white text-slate-900 border border-slate-100"
-    )}>
+    <div className={cn("relative rounded-[24px] p-6 shadow-xl overflow-hidden", isBgColor ? `${color} text-white` : "bg-white text-slate-900 border border-slate-100")}>
       <div className="flex justify-between items-center relative z-20">
         <div className="text-right">
           <p className={cn("text-xs font-black mb-1", isBgColor ? "text-white/80" : "text-slate-500")}>{title}</p>

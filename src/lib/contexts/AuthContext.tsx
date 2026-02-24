@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: email,
             role: 'Admin',
             department: 'Operations',
-            password: password // حفظ كلمة السر للمدير أيضاً
+            password: password
           });
           return;
         } catch (createErr: any) {
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: email,
         role: role,
         department: data.dept,
-        password: data.password, // حفظ كلمة السر في المستند ليتمكن المدير من رؤيتها
+        password: data.password,
         createdAt: new Date().toISOString()
       });
       await signOut(secondaryAuth);
@@ -160,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const userRef = doc(db, 'users', uid);
     
-    // إذا تغير القسم، يجب تحديث الدور تلقائياً
     if (data.department) {
       data.role = data.department === 'Support' ? 'Agent' : 'Specialist';
     }
@@ -176,7 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth.currentUser) return;
     try {
       await updatePassword(auth.currentUser, newPassword);
-      // تحديث كلمة السر في Firestore أيضاً للمزامنة
       await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
     } catch (err) {
       throw err;
