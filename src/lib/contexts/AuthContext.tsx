@@ -25,9 +25,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * وظيفة مساعدة لتحويل أخطاء Firebase التقنية إلى رسائل عربية مفهومة.
- */
 function translateAuthError(error: any): string {
   switch (error.code) {
     case 'auth/weak-password':
@@ -108,7 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
         
-        if (userData.username === 'BIM0100') {
+        // صلاحيات المطور والمدير العام المطلقة
+        const isSuperUser = userData.username === 'BIM0100' || userData.username === 'BIM775258830';
+
+        if (isSuperUser) {
           setCurrentSessionDept(targetDept);
           return;
         }
@@ -211,7 +211,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
-    if (oldData.username === 'BIM0100') {
+    // منع تعديل الرتبة أو القسم للمطور أو المدير العام
+    if (oldData.username === 'BIM0100' || oldData.username === 'BIM775258830') {
       const { role, department, username, allowedDepartments, ...safeData } = data;
       await updateDoc(userRef, safeData);
       return;

