@@ -5,8 +5,8 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { UserProfile, UserRole, Department } from '../types';
 import { useUser, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
 import { doc, onSnapshot, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, getAuth } from 'firebase/auth';
-import { initializeApp, getApps } from 'firebase/app';
+import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, getAuth, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 
 interface AuthContextType {
@@ -151,33 +151,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userRef = doc(db, 'users', uid);
     const isSelfUpdate = auth.currentUser && uid === auth.currentUser.uid;
     
+    // جلب البيانات القديمة للتحقق
+    const oldDoc = await getDoc(userRef);
+    if (!oldDoc.exists()) throw new Error("المستخدم غير موجود");
+    const oldData = oldDoc.data();
+
     // تحديث كلمة المرور في نظام الهوية أولاً
-    if (data.password) {
+    if (data.password && data.password !== oldData.password) {
       try {
         if (isSelfUpdate && auth.currentUser) {
-          // إذا كان المدير العام يغير كلمة سره بنفسه
-          await updatePassword(auth.currentUser, data.password);
-        } else {
-          // إذا كان المدير يغير كلمة سر موظف آخر
-          const oldDoc = await getDoc(userRef);
-          if (oldDoc.exists()) {
-            const oldData = oldDoc.data();
-            if (data.password !== oldData.password) {
-              const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
-              const secondaryAuth = getAuth(secondaryApp);
-              const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password);
-              await updatePassword(userCred.user, data.password);
-              await signOut(secondaryAuth);
+          // محاولة تحديث كلمة السر للمدير نفسه
+          // في حال طلب إعادة المصادقة (خطأ أمني شائع في فيربيس)
+          try {
+            await updatePassword(auth.currentUser, data.password);
+          } catch (e: any) {
+            if (e.code === 'auth/requires-recent-login') {
+              // إذا انتهت مدة الجلسة الأمنية، نقوم بإعادة المصادقة بكلمة السر القديمة لإتمام العملية
+              const credential = EmailAuthProvider.credential(oldData.email, oldData.password);
+              await reauthenticateWithCredential(auth.currentUser, credential);
+              await updatePassword(auth.currentUser, data.password);
+            } else {
+              throw e;
             }
           }
+        } else {
+          // إذا كان المدير يغير كلمة سر موظف آخر
+          const secondaryApp = getApps().find(app => app.name === 'UpdateApp') || initializeApp(firebaseConfig, 'UpdateApp');
+          const secondaryAuth = getAuth(secondaryApp);
+          
+          try {
+            const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password);
+            await updatePassword(userCred.user, data.password);
+            await signOut(secondaryAuth);
+          } catch (secondaryErr) {
+            // تنظيف الجلسة في حال الفشل
+            await signOut(secondaryAuth);
+            throw secondaryErr;
+          }
         }
-      } catch (authErr) {
-        // تجاهل أخطاء المصادقة الخلفية إذا كان الحساب محدثاً مسبقاً
+      } catch (authErr: any) {
+        console.error("Auth Update Failed:", authErr);
+        throw new Error(`فشل تحديث كلمة المرور في نظام الحماية: ${authErr.message}`);
       }
     }
     
-    const snap = await getDoc(userRef);
-    if (snap.exists() && snap.data().username === 'BIM0100') {
+    // تحديث البيانات في Firestore
+    if (oldData.username === 'BIM0100') {
       // حماية المدير الأساسي من تغيير الصلاحيات أو القسم أو اسم المستخدم
       const { role, department, username, allowedDepartments, ...safeData } = data;
       await updateDoc(userRef, safeData);
@@ -203,9 +222,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateAdminPassword = async (newPassword: string) => {
-    if (!auth.currentUser) return;
-    await updatePassword(auth.currentUser, newPassword);
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
+    if (!auth.currentUser || !profile) return;
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
+    } catch (e: any) {
+      if (e.code === 'auth/requires-recent-login') {
+         const credential = EmailAuthProvider.credential(profile.email, profile.password!);
+         await reauthenticateWithCredential(auth.currentUser, credential);
+         await updatePassword(auth.currentUser, newPassword);
+         await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
+      }
+    }
   };
 
   return (
