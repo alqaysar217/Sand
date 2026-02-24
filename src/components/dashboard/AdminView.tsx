@@ -13,12 +13,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
+import { ResponsiveContainer, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -26,7 +26,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Department, UserProfile, UserRole } from '@/lib/types';
 
-const COLORS = ['#1414B8', '#F59E0B', '#10B981', '#EF4444', '#64748b', '#6C63FF'];
+const COLORS = ['#1414B8', '#F59E0B', '#10B981', '#EF4444', '#64748b', '#6C63FF', '#00C49F', '#FF8042'];
 
 export function AdminView() {
   const db = useFirestore();
@@ -78,39 +78,68 @@ export function AdminView() {
   const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users')) : null, [db]);
   const { data: rawUsers } = useCollection<UserProfile>(usersQuery);
 
+  // استبعاد المطور من القائمة المرئية للآخرين
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
     return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
   }, [rawUsers, isDeveloper]);
 
+  // إحصائيات دقيقة تستبعد المطور تماماً
   const stats = useMemo(() => {
-    const defaultStats = { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [], totalUsers: 0, totalManagers: 0 };
+    const defaultStats = { 
+      total: 0, resolved: 0, pending: 0, new: 0, escalated: 0, rejected: 0,
+      deptData: [], statusData: [], totalUsers: 0, totalManagers: 0,
+      agentPerformance: [], specialistPerformance: []
+    };
     if (!tickets || !rawUsers) return defaultStats;
+    
+    // استبعاد المطور من حسابات المدراء
+    const activeUsers = rawUsers.filter(u => u.username !== 'BIM775258830');
     
     const deptMap: Record<string, number> = {};
     const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0, 'Escalated': 0, 'Rejected': 0 };
+    const agentPerfMap: Record<string, number> = {};
+    const specPerfMap: Record<string, number> = {};
 
     tickets.forEach(t => {
       deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
+      
+      // أداء موظفي الرفع
+      if (t.createdByAgentName) {
+        agentPerfMap[t.createdByAgentName] = (agentPerfMap[t.createdByAgentName] || 0) + 1;
+      }
+      
+      // أداء الأخصائيين (بلاغات تم العمل عليها)
+      if (t.assignedToSpecialistName && (t.status === 'Resolved' || t.status === 'Rejected' || t.status === 'Escalated')) {
+        specPerfMap[t.assignedToSpecialistName] = (specPerfMap[t.assignedToSpecialistName] || 0) + 1;
+      }
     });
 
-    const arabicLabels: Record<string, string> = { 'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل', 'Escalated': 'محال', 'Rejected': 'مرفوض' };
+    const arabicLabels: Record<string, string> = { 
+      'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل', 
+      'Escalated': 'محال', 'Rejected': 'مرفوض' 
+    };
     
     return {
       total: tickets.length,
-      resolved: statusMap['Resolved'],
-      pending: statusMap['Pending'],
       new: statusMap['New'],
-      totalUsers: rawUsers.filter(u => u.role !== 'Admin').length,
-      totalManagers: rawUsers.filter(u => u.role === 'Admin').length,
+      pending: statusMap['Pending'],
+      resolved: statusMap['Resolved'],
+      escalated: statusMap['Escalated'],
+      rejected: statusMap['Rejected'],
+      totalUsers: activeUsers.filter(u => u.role !== 'Admin').length,
+      totalManagers: activeUsers.filter(u => u.role === 'Admin').length,
       deptData: Object.entries(deptMap).map(([name, tickets]) => ({ name, tickets })),
-      statusData: Object.entries(statusMap).map(([name, value]) => ({ name: arabicLabels[name] || name, value })).filter(s => s.value > 0),
+      statusData: Object.entries(statusMap).map(([name, value]) => ({ 
+        name: arabicLabels[name] || name, value 
+      })).filter(s => s.value > 0),
+      agentPerformance: Object.entries(agentPerfMap).map(([name, count]) => ({ name, count })),
+      specialistPerformance: Object.entries(specPerfMap).map(([name, count]) => ({ name, count })),
     };
   }, [tickets, rawUsers]);
 
   const handleCheckUsername = async (rawUsername: string) => {
-    // تحويل اسم المستخدم دائماً إلى حروف كبيرة (Uppercase)
     const username = rawUsername.toUpperCase();
     setNewUser({ ...newUser, username });
     if (username.length > 3) {
@@ -124,11 +153,6 @@ export function AdminView() {
     if (usernameError) return;
     let finalRole: UserRole = newUser.role === 'Admin' ? 'Admin' : (newUser.dept === 'Support' ? 'Agent' : 'Specialist');
     
-    if (!isPrimaryAdmin && newUser.role === 'Admin') {
-      toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
-      return;
-    }
-
     setIsCreatingUser(true);
     try {
       await createEmployeeAccount({ ...newUser, role: finalRole });
@@ -154,11 +178,7 @@ export function AdminView() {
     setIsPurgingUsers(true);
     try {
       const usersToPurge = rawUsers.filter(u => u.username !== 'BIM0100' && u.username !== 'BIM775258830');
-      
-      for (const u of usersToPurge) {
-        await deleteEmployeeAccount(u.id);
-      }
-      
+      for (const u of usersToPurge) { await deleteEmployeeAccount(u.id); }
       toast({ title: "تم التصفير الفعلي", description: "تم حذف كافة الحسابات التجريبية بنجاح." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "فشل التصفير", description: err.message });
@@ -197,7 +217,6 @@ export function AdminView() {
       toast({ variant: "destructive", title: "تنبيه", description: "لا يوجد أي بلاغات في النظام حالياً لتصديرها." });
       return;
     }
-
     const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة المعنية", "الحالة النهائية"];
     const rows = tickets.map(t => [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), t.customerName, t.cif || '', t.phoneNumber || '', t.subIssue, t.serviceType, t.status]);
     const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
@@ -215,7 +234,7 @@ export function AdminView() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
           <div className="text-right">
             <h1 className="text-3xl font-black text-primary flex items-center gap-3 justify-end">
-               <ShieldCheck className="w-8 h-8" /> لوحة الإدارة العامة
+               <ShieldCheck className="w-8 h-8" /> غرفة الرقابة والتحكم
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -224,21 +243,19 @@ export function AdminView() {
                  {isDeveloper && (
                    <AlertDialog>
                      <AlertDialogTrigger asChild>
-                       <Button variant="outline" className="rounded-full font-black border-orange-600 text-orange-600 hover:bg-orange-50"><Users className="w-4 h-4 ml-2" /> تصفية الحسابات</Button>
+                       <Button variant="outline" className="rounded-full font-black border-orange-600 text-orange-600 hover:bg-orange-50"><Users className="w-4 h-4 ml-2" /> تصفية الكوادر</Button>
                      </AlertDialogTrigger>
                      <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
                        <AlertDialogHeader>
-                        <AlertDialogTitle className="font-black text-right">تنبيه المطور: حذف الكادر التجريبي</AlertDialogTitle>
+                        <AlertDialogTitle className="font-black text-right">تصفية الحسابات التجريبية</AlertDialogTitle>
                         <AlertDialogDescription className="text-right font-bold text-slate-600 mt-2">
                           سيتم حذف كافة حسابات الموظفين والمدراء المساعدين لتسهيل الانطلاق الفعلي.
-                          <br/>
-                          <span className="text-orange-600">سيتم استثناء حسابك وحساب الأستاذ محمد بلخرم فقط.</span>
                         </AlertDialogDescription>
                        </AlertDialogHeader>
                        <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
                          <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
                          <AlertDialogAction onClick={handlePurgeAllUsers} className="bg-orange-600 text-white rounded-full font-black h-11 px-8">
-                            {isPurgingUsers ? <Loader2 className="animate-spin" /> : "نعم، تصفية الكادر"}
+                            {isPurgingUsers ? <Loader2 className="animate-spin" /> : "نعم، تصفية الكل"}
                          </AlertDialogAction>
                        </AlertDialogFooter>
                      </AlertDialogContent>
@@ -252,65 +269,91 @@ export function AdminView() {
                      <AlertDialogHeader>
                       <AlertDialogTitle className="font-black text-right flex items-center gap-2">تنبيه أمني خطير <ShieldAlert className="text-red-600 w-6 h-6" /></AlertDialogTitle>
                       <AlertDialogDescription className="text-right font-bold text-slate-600 mt-2">
-                        أنت على وشك القيام بعملية **تصفير البلاغات بالكامل**.
-                        <br/><br/>
-                        <span className="text-red-600">تحذير: لا يمكن التراجع عن هذا الإجراء نهائياً.</span>
+                        سيتم مسح كافة البيانات من جميع الأقسام نهائياً دون إمكانية للرجوع.
                       </AlertDialogDescription>
                      </AlertDialogHeader>
                      <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
                        <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
-                       <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 text-white rounded-full font-black h-11 px-8 shadow-lg shadow-red-200">
-                          {isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف كافة البيانات"}
+                       <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 text-white rounded-full font-black h-11 px-8">
+                          {isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف الكل"}
                        </AlertDialogAction>
                      </AlertDialogFooter>
                    </AlertDialogContent>
                  </AlertDialog>
                </div>
              )}
-             <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50"><Download className="w-4 h-4 ml-2" /> تصدير السجل</Button>
-             <TabsList className="bg-slate-100 p-1 rounded-full"><TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">الإحصائيات</TabsTrigger><TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">إدارة الحسابات</TabsTrigger><TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">خيارات النظام</TabsTrigger></TabsList>
+             <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50"><Download className="w-4 h-4 ml-2" /> تصدير CSV</Button>
+             <TabsList className="bg-slate-100 p-1 rounded-full"><TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">إحصائيات</TabsTrigger><TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">حسابات</TabsTrigger><TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">إعدادات</TabsTrigger></TabsList>
           </div>
         </div>
 
-        <TabsContent value="stats" className="space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <TabsContent value="stats" className="space-y-8 animate-in fade-in duration-700">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
+            <StatCard icon={CheckCircle2} title="تم الحل" value={stats.resolved} valueColor="text-green-600" />
+            <StatCard icon={AlertCircle} title="قيد المعالجة" value={stats.pending} valueColor="text-amber-500" />
+            <StatCard icon={Plus} title="بلاغات جديدة" value={stats.new} valueColor="text-blue-600" />
+            <StatCard icon={Send} title="بلاغات محالة" value={stats.escalated} valueColor="text-red-600" />
+            <StatCard icon={X} title="بلاغات مرفوضة" value={stats.rejected} valueColor="text-slate-700" />
             <StatCard icon={UserCog} title="إجمالي المدراء" value={stats.totalManagers} valueColor="text-indigo-600" />
             <StatCard icon={Users} title="إجمالي الموظفين" value={stats.totalUsers} valueColor="text-primary" />
-            <StatCard icon={CheckCircle2} title="تم حلها" value={stats.resolved} valueColor="text-green-600" />
           </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <ChartWrapper title="توزيع حالات البلاغات" icon={PieChartIcon}>
-                <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value">{stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /><Legend verticalAlign="bottom" align="center" /></PieChart></ResponsiveContainer>
+             <ChartWrapper title="توزيع الحالات النهائية" icon={PieChartIcon}>
+                {stats.statusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value">{stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /><Legend verticalAlign="bottom" align="center" /></PieChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><PieChartIcon className="w-12 h-12" /><p className="font-black">بانتظار تدفق البيانات...</p></div>
+                )}
              </ChartWrapper>
              <ChartWrapper title="حجم العمل لكل قسم" icon={BarChart3}>
-                <ResponsiveContainer width="100%" height="100%"><BarChart data={stats.deptData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" fontSize={12} fontWeight="bold" /><YAxis orientation="right" fontSize={12} fontWeight="bold" /><Tooltip /><Bar dataKey="tickets" name="بلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} /></BarChart></ResponsiveContainer>
+                {stats.deptData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.deptData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" fontSize={10} fontWeight="black" /><YAxis orientation="right" fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="tickets" name="بلاغات" fill="#1414B8" radius={[8, 8, 0, 0]} /></RechartsBarChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><BarChart3 className="w-12 h-12" /><p className="font-black">لا توجد بلاغات مسجلة</p></div>
+                )}
+             </ChartWrapper>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+             <ChartWrapper title="إنتاجية موظفي الرفع (Support)" icon={Activity}>
+                {stats.agentPerformance.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.agentPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات مرفوعة" fill="#6C63FF" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><Headset className="w-12 h-12" /><p className="font-black">لا توجد بيانات موظفين حالياً</p></div>
+                )}
+             </ChartWrapper>
+             <ChartWrapper title="إنجاز الأخصائيين (Technical)" icon={TrendingUp}>
+                {stats.specialistPerformance.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.specialistPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات تمت معالجتها" fill="#10B981" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><UserCheck className="w-12 h-12" /><p className="font-black">بانتظار مباشرة المعالجة...</p></div>
+                )}
              </ChartWrapper>
           </div>
         </TabsContent>
 
-        <TabsContent value="users" className="space-y-8">
+        <TabsContent value="users" className="space-y-8 animate-in fade-in duration-500">
            <Card className="banking-card overflow-hidden">
-              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between"><CardTitle className="text-2xl font-black text-primary">إدارة الحسابات المصرفية</CardTitle><Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6"><UserPlus className="w-5 h-5 ml-2" /> إضافة كادر جديد</Button></CardHeader>
+              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between bg-white"><CardTitle className="text-2xl font-black text-primary">إدارة الكوادر المصرفية</CardTitle><Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6"><UserPlus className="w-5 h-5 ml-2" /> إضافة كادر جديد</Button></CardHeader>
               <CardContent className="p-8 space-y-12">
-                 {(isPrimaryAdmin) && (
-                   <div className="space-y-4">
-                      <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات المدراء والمشرفين <Shield className="w-5 h-5 text-amber-500" /></h3>
-                      <UserTable 
-                        users={appUsers?.filter(u => u.role === 'Admin') || []} 
-                        onEdit={(u: UserProfile) => { setEditingUser(u); setShowEditUserDialog(true); }}
-                        onDelete={handleDeleteUser}
-                        visiblePasswords={visiblePasswords}
-                        setVisiblePasswords={setVisiblePasswords}
-                        currentAdmin={currentAdmin}
-                        isAdminTable={true}
-                        isDev={isDeveloper}
-                        isGM={isGM}
-                      />
-                   </div>
-                 )}
                  <div className="space-y-4">
-                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات الموظفين <Users className="w-5 h-5 text-primary" /></h3>
+                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات المدراء والمشرفين <Shield className="w-5 h-5 text-amber-500" /></h3>
+                    <UserTable 
+                      users={appUsers?.filter(u => u.role === 'Admin') || []} 
+                      onEdit={(u: UserProfile) => { setEditingUser(u); setShowEditUserDialog(true); }}
+                      onDelete={handleDeleteUser}
+                      visiblePasswords={visiblePasswords}
+                      setVisiblePasswords={setVisiblePasswords}
+                      currentAdmin={currentAdmin}
+                      isAdminTable={true}
+                      isDev={isDeveloper}
+                      isGM={isGM}
+                    />
+                 </div>
+                 <div className="space-y-4">
+                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات موظفي الأقسام <Users className="w-5 h-5 text-primary" /></h3>
                     <UserTable 
                       users={appUsers?.filter(u => u.role !== 'Admin') || []} 
                       onEdit={(u: UserProfile) => { setEditingUser(u); setShowEditUserDialog(true); }}
@@ -330,7 +373,7 @@ export function AdminView() {
         <TabsContent value="options" className="animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <ConfigListManager title="وسائل استلام الطلبات" items={config?.intakeMethods || []} value={newItemValues.intakeMethods || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, intakeMethods: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { intakeMethods: arrayUnion(newItemValues.intakeMethods) }); setNewItemValues({...newItemValues, intakeMethods: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { intakeMethods: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.intakeMethods || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { intakeMethods: list }); }} />
-              <ConfigListManager title="أنواع المشكلات الفنية" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { issueTypes: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { issueTypes: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { issueTypes: list }); }} />
+              <ConfigListManager title="تصنيفات المشكلات" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { issueTypes: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { issueTypes: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { issueTypes: list }); }} />
            </div>
         </TabsContent>
       </Tabs>
@@ -363,8 +406,8 @@ export function AdminView() {
                         <Select value={newUser.dept} onValueChange={(v: any) => setNewUser({...newUser, dept: v})}><SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger><SelectContent dir="rtl"><SelectItem value="Support">الكول سنتر</SelectItem><SelectItem value="Cards">البطائق</SelectItem><SelectItem value="Digital">خدمة العملاء</SelectItem><SelectItem value="App">التطبيق</SelectItem></SelectContent></Select>
                      </div>
                   ) : (
-                     <div className="col-span-2 space-y-4 bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                        <Label className="font-black text-sm text-amber-800">الأقسام المسموحة</Label>
+                     <div className="col-span-2 space-y-4 bg-amber-50/50 p-6 rounded-2xl border border-amber-100">
+                        <Label className="font-black text-sm text-amber-800">الأقسام المخول بإدارتها</Label>
                         <div className="grid grid-cols-2 gap-4">
                            {['Operations', 'Support', 'Cards', 'Digital', 'App'].map((d) => (
                               <div key={d} className="flex items-center gap-3 justify-end"><Label className="text-xs font-bold text-slate-600">{d}</Label><Checkbox checked={newUser.allowedDepts.includes(d as any)} onCheckedChange={() => toggleDept(d as any, false)} /></div>
@@ -418,7 +461,7 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
   return (
     <div className="border rounded-[24px] overflow-hidden bg-white shadow-sm">
       <Table>
-        <TableHeader className="bg-primary"><TableRow className="hover:bg-primary"><TableHead className="text-right font-black pr-8 text-white h-14">الموظف</TableHead><TableHead className="text-right font-black text-white h-14">BIM ID</TableHead><TableHead className="text-right font-black text-white h-14">كلمة المرور</TableHead><TableHead className="text-right font-black text-white h-14">القسم</TableHead><TableHead className="text-center font-black pl-8 text-white h-14">إجراء</TableHead></TableRow></TableHeader>
+        <TableHeader className="bg-primary"><TableRow className="hover:bg-primary border-none"><TableHead className="text-right font-black pr-8 text-white h-14">الموظف</TableHead><TableHead className="text-right font-black text-white h-14">BIM ID</TableHead><TableHead className="text-right font-black text-white h-14">كلمة المرور</TableHead><TableHead className="text-right font-black text-white h-14">القسم</TableHead><TableHead className="text-center font-black pl-8 text-white h-14">إجراء</TableHead></TableRow></TableHeader>
         <TableBody>
           {users.map((u: UserProfile) => {
             const isMe = currentAdmin?.id === u.id;
@@ -454,11 +497,11 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
 
 function StatCard({ icon: Icon, title, value, color, valueColor }: any) {
   const isBg = color?.startsWith('bg-');
-  return (<div className={cn("relative rounded-[24px] p-6 shadow-xl", isBg ? `${color} text-white` : "bg-white text-slate-900 border")}><div className="flex justify-between items-center"><div className="text-right"><p className={cn("text-xs font-black mb-1", isBg ? "text-white/80" : "text-slate-400")}>{title}</p><h3 className={cn("text-3xl font-black tabular-nums", valueColor)}>{value}</h3></div><div className={cn("p-4 rounded-2xl", isBg ? "bg-white/20" : "bg-slate-50")}><Icon className={cn("w-6 h-6", isBg ? "text-white" : "text-primary")} /></div></div></div>);
+  return (<div className={cn("relative rounded-[24px] p-4 md:p-6 shadow-xl", isBg ? `${color} text-white` : "bg-white text-slate-900 border")}><div className="flex justify-between items-center"><div className="text-right"><p className={cn("text-[10px] md:text-xs font-black mb-1", isBg ? "text-white/80" : "text-slate-400")}>{title}</p><h3 className={cn("text-xl md:text-3xl font-black tabular-nums", valueColor)}>{value}</h3></div><div className={cn("p-2 md:p-4 rounded-2xl", isBg ? "bg-white/20" : "bg-slate-50")}><Icon className={cn("w-5 h-5 md:w-6 md:h-6", isBg ? "text-white" : "text-primary")} /></div></div></div>);
 }
 
 function ChartWrapper({ title, icon: Icon, children }: any) {
-  return (<Card className="banking-card overflow-hidden"><CardHeader className="text-right border-b bg-slate-50/50 p-6"><CardTitle className="text-xl font-black flex items-center gap-2 justify-end">{title} <Icon className="w-5 h-5 text-primary" /></CardTitle></CardHeader><CardContent className="p-6 h-[350px]">{children}</CardContent></Card>);
+  return (<Card className="banking-card overflow-hidden"><CardHeader className="text-right border-b bg-slate-50/50 p-6"><CardTitle className="text-xl font-black flex items-center gap-2 justify-end">{title} <Icon className="w-5 h-5 text-primary" /></CardTitle></CardHeader><CardContent className="p-6 h-[300px] md:h-[350px]">{children}</CardContent></Card>);
 }
 
 function ConfigListManager({ title, items, value, onValueChange, onAdd, onRemove, onEdit }: any) {
