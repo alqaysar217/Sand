@@ -78,13 +78,11 @@ export function AdminView() {
   const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users')) : null, [db]);
   const { data: rawUsers } = useCollection<UserProfile>(usersQuery);
 
-  // استبعاد المطور من القائمة المرئية للآخرين
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
     return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
   }, [rawUsers, isDeveloper]);
 
-  // إحصائيات دقيقة تستبعد المطور تماماً
   const stats = useMemo(() => {
     const defaultStats = { 
       total: 0, resolved: 0, pending: 0, new: 0, escalated: 0, rejected: 0,
@@ -93,7 +91,6 @@ export function AdminView() {
     };
     if (!tickets || !rawUsers) return defaultStats;
     
-    // استبعاد المطور من حسابات المدراء
     const activeUsers = rawUsers.filter(u => u.username !== 'BIM775258830');
     
     const deptMap: Record<string, number> = {};
@@ -105,12 +102,10 @@ export function AdminView() {
       deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
       
-      // أداء موظفي الرفع
       if (t.createdByAgentName) {
         agentPerfMap[t.createdByAgentName] = (agentPerfMap[t.createdByAgentName] || 0) + 1;
       }
       
-      // أداء الأخصائيين (بلاغات تم العمل عليها)
       if (t.assignedToSpecialistName && (t.status === 'Resolved' || t.status === 'Rejected' || t.status === 'Escalated')) {
         specPerfMap[t.assignedToSpecialistName] = (specPerfMap[t.assignedToSpecialistName] || 0) + 1;
       }
@@ -448,7 +443,13 @@ export function AdminView() {
                       </div>
                     )}
                  </div>
-                 <DialogFooter className="flex-row-reverse gap-3 pt-6"><Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black">إلغاء</Button><Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 text-white h-12 px-10 rounded-full font-black">{isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}</Button></form>
+                 <DialogFooter className="flex-row-reverse gap-3 pt-6">
+                   <Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black">إلغاء</Button>
+                   <Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 text-white h-12 px-10 rounded-full font-black">
+                     {isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}
+                   </Button>
+                 </DialogFooter>
+              </form>
             )}
          </DialogContent>
       </Dialog>
