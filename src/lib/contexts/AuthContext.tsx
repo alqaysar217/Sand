@@ -87,8 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (err: any) {
+      // معالجة حالة المدير العام الافتراضي
       if (username === 'BIM0100' && password === 'ha892019' && 
-         (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
+         (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password')) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, password);
           await setDoc(doc(db, 'users', cred.user.uid), {
@@ -108,7 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw err;
         }
       }
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      // تحويل أخطاء فيربيس إلى رسائل واضحة
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
       }
       throw err;
@@ -160,7 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const userRef = doc(db, 'users', uid);
 
-    // إذا كان هناك تحديث لكلمة المرور، نحتاج لتحديثها في Auth أيضاً
     if (data.password) {
       try {
         const oldDoc = await getDoc(userRef);
@@ -169,20 +170,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const email = oldData.email;
           const oldPassword = oldData.password;
 
-          // استخدام تطبيق ثانوي لتحديث كلمة المرور دون التأثير على جلسة المدير الحالية
-          const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
-          const secondaryAuth = getAuth(secondaryApp);
-          
-          // 1. تسجيل الدخول بالبيانات القديمة
-          const userCred = await signInWithEmailAndPassword(secondaryAuth, email, oldPassword);
-          // 2. تحديث كلمة المرور
-          await updatePassword(userCred.user, data.password);
-          // 3. تسجيل الخروج من التطبيق الثانوي
-          await signOut(secondaryAuth);
+          // تحديث كلمة المرور فقط إذا كانت مختلفة عن المخزنة
+          if (data.password !== oldPassword) {
+            const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
+            const secondaryAuth = getAuth(secondaryApp);
+            
+            // محاولة تسجيل الدخول بالبيانات الحالية لتحديثها
+            const userCred = await signInWithEmailAndPassword(secondaryAuth, email, oldPassword);
+            await updatePassword(userCred.user, data.password);
+            await signOut(secondaryAuth);
+          }
         }
       } catch (authErr: any) {
-        console.error("Auth update failed:", authErr);
-        throw new Error("فشل تحديث كلمة المرور في نظام الهوية: " + (authErr.message || "خطأ غير معروف"));
+        let msg = "فشل تحديث كلمة المرور في نظام الهوية";
+        if (authErr.code === 'auth/invalid-credential' || authErr.code === 'auth/wrong-password') {
+           msg = "فشل التحقق: كلمة السر الحالية في قاعدة البيانات غير متزامنة مع نظام الحماية.";
+        }
+        throw new Error(msg);
       }
     }
     
