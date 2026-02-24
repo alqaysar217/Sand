@@ -79,6 +79,7 @@ export function AdminView() {
 
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
+    // المطور BIM775258830 مخفي عن الجميع إلا إذا كان المستخدم الحالي هو المطور نفسه
     return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
   }, [rawUsers, isDeveloper]);
 
@@ -131,10 +132,13 @@ export function AdminView() {
     e.preventDefault();
     if (usernameError) return;
     let finalRole: UserRole = newUser.role === 'Admin' ? 'Admin' : (newUser.dept === 'Support' ? 'Agent' : 'Specialist');
+    
+    // المدير المساعد لا يمكنه إضافة مدراء آخرين، المطور والمدير العام فقط
     if (!isPrimaryAdmin && newUser.role === 'Admin') {
       toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
       return;
     }
+
     setIsCreatingUser(true);
     try {
       await createEmployeeAccount({ ...newUser, role: finalRole });
@@ -183,18 +187,56 @@ export function AdminView() {
   };
 
   const exportToCSV = () => {
-    if (!tickets || tickets.length === 0) return;
-    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة", "الوسيلة", "الوصف", "الرافع", "المستلم", "الحالة", "السجل"];
-    const rows = tickets.map(t => [
-      t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), t.customerName, t.cif || '', t.phoneNumber || '', t.subIssue, t.serviceType, t.intakeMethod, (t.description || '').replace(/[\n\r]/g, ' '), t.createdByAgentName, t.assignedToSpecialistName || 'لم يستلم', t.status,
-      (t.logs || []).map((log: any) => `[${new Date(log.timestamp).toLocaleString('ar-SA')}] ${log.userName}: ${log.action}${log.note ? ` (${log.note.replace(/[\n\r]/g, ' ')})` : ''}`).join(' | ')
-    ]);
-    const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
+    if (!tickets || tickets.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "تنبيه",
+        description: "لا يوجد أي بلاغات في النظام حالياً لتصديرها."
+      });
+      return;
+    }
+
+    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة المعنية", "الوسيلة", "الوصف", "الموظف الرافع", "الأخصائي المستلم", "الحالة النهائية", "سجل المتابعة والردود"];
+    
+    const rows = tickets.map(t => {
+      // تجميع كافة السجلات في نص واحد
+      const fullLog = (t.logs || []).map((log: any) => {
+        const time = new Date(log.timestamp).toLocaleString('ar-SA');
+        return `[${time}] ${log.userName}: ${log.action}${log.note ? ` (الرد: ${log.note.replace(/[\n\r]/g, ' ')})` : ''}`;
+      }).join(' | ');
+
+      return [
+        t.ticketID || '',
+        new Date(t.createdAt).toLocaleString('ar-SA'),
+        t.customerName,
+        t.cif || '',
+        t.phoneNumber || '',
+        t.subIssue,
+        t.serviceType,
+        t.intakeMethod,
+        (t.description || '').replace(/[\n\r]/g, ' '),
+        t.createdByAgentName,
+        t.assignedToSpecialistName || 'لم يستلم بعد',
+        t.status,
+        fullLog
+      ];
+    });
+
+    const csvContent = "\ufeff" + [
+      headers.join(','), 
+      ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `سند_بلاغات_${new Date().toLocaleDateString('ar-SA')}.csv`;
+    link.download = `سند_بلاغات_مصرفية_${new Date().toLocaleDateString('ar-SA')}.csv`;
     link.click();
+    
+    toast({
+      title: "تم استخراج البيانات",
+      description: "تم تحميل ملف التقارير بنجاح."
+    });
   };
 
   return (
