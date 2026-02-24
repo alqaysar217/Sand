@@ -80,6 +80,7 @@ export function AdminView() {
 
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
+    // استبعاد المطور من الجداول تماماً لخصوصية تامة، إلا إذا كان المطور هو من يشاهد
     return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
   }, [rawUsers, isDeveloper]);
 
@@ -87,27 +88,39 @@ export function AdminView() {
     const defaultStats = { 
       total: 0, resolved: 0, pending: 0, new: 0, escalated: 0, rejected: 0,
       deptData: [], statusData: [], totalUsers: 0, totalManagers: 0,
-      agentPerformance: [], specialistPerformance: []
+      agentPerformance: [], cardsPerformance: [], digitalPerformance: [], appPerformance: []
     };
     if (!tickets || !rawUsers) return defaultStats;
     
+    // استبعاد المطور من إجمالي الأعداد
     const activeUsers = rawUsers.filter(u => u.username !== 'BIM775258830');
     
     const deptMap: Record<string, number> = {};
     const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0, 'Escalated': 0, 'Rejected': 0 };
+    
     const agentPerfMap: Record<string, number> = {};
-    const specPerfMap: Record<string, number> = {};
+    const cardsPerfMap: Record<string, number> = {};
+    const digitalPerfMap: Record<string, number> = {};
+    const appPerfMap: Record<string, number> = {};
 
     tickets.forEach(t => {
       deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
       
+      // إنتاجية موظفي الرفع (Support)
       if (t.createdByAgentName) {
         agentPerfMap[t.createdByAgentName] = (agentPerfMap[t.createdByAgentName] || 0) + 1;
       }
       
+      // إنتاجية الأخصائيين (حسب القسم)
       if (t.assignedToSpecialistName && (t.status === 'Resolved' || t.status === 'Rejected' || t.status === 'Escalated')) {
-        specPerfMap[t.assignedToSpecialistName] = (specPerfMap[t.assignedToSpecialistName] || 0) + 1;
+        if (t.serviceType === 'إدارة البطائق') {
+          cardsPerfMap[t.assignedToSpecialistName] = (cardsPerfMap[t.assignedToSpecialistName] || 0) + 1;
+        } else if (t.serviceType === 'خدمة العملاء') {
+          digitalPerfMap[t.assignedToSpecialistName] = (digitalPerfMap[t.assignedToSpecialistName] || 0) + 1;
+        } else if (t.serviceType === 'مشاكل التطبيق') {
+          appPerfMap[t.assignedToSpecialistName] = (appPerfMap[t.assignedToSpecialistName] || 0) + 1;
+        }
       }
     });
 
@@ -130,7 +143,9 @@ export function AdminView() {
         name: arabicLabels[name] || name, value 
       })).filter(s => s.value > 0),
       agentPerformance: Object.entries(agentPerfMap).map(([name, count]) => ({ name, count })),
-      specialistPerformance: Object.entries(specPerfMap).map(([name, count]) => ({ name, count })),
+      cardsPerformance: Object.entries(cardsPerfMap).map(([name, count]) => ({ name, count })),
+      digitalPerformance: Object.entries(digitalPerfMap).map(([name, count]) => ({ name, count })),
+      appPerformance: Object.entries(appPerfMap).map(([name, count]) => ({ name, count })),
     };
   }, [tickets, rawUsers]);
 
@@ -311,19 +326,40 @@ export function AdminView() {
              </ChartWrapper>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <ChartWrapper title="إنتاجية موظفي الرفع (Support)" icon={Activity}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {/* الكول سنتر */}
+             <ChartWrapper title="إنتاجية موظفي الرفع (الكول سنتر)" icon={Headset}>
                 {stats.agentPerformance.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.agentPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات مرفوعة" fill="#6C63FF" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><Headset className="w-12 h-12" /><p className="font-black">لا توجد بيانات موظفين حالياً</p></div>
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><Headset className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
                 )}
              </ChartWrapper>
-             <ChartWrapper title="إنجاز الأخصائيين (Technical)" icon={TrendingUp}>
-                {stats.specialistPerformance.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.specialistPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات تمت معالجتها" fill="#10B981" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+
+             {/* قسم البطائق */}
+             <ChartWrapper title="أداء أخصائيي قسم البطائق" icon={CreditCard}>
+                {stats.cardsPerformance.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.cardsPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات معالجة" fill="#10B981" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><UserCheck className="w-12 h-12" /><p className="font-black">بانتظار مباشرة المعالجة...</p></div>
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><CreditCard className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
+                )}
+             </ChartWrapper>
+
+             {/* خدمة العملاء الرقمية */}
+             <ChartWrapper title="أداء أخصائيي خدمة العملاء" icon={MonitorSmartphone}>
+                {stats.digitalPerformance.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.digitalPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات معالجة" fill="#F59E0B" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><MonitorSmartphone className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
+                )}
+             </ChartWrapper>
+
+             {/* التطبيق الإلكتروني */}
+             <ChartWrapper title="أداء أخصائيي التطبيق" icon={Smartphone}>
+                {stats.appPerformance.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.appPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات معالجة" fill="#1414B8" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><Smartphone className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
                 )}
              </ChartWrapper>
           </div>
