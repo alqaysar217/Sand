@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
@@ -36,6 +36,7 @@ export function AdminView() {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isPurgingUsers, setIsPurgingUsers] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [usernameError, setUsernameError] = useState(false);
@@ -79,46 +80,34 @@ export function AdminView() {
 
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
-    // المطور BIM775258830 مخفي عن الجميع إلا إذا كان المستخدم الحالي هو المطور نفسه
     return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
   }, [rawUsers, isDeveloper]);
 
   const stats = useMemo(() => {
-    if (!tickets || tickets.length === 0) return { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [], agentPerf: [], cardsSpec: [], digitalSpec: [], appSpec: [] };
+    const defaultStats = { total: 0, resolved: 0, pending: 0, new: 0, deptData: [], statusData: [], totalUsers: 0, totalManagers: 0 };
+    if (!tickets || !rawUsers) return defaultStats;
+    
     const deptMap: Record<string, number> = {};
     const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0, 'Escalated': 0, 'Rejected': 0 };
-    const agentMap: Record<string, { name: string, count: number }> = {};
-    const specMap: Record<string, { name: string, dept: string, resolved: number, rejected: number, escalated: number }> = {};
 
     tickets.forEach(t => {
       deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
-      if (t.createdByAgentId) {
-        if (!agentMap[t.createdByAgentId]) agentMap[t.createdByAgentId] = { name: t.createdByAgentName, count: 0 };
-        agentMap[t.createdByAgentId].count++;
-      }
-      if (t.assignedToSpecialistId) {
-        if (!specMap[t.assignedToSpecialistId]) specMap[t.assignedToSpecialistId] = { name: t.assignedToSpecialistName || 'غير معروف', dept: t.serviceType, resolved: 0, rejected: 0, escalated: 0 };
-        if (t.status === 'Resolved') specMap[t.assignedToSpecialistId].resolved++;
-        if (t.status === 'Rejected') specMap[t.assignedToSpecialistId].rejected++;
-        if (t.status === 'Escalated') specMap[t.assignedToSpecialistId].escalated++;
-      }
     });
 
     const arabicLabels: Record<string, string> = { 'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل', 'Escalated': 'محال', 'Rejected': 'مرفوض' };
+    
     return {
       total: tickets.length,
       resolved: statusMap['Resolved'],
       pending: statusMap['Pending'],
       new: statusMap['New'],
+      totalUsers: rawUsers.filter(u => u.role !== 'Admin').length,
+      totalManagers: rawUsers.filter(u => u.role === 'Admin').length,
       deptData: Object.entries(deptMap).map(([name, tickets]) => ({ name, tickets })),
       statusData: Object.entries(statusMap).map(([name, value]) => ({ name: arabicLabels[name] || name, value })).filter(s => s.value > 0),
-      agentPerf: Object.values(agentMap).sort((a, b) => b.count - a.count).slice(0, 5),
-      cardsSpec: Object.values(specMap).filter(s => s.dept === 'إدارة البطائق').map(s => ({ name: s.name, حل: s.resolved, رفض: s.rejected, إحالة: s.escalated })),
-      digitalSpec: Object.values(specMap).filter(s => s.dept === 'خدمة العملاء').map(s => ({ name: s.name, حل: s.resolved, رفض: s.rejected, إحالة: s.escalated })),
-      appSpec: Object.values(specMap).filter(s => s.dept === 'مشاكل التطبيق').map(s => ({ name: s.name, حل: s.resolved, رفض: s.rejected, إحالة: s.escalated }))
     };
-  }, [tickets]);
+  }, [tickets, rawUsers]);
 
   const handleCheckUsername = async (username: string) => {
     setNewUser({ ...newUser, username });
@@ -133,7 +122,6 @@ export function AdminView() {
     if (usernameError) return;
     let finalRole: UserRole = newUser.role === 'Admin' ? 'Admin' : (newUser.dept === 'Support' ? 'Agent' : 'Specialist');
     
-    // المدير المساعد لا يمكنه إضافة مدراء آخرين، المطور والمدير العام فقط
     if (!isPrimaryAdmin && newUser.role === 'Admin') {
       toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
       return;
@@ -153,10 +141,27 @@ export function AdminView() {
   const handleDeleteUser = async (u: UserProfile) => {
     try {
       await deleteEmployeeAccount(u.id);
-      toast({ title: "تم الحذف بنجاح", description: `تم مسح حساب ${u.name} من النظام.` });
+      toast({ title: "تم الحذف بنجاح" });
     } catch (err: any) {
       toast({ variant: "destructive", title: "فشل الحذف", description: err.message });
     }
+  };
+
+  const handlePurgeAllUsers = async () => {
+    if (!isDeveloper || !rawUsers) return;
+    setIsPurgingUsers(true);
+    try {
+      // المطور والمدير العام مستثنون
+      const usersToPurge = rawUsers.filter(u => u.username !== 'BIM0100' && u.username !== 'BIM775258830');
+      
+      for (const u of usersToPurge) {
+        await deleteEmployeeAccount(u.id);
+      }
+      
+      toast({ title: "تم التصفير الفعلي", description: "تم حذف كافة الحسابات التجريبية بنجاح." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "فشل التصفير", description: err.message });
+    } finally { setIsPurgingUsers(false); }
   };
 
   const handleDeleteAllTickets = async () => {
@@ -168,7 +173,7 @@ export function AdminView() {
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
-      toast({ title: "تم تصفير النظام", description: "تم حذف كافة البلاغات بنجاح من كافة الأقسام." });
+      toast({ title: "تم تصفير النظام", description: "تم حذف كافة البلاغات بنجاح." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "فشل الحذف", description: err.message });
     } finally { setIsDeletingAll(false); }
@@ -188,55 +193,19 @@ export function AdminView() {
 
   const exportToCSV = () => {
     if (!tickets || tickets.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "تنبيه",
-        description: "لا يوجد أي بلاغات في النظام حالياً لتصديرها."
-      });
+      toast({ variant: "destructive", title: "تنبيه", description: "لا يوجد أي بلاغات في النظام حالياً لتصديرها." });
       return;
     }
 
-    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة المعنية", "الوسيلة", "الوصف", "الموظف الرافع", "الأخصائي المستلم", "الحالة النهائية", "سجل المتابعة والردود"];
-    
-    const rows = tickets.map(t => {
-      // تجميع كافة السجلات في نص واحد
-      const fullLog = (t.logs || []).map((log: any) => {
-        const time = new Date(log.timestamp).toLocaleString('ar-SA');
-        return `[${time}] ${log.userName}: ${log.action}${log.note ? ` (الرد: ${log.note.replace(/[\n\r]/g, ' ')})` : ''}`;
-      }).join(' | ');
-
-      return [
-        t.ticketID || '',
-        new Date(t.createdAt).toLocaleString('ar-SA'),
-        t.customerName,
-        t.cif || '',
-        t.phoneNumber || '',
-        t.subIssue,
-        t.serviceType,
-        t.intakeMethod,
-        (t.description || '').replace(/[\n\r]/g, ' '),
-        t.createdByAgentName,
-        t.assignedToSpecialistName || 'لم يستلم بعد',
-        t.status,
-        fullLog
-      ];
-    });
-
-    const csvContent = "\ufeff" + [
-      headers.join(','), 
-      ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
+    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة المعنية", "الحالة النهائية"];
+    const rows = tickets.map(t => [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), t.customerName, t.cif || '', t.phoneNumber || '', t.subIssue, t.serviceType, t.status]);
+    const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `سند_بلاغات_مصرفية_${new Date().toLocaleDateString('ar-SA')}.csv`;
+    link.download = `سند_بلاغات_${new Date().toLocaleDateString('ar-SA')}.csv`;
     link.click();
-    
-    toast({
-      title: "تم استخراج البيانات",
-      description: "تم تحميل ملف التقارير بنجاح."
-    });
+    toast({ title: "تم استخراج البيانات" });
   };
 
   return (
@@ -250,27 +219,52 @@ export function AdminView() {
           </div>
           <div className="flex items-center gap-3">
              {isPrimaryAdmin && (
-               <AlertDialog>
-                 <AlertDialogTrigger asChild>
-                   <Button variant="outline" className="rounded-full font-black border-red-600 text-red-600 hover:bg-red-50"><Eraser className="w-4 h-4 ml-2" /> تصفير البلاغات</Button>
-                 </AlertDialogTrigger>
-                 <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
-                   <AlertDialogHeader>
-                    <AlertDialogTitle className="font-black text-right flex items-center gap-2">تنبيه أمني خطير <ShieldAlert className="text-red-600 w-6 h-6" /></AlertDialogTitle>
-                    <AlertDialogDescription className="text-right font-bold text-slate-600 mt-2 leading-relaxed">
-                      أنت على وشك القيام بعملية **تصفير النظام بالكامل**. هذا الإجراء سيقوم بحذف **كافة البلاغات والشكاوى** من جميع الأقسام نهائياً. 
-                      <br/><br/>
-                      <span className="text-red-600">تحذير: لا يمكن التراجع عن هذا الإجراء أو استعادة البيانات بعد الحذف.</span>
-                    </AlertDialogDescription>
-                   </AlertDialogHeader>
-                   <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
-                     <AlertDialogCancel className="rounded-full font-black">إلغاء والتراجع</AlertDialogCancel>
-                     <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 hover:bg-red-700 text-white rounded-full font-black h-11 px-8 shadow-lg shadow-red-200">
-                        {isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف كافة البيانات"}
-                     </AlertDialogAction>
-                   </AlertDialogFooter>
-                 </AlertDialogContent>
-               </AlertDialog>
+               <div className="flex gap-2">
+                 {isDeveloper && (
+                   <AlertDialog>
+                     <AlertDialogTrigger asChild>
+                       <Button variant="outline" className="rounded-full font-black border-orange-600 text-orange-600 hover:bg-orange-50"><Users className="w-4 h-4 ml-2" /> تصفية الحسابات</Button>
+                     </AlertDialogTrigger>
+                     <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                       <AlertDialogHeader>
+                        <AlertDialogTitle className="font-black text-right">تنبيه المطور: حذف الكادر التجريبي</AlertDialogTitle>
+                        <AlertDialogDescription className="text-right font-bold text-slate-600 mt-2">
+                          سيتم حذف كافة حسابات الموظفين والمدراء المساعدين لتسهيل الانطلاق الفعلي.
+                          <br/>
+                          <span className="text-orange-600">سيتم استثناء حسابك وحساب الأستاذ محمد بلخرم فقط.</span>
+                        </AlertDialogDescription>
+                       </AlertDialogHeader>
+                       <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+                         <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                         <AlertDialogAction onClick={handlePurgeAllUsers} className="bg-orange-600 text-white rounded-full font-black h-11 px-8">
+                            {isPurgingUsers ? <Loader2 className="animate-spin" /> : "نعم، تصفية الكادر"}
+                         </AlertDialogAction>
+                       </AlertDialogFooter>
+                     </AlertDialogContent>
+                   </AlertDialog>
+                 )}
+                 <AlertDialog>
+                   <AlertDialogTrigger asChild>
+                     <Button variant="outline" className="rounded-full font-black border-red-600 text-red-600 hover:bg-red-50"><Eraser className="w-4 h-4 ml-2" /> تصفير البلاغات</Button>
+                   </AlertDialogTrigger>
+                   <AlertDialogContent dir="rtl" className="text-right rounded-[32px]">
+                     <AlertDialogHeader>
+                      <AlertDialogTitle className="font-black text-right flex items-center gap-2">تنبيه أمني خطير <ShieldAlert className="text-red-600 w-6 h-6" /></AlertDialogTitle>
+                      <AlertDialogDescription className="text-right font-bold text-slate-600 mt-2">
+                        أنت على وشك القيام بعملية **تصفير البلاغات بالكامل**.
+                        <br/><br/>
+                        <span className="text-red-600">تحذير: لا يمكن التراجع عن هذا الإجراء نهائياً.</span>
+                      </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+                       <AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel>
+                       <AlertDialogAction onClick={handleDeleteAllTickets} className="bg-red-600 text-white rounded-full font-black h-11 px-8 shadow-lg shadow-red-200">
+                          {isDeletingAll ? <Loader2 className="animate-spin" /> : "نعم، حذف كافة البيانات"}
+                       </AlertDialogAction>
+                     </AlertDialogFooter>
+                   </AlertDialogContent>
+                 </AlertDialog>
+               </div>
              )}
              <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50"><Download className="w-4 h-4 ml-2" /> تصدير السجل</Button>
              <TabsList className="bg-slate-100 p-1 rounded-full"><TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">الإحصائيات</TabsTrigger><TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">إدارة الحسابات</TabsTrigger><TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">خيارات النظام</TabsTrigger></TabsList>
@@ -280,9 +274,9 @@ export function AdminView() {
         <TabsContent value="stats" className="space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
-            <StatCard icon={Clock} title="قيد المعالجة" value={stats.pending} valueColor="text-amber-500" />
+            <StatCard icon={UserCog} title="إجمالي المدراء" value={stats.totalManagers} valueColor="text-indigo-600" />
+            <StatCard icon={Users} title="إجمالي الموظفين" value={stats.totalUsers} valueColor="text-primary" />
             <StatCard icon={CheckCircle2} title="تم حلها" value={stats.resolved} valueColor="text-green-600" />
-            <StatCard icon={AlertTriangle} title="بلاغات جديدة" value={stats.new} valueColor="text-red-600" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <ChartWrapper title="توزيع حالات البلاغات" icon={PieChartIcon}>
@@ -296,7 +290,7 @@ export function AdminView() {
 
         <TabsContent value="users" className="space-y-8">
            <Card className="banking-card overflow-hidden">
-              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between"><CardTitle className="text-2xl font-black text-primary">إدارة الحسابات المصرفية</CardTitle><Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6"><UserPlus className="w-5 h-5 ml-2" /> إضافة حساب جديد</Button></CardHeader>
+              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between"><CardTitle className="text-2xl font-black text-primary">إدارة الحسابات المصرفية</CardTitle><Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6"><UserPlus className="w-5 h-5 ml-2" /> إضافة كادر جديد</Button></CardHeader>
               <CardContent className="p-8 space-y-12">
                  {(isPrimaryAdmin) && (
                    <div className="space-y-4">
@@ -340,7 +334,7 @@ export function AdminView() {
         </TabsContent>
       </Tabs>
 
-      {/* Add User Dialog */}
+      {/* Dialogs... */}
       <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
          <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-primary/5 border-b"><DialogTitle className="text-2xl font-black text-primary flex items-center gap-2 justify-end"><UserPlus className="w-6 h-6" /> إضافة كادر جديد</DialogTitle></DialogHeader>
@@ -374,7 +368,6 @@ export function AdminView() {
          </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
       <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
          <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-blue-50 border-b"><DialogTitle className="text-2xl font-black text-blue-700 flex items-center gap-2 justify-end"><Edit2 className="w-6 h-6" /> تعديل البيانات</DialogTitle></DialogHeader>
@@ -415,7 +408,7 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
   return (
     <div className="border rounded-[24px] overflow-hidden bg-white shadow-sm">
       <Table>
-        <TableHeader className="bg-slate-50"><TableRow><TableHead className="text-right font-black pr-8">الموظف</TableHead><TableHead className="text-right font-black">BIM ID</TableHead><TableHead className="text-right font-black">كلمة المرور</TableHead><TableHead className="text-right font-black">القسم</TableHead><TableHead className="text-center font-black pl-8">إجراء</TableHead></TableRow></TableHeader>
+        <TableHeader className="bg-primary"><TableRow className="hover:bg-primary"><TableHead className="text-right font-black pr-8 text-white h-14">الموظف</TableHead><TableHead className="text-right font-black text-white h-14">BIM ID</TableHead><TableHead className="text-right font-black text-white h-14">كلمة المرور</TableHead><TableHead className="text-right font-black text-white h-14">القسم</TableHead><TableHead className="text-center font-black pl-8 text-white h-14">إجراء</TableHead></TableRow></TableHeader>
         <TableBody>
           {users.map((u: UserProfile) => {
             const isMe = currentAdmin?.id === u.id;
@@ -426,17 +419,17 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
             const canDelete = (isDev && !isMe) || (isGM && !isMe && !isGMDoc && !isDevDoc);
 
             return (
-              <TableRow key={u.id} className="hover:bg-slate-50">
+              <TableRow key={u.id} className="hover:bg-slate-50 border-b">
                 <TableCell className="font-bold text-right pr-8">{u.name} {isMe && "(أنت)"}</TableCell>
                 <TableCell className="text-right font-mono font-bold text-primary">{u.username}</TableCell>
                 <TableCell className="text-right"><div className="flex items-center gap-2 justify-end"><span className="font-mono text-sm">{(visiblePasswords[u.id] && canSeePass) ? u.password : '••••••••'}</span>{canSeePass && <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords((p: any) => ({...p, [u.id]: !p[u.id]}))}>{visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</Button>}</div></TableCell>
                 <TableCell className="text-right">{u.role === 'Admin' ? <div className="flex flex-wrap gap-1 justify-end">{u.allowedDepartments?.map(d => <Badge key={d} variant="secondary" className="text-[9px]">{d}</Badge>)}</div> : <span className="font-bold text-slate-500">{u.department}</span>}</TableCell>
                 <TableCell className="text-center pl-8">
                   <div className="flex items-center justify-center gap-2">
-                     <Button variant="ghost" size="icon" disabled={!canEdit} onClick={() => onEdit(u)} className={canEdit ? "text-blue-500" : "text-slate-200"}><Edit2 className="w-5 h-5" /></Button>
+                     <Button variant="ghost" size="icon" disabled={!canEdit} onClick={() => onEdit(u)} className={canEdit ? "text-blue-500 hover:bg-blue-50" : "text-slate-200"}><Edit2 className="w-5 h-5" /></Button>
                      <AlertDialog>
-                       <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={!canDelete} className={canDelete ? "text-red-400" : "text-slate-200"}><Trash2 className="w-5 h-5" /></Button></AlertDialogTrigger>
-                       <AlertDialogContent dir="rtl" className="text-right rounded-[32px]"><AlertDialogHeader><AlertDialogTitle className="font-black text-right">تأكيد الحذف</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter className="flex-row-reverse gap-3"><AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(u)} className="bg-red-600 text-white rounded-full font-black">نعم، حذف الحساب</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                       <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={!canDelete} className={canDelete ? "text-red-400 hover:bg-red-50" : "text-slate-200"}><Trash2 className="w-5 h-5" /></Button></AlertDialogTrigger>
+                       <AlertDialogContent dir="rtl" className="text-right rounded-[32px]"><AlertDialogHeader><AlertDialogTitle className="font-black text-right">تأكيد الحذف</AlertDialogTitle><AlertDialogDescription className="text-right font-bold">هل أنت متأكد من حذف الحساب؟ لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex-row-reverse gap-3 mt-4"><AlertDialogCancel className="rounded-full font-black">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(u)} className="bg-red-600 text-white rounded-full font-black px-8">حذف نهائي</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                      </AlertDialog>
                   </div>
                 </TableCell>
@@ -451,7 +444,7 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
 
 function StatCard({ icon: Icon, title, value, color, valueColor }: any) {
   const isBg = color?.startsWith('bg-');
-  return (<div className={cn("relative rounded-[24px] p-6 shadow-xl", isBg ? `${color} text-white` : "bg-white text-slate-900 border")}><div className="flex justify-between items-center"><div className="text-right"><p className={cn("text-xs font-black mb-1", isBg ? "text-white/80" : "text-slate-50")}>{title}</p><h3 className={cn("text-3xl font-black tabular-nums", valueColor)}>{value}</h3></div><div className={cn("p-4 rounded-2xl", isBg ? "bg-white/20" : "bg-slate-50")}><Icon className={cn("w-6 h-6", isBg ? "text-white" : "text-primary")} /></div></div></div>);
+  return (<div className={cn("relative rounded-[24px] p-6 shadow-xl", isBg ? `${color} text-white` : "bg-white text-slate-900 border")}><div className="flex justify-between items-center"><div className="text-right"><p className={cn("text-xs font-black mb-1", isBg ? "text-white/80" : "text-slate-400")}>{title}</p><h3 className={cn("text-3xl font-black tabular-nums", valueColor)}>{value}</h3></div><div className={cn("p-4 rounded-2xl", isBg ? "bg-white/20" : "bg-slate-50")}><Icon className={cn("w-6 h-6", isBg ? "text-white" : "text-primary")} /></div></div></div>);
 }
 
 function ChartWrapper({ title, icon: Icon, children }: any) {
