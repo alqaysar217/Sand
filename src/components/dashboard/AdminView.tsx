@@ -26,7 +26,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Department, UserProfile, UserRole } from '@/lib/types';
 
-const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
+const COLORS = ['#1414B8', '#F59E0B', '#10B981', '#EF4444', '#64748b', '#6C63FF'];
 
 export function AdminView() {
   const db = useFirestore();
@@ -101,14 +101,25 @@ export function AdminView() {
       }
     });
 
+    const arabicStatusLabels: Record<string, string> = {
+      'New': 'جديد',
+      'Pending': 'قيد المعالجة',
+      'Resolved': 'تم الحل',
+      'Escalated': 'محال',
+      'Rejected': 'مرفوض'
+    };
+
     return {
       total: tickets.length,
       resolved: statusMap['Resolved'],
       pending: statusMap['Pending'],
       new: statusMap['New'],
       deptData: Object.entries(deptMap).map(([name, tickets]) => ({ name, tickets })),
-      statusData: Object.entries(statusMap).map(([name, value]) => ({ name, value })).filter(s => s.value > 0),
-      agentPerf: Object.values(agentMap).sort((a, b) => b.count - a.count),
+      statusData: Object.entries(statusMap).map(([name, value]) => ({ 
+        name: arabicStatusLabels[name] || name, 
+        value 
+      })).filter(s => s.value > 0),
+      agentPerf: Object.values(agentMap).sort((a, b) => b.count - a.count).slice(0, 5),
       cardsSpec: Object.values(specMap).filter(s => s.dept === 'إدارة البطائق').map(s => ({ name: s.name, حل: s.resolved, رفض: s.rejected, إحالة: s.escalated })),
       digitalSpec: Object.values(specMap).filter(s => s.dept === 'خدمة العملاء').map(s => ({ name: s.name, حل: s.resolved, رفض: s.rejected, إحالة: s.escalated })),
       appSpec: Object.values(specMap).filter(s => s.dept === 'مشاكل التطبيق').map(s => ({ name: s.name, حل: s.resolved, رفض: s.rejected, إحالة: s.escalated }))
@@ -184,7 +195,6 @@ export function AdminView() {
     const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "رقم CIF/الحساب", "الهاتف", "نوع المشكلة", "الجهة الموجه إليها", "الوسيلة", "الوصف الأصلي", "رافع البلاغ", "مستلم البلاغ", "الحالة الحالية", "سجل الردود والمتابعات الكامل"];
     
     const rows = tickets.map(t => {
-      // تجميع كافة السجلات (المتابعات والردود) في نص واحد مرتب للتصدير
       const logsText = (t.logs || []).map((log: any) => {
         const dateStr = new Date(log.timestamp).toLocaleString('ar-SA');
         return `[${dateStr}] ${log.userName}: ${log.action}${log.note ? ` (ملاحظة: ${log.note.replace(/[\n\r]/g, ' ')})` : ''}`;
@@ -207,7 +217,6 @@ export function AdminView() {
       ];
     });
 
-    // إضافة BOM لضمان دعم اللغة العربية في Excel
     const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -279,7 +288,7 @@ export function AdminView() {
                          {stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                       </Pie>
                       <Tooltip />
-                      <Legend />
+                      <Legend verticalAlign="bottom" align="center" iconType="circle" />
                    </PieChart>
                 </ResponsiveContainer>
              </ChartWrapper>
@@ -301,7 +310,7 @@ export function AdminView() {
                 <TrendingUp className="w-6 h-6 text-green-600" /> تقييم أداء الكوادر المصرفية
              </h2>
              <div className="space-y-8">
-                <PerformanceSection title="موظفي الكول سنتر (الرفع)" icon={Headset} data={stats.agentPerf} color="#6C63FF" isVertical />
+                <PerformanceSection title="موظفي الكول سنتر (الأكثر رفعاً)" icon={Headset} data={stats.agentPerf} color="#6C63FF" isVertical />
                 <div className="grid grid-cols-1 gap-8">
                    <PerformanceSection title="أداء أخصائيي البطائق" icon={CreditCard} data={stats.cardsSpec} color="#1414B8" />
                    <PerformanceSection title="أداء أخصائيي خدمة العملاء" icon={MonitorSmartphone} data={stats.digitalSpec} color="#10B981" />
@@ -727,6 +736,5 @@ function handleDeleteUser(user: UserProfile, isPrimaryAdmin: boolean, toast: any
     toast({ variant: "destructive", title: "إجراء محظور", description: "لا يمكن حذف المدير العام الأساسي للنظام." });
     return;
   }
-  // تنفيذ الحذف...
   toast({ title: "تم الحذف بنجاح" });
 }
