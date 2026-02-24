@@ -14,14 +14,14 @@ import {
   Plus, Search, Loader2, Inbox, Headset,
   Phone, Share2, MessageSquare, ImageIcon, User, Paperclip, X, Upload,
   Clock, CheckCircle2, AlertTriangle, FileText, UserCheck, MessageCircle,
-  Trash2, ShieldCheck, Bell, Info
+  Trash2, ShieldCheck, Bell, Info, RefreshCcw, Send
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, orderBy, doc, arrayUnion, deleteField } from 'firebase/firestore';
 
 export function AgentView() {
   const { user } = useAuth();
@@ -34,6 +34,10 @@ export function AgentView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+
+  // حالات إعادة الفتح (Follow-up)
+  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
+  const [followUpData, setFollowUpData] = useState({ description: '', serviceType: '' });
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
@@ -66,7 +70,6 @@ export function AgentView() {
 
   const allTicketsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    // عرض كافة البلاغات للجميع لضمان الشفافية
     return query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
   }, [db]);
 
@@ -81,7 +84,6 @@ export function AgentView() {
       if (activeTab === 'all') {
         matchesTab = true;
       } else if (activeTab === 'notifications') {
-        // الإشعارات تظهر فقط بلاغات المستخدم التي تم تحديثها
         matchesTab = t.createdByAgentId === user.id && t.status !== 'New';
       } else {
         matchesTab = t.status === activeTab;
@@ -143,6 +145,40 @@ export function AgentView() {
         setActiveTab('all');
       })
       .finally(() => setIsSubmitting(false));
+  };
+
+  const handleFollowUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !selectedTicket || !user) return;
+    
+    setIsSubmitting(true);
+    
+    const updatedDescription = `[تحديث متابعة - ${new Date().toLocaleDateString('ar-SA')}]: ${followUpData.description}\n\n---\n${selectedTicket.description}`;
+
+    const updateData: any = {
+      status: 'New',
+      description: updatedDescription,
+      serviceType: followUpData.serviceType || selectedTicket.serviceType,
+      assignedToSpecialistId: deleteField(),
+      assignedToSpecialistName: deleteField(),
+      specialistResponse: deleteField(),
+      resolvedAt: deleteField(),
+      rejectedAt: deleteField(),
+      logs: arrayUnion({
+        action: `إعادة فتح البلاغ للمتابعة وتوجيهه إلى: ${followUpData.serviceType || selectedTicket.serviceType}`,
+        timestamp: new Date().toISOString(),
+        userName: user.name,
+        note: followUpData.description
+      })
+    };
+
+    updateDocumentNonBlocking(doc(db, 'tickets', selectedTicket.id), updateData);
+    
+    toast({ title: "تمت إعادة الفتح", description: "تم إرسال تحديث المتابعة للقسم الفني بنجاح." });
+    setSelectedTicket(null);
+    setIsFollowUpMode(false);
+    setFollowUpData({ description: '', serviceType: '' });
+    setIsSubmitting(false);
   };
 
   const handleDeleteTicket = async (ticketId: string) => {
@@ -398,7 +434,7 @@ export function AgentView() {
         </Card>
       )}
 
-      <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
+      <Dialog open={!!selectedTicket} onOpenChange={() => { setSelectedTicket(null); setIsFollowUpMode(false); }}>
         <DialogContent className="max-w-4xl text-right rounded-[32px] p-0 overflow-hidden flex flex-col max-h-[90vh]" dir="rtl">
            {selectedTicket && (
              <>
@@ -412,70 +448,127 @@ export function AgentView() {
                       </div>
                       <div className="flex items-center gap-3">
                         {getStatusBadge(selectedTicket.status)}
-                        {selectedTicket.createdByAgentId === user?.id && (
-                          <Button 
-                            variant="destructive" 
-                            size="icon" 
-                            className="rounded-full h-9 w-9 shadow-lg" 
-                            onClick={() => {
-                              if(confirm(`هل أنت متأكد من حذف البلاغ ${selectedTicket.ticketID}؟`)) {
-                                handleDeleteTicket(selectedTicket.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        {selectedTicket.createdByAgentId === user?.id && !isFollowUpMode && (
+                          <div className="flex gap-2">
+                             {(selectedTicket.status === 'Resolved' || selectedTicket.status === 'Rejected' || selectedTicket.status === 'Escalated') && (
+                                <Button 
+                                  onClick={() => {
+                                    setIsFollowUpMode(true);
+                                    setFollowUpData({ description: '', serviceType: selectedTicket.serviceType });
+                                  }}
+                                  className="rounded-full font-black bg-accent hover:bg-accent/90 text-white flex items-center gap-2 shadow-lg"
+                                >
+                                  <RefreshCcw className="w-4 h-4" /> إعادة فتح للمتابعة
+                                </Button>
+                             )}
+                             <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="rounded-full h-9 w-9 shadow-lg" 
+                              onClick={() => {
+                                if(confirm(`هل أنت متأكد من حذف البلاغ ${selectedTicket.ticketID}؟`)) {
+                                  handleDeleteTicket(selectedTicket.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                    </div>
                 </DialogHeader>
                 
                 <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1 min-h-0">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card className="banking-card p-6 border-none shadow-md space-y-4">
-                         <h4 className="font-black text-primary flex items-center gap-2 justify-end">
-                            بيانات العميل <User className="w-4 h-4" />
-                         </h4>
-                         <div className="grid grid-cols-2 gap-4 text-right">
-                            <div>
-                               <span className="text-[10px] text-slate-400 font-black block">الاسم الكامل</span>
-                               <p className="font-bold">{selectedTicket.customerName}</p>
+                   {isFollowUpMode ? (
+                      <Card className="banking-card border-accent bg-accent/5 p-8 animate-in slide-in-from-top-4 duration-500">
+                         <form onSubmit={handleFollowUpSubmit} className="space-y-6">
+                            <div className="flex items-center gap-3 mb-4 flex-row-reverse">
+                               <RefreshCcw className="w-6 h-6 text-accent" />
+                               <h3 className="text-xl font-black text-accent">تحديث البلاغ للمتابعة</h3>
                             </div>
-                            <div>
-                               <span className="text-[10px] text-slate-400 font-black block">رقم CIF</span>
-                               <p className="font-mono font-bold">{selectedTicket.cif}</p>
+                            
+                            <div className="space-y-3 text-right">
+                               <Label className="font-black text-sm mr-1">وصف المشكلة الجديدة أو سبب المتابعة</Label>
+                               <Textarea 
+                                 required 
+                                 value={followUpData.description} 
+                                 onChange={e => setFollowUpData({...followUpData, description: e.target.value})}
+                                 className="banking-input min-h-[120px] text-right border-accent/20 bg-white" 
+                                 placeholder="اكتب هنا التحديثات الجديدة للعميل..." 
+                               />
                             </div>
-                            <div className="col-span-2">
-                               <span className="text-[10px] text-slate-400 font-black block">رقم الهاتف</span>
-                               <p className="font-bold">{selectedTicket.phoneNumber}</p>
-                            </div>
-                         </div>
-                      </Card>
 
-                      <Card className="banking-card p-6 border-none shadow-md space-y-4">
-                         <h4 className="font-black text-primary flex items-center gap-2 justify-end">
-                            تفاصيل التوجيه <Share2 className="w-4 h-4" />
-                         </h4>
-                         <div className="grid grid-cols-2 gap-4 text-right">
-                            <div>
-                               <span className="text-[10px] text-slate-400 font-black block">الجهة المعنية</span>
-                               <p className="font-bold text-accent">{selectedTicket.serviceType}</p>
+                            <div className="space-y-3 text-right">
+                               <Label className="font-black text-sm mr-1">توجيه المتابعة إلى قسم (اختياري)</Label>
+                               <Select 
+                                 value={followUpData.serviceType} 
+                                 onValueChange={(v) => setFollowUpData({...followUpData, serviceType: v})}
+                               >
+                                 <SelectTrigger className="banking-input h-14 text-right border-accent/20 bg-white"><SelectValue /></SelectTrigger>
+                                 <SelectContent dir="rtl">
+                                    <SelectItem value="إدارة البطائق">قسم البطائق (Cards)</SelectItem>
+                                    <SelectItem value="مشاكل التطبيق">التطبيق الإلكتروني (Mobile App)</SelectItem>
+                                    <SelectItem value="خدمة العملاء">خدمة العملاء (Digital CS)</SelectItem>
+                                 </SelectContent>
+                               </Select>
                             </div>
-                            <div>
-                               <span className="text-[10px] text-slate-400 font-black block">وسيلة الاستلام</span>
-                               <p className="font-bold">{selectedTicket.intakeMethod}</p>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                               <Button type="button" variant="ghost" onClick={() => setIsFollowUpMode(false)} className="rounded-full font-black">إلغاء</Button>
+                               <Button type="submit" disabled={isSubmitting} className="banking-button bg-accent hover:bg-accent/90 text-white px-10 rounded-full font-black shadow-xl">
+                                  {isSubmitting ? <Loader2 className="animate-spin" /> : <><Send className="w-4 h-4 ml-2" /> إرسال تحديث المتابعة</>}
+                               </Button>
                             </div>
-                            <div>
-                               <span className="text-[10px] text-slate-400 font-black block">نوع المشكلة</span>
-                               <p className="font-bold">{selectedTicket.subIssue}</p>
-                            </div>
-                            <div>
-                               <span className="text-[10px] text-slate-400 font-black block">موظف الرفع</span>
-                               <p className="font-bold">{selectedTicket.createdByAgentName}</p>
-                            </div>
-                         </div>
+                         </form>
                       </Card>
-                   </div>
+                   ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card className="banking-card p-6 border-none shadow-md space-y-4">
+                           <h4 className="font-black text-primary flex items-center gap-2 justify-end">
+                              بيانات العميل <User className="w-4 h-4" />
+                           </h4>
+                           <div className="grid grid-cols-2 gap-4 text-right">
+                              <div>
+                                 <span className="text-[10px] text-slate-400 font-black block">الاسم الكامل</span>
+                                 <p className="font-bold">{selectedTicket.customerName}</p>
+                              </div>
+                              <div>
+                                 <span className="text-[10px] text-slate-400 font-black block">رقم CIF</span>
+                                 <p className="font-mono font-bold">{selectedTicket.cif}</p>
+                              </div>
+                              <div className="col-span-2">
+                                 <span className="text-[10px] text-slate-400 font-black block">رقم الهاتف</span>
+                                 <p className="font-bold">{selectedTicket.phoneNumber}</p>
+                              </div>
+                           </div>
+                        </Card>
+
+                        <Card className="banking-card p-6 border-none shadow-md space-y-4">
+                           <h4 className="font-black text-primary flex items-center gap-2 justify-end">
+                              تفاصيل التوجيه <Share2 className="w-4 h-4" />
+                           </h4>
+                           <div className="grid grid-cols-2 gap-4 text-right">
+                              <div>
+                                 <span className="text-[10px] text-slate-400 font-black block">الجهة المعنية</span>
+                                 <p className="font-bold text-accent">{selectedTicket.serviceType}</p>
+                              </div>
+                              <div>
+                                 <span className="text-[10px] text-slate-400 font-black block">وسيلة الاستلام</span>
+                                 <p className="font-bold">{selectedTicket.intakeMethod}</p>
+                              </div>
+                              <div>
+                                 <span className="text-[10px] text-slate-400 font-black block">نوع المشكلة</span>
+                                 <p className="font-bold">{selectedTicket.subIssue}</p>
+                              </div>
+                              <div>
+                                 <span className="text-[10px] text-slate-400 font-black block">موظف الرفع</span>
+                                 <p className="font-bold">{selectedTicket.createdByAgentName}</p>
+                              </div>
+                           </div>
+                        </Card>
+                     </div>
+                   )}
 
                    <div className="space-y-4">
                       <h4 className="font-black text-slate-800 flex items-center gap-2 justify-end">
@@ -507,7 +600,6 @@ export function AgentView() {
                       )}
                    </div>
 
-                   {/* حماية الردود الفنية: تظهر فقط لصاحب البلاغ */}
                    {selectedTicket.assignedToSpecialistName && (
                      <div className="space-y-4 pt-4 border-t border-slate-100">
                         <h4 className="font-black text-green-600 flex items-center gap-2 justify-end">
@@ -552,7 +644,6 @@ export function AgentView() {
                                <div className="flex-1 text-right">
                                   <p className="text-sm font-bold text-slate-700">{log.action}</p>
                                   <p className="text-[10px] text-slate-400 mt-1">بواسطة: {log.userName} | {new Date(log.timestamp).toLocaleString('ar-SA')}</p>
-                                  {/* الملاحظات في السجل تظهر فقط لصاحب البلاغ */}
                                   {log.note && selectedTicket.createdByAgentId === user?.id && (
                                     <p className="text-xs bg-white border p-3 rounded-xl mt-2 text-slate-500 font-medium">ملاحظة: {log.note}</p>
                                   )}
@@ -564,7 +655,7 @@ export function AgentView() {
                 </div>
 
                 <div className="p-8 border-t bg-white flex justify-end shrink-0">
-                   <Button onClick={() => setSelectedTicket(null)} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إغلاق التفاصيل</Button>
+                   <Button onClick={() => { setSelectedTicket(null); setIsFollowUpMode(false); }} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إغلاق التفاصيل</Button>
                 </div>
              </>
            )}
