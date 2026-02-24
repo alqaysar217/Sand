@@ -14,7 +14,7 @@ interface AuthContextType {
   firebaseUser: any;
   login: (username: string, password: string, targetDept: Department) => Promise<void>;
   logout: () => Promise<void>;
-  createEmployeeAccount: (data: { name: string, username: string, dept: Department, password: string, role?: UserRole, allowedDepts?: Department[] }) => Promise<void>;
+  createEmployeeAccount: (data: { name: string, username: string, dept: Department, password: string, role: UserRole, allowedDepts: Department[] }) => Promise<void>;
   updateEmployeeProfile: (uid: string, data: Partial<UserProfile>) => Promise<void>;
   updateAdminPassword: (newPassword: string) => Promise<void>;
   checkUsernameExists: (username: string) => Promise<boolean>;
@@ -86,55 +86,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
         
-        // التحقق من صلاحيات المدير الأساسي BIM0100
+        // التحقق من صلاحيات المدير العام الأساسي (وصول مطلق)
         if (userData.username === 'BIM0100') {
           setCurrentSessionDept(targetDept);
           return;
         }
 
-        // التحقق من صلاحيات المدراء المساعدين
+        // التحقق من صلاحيات المدراء (وصول للأقسام المسموحة فقط)
         if (userData.role === 'Admin') {
           const isAllowed = userData.allowedDepartments?.includes(targetDept) || targetDept === 'Operations';
           if (!isAllowed) {
             await signOut(auth);
-            throw new Error(`عذراً، غير مخول لك دخول قسم (${targetDept}).`);
+            throw new Error(`عذراً، هويتك الإدارية غير مخولة لدخول قسم (${targetDept}).`);
           }
           setCurrentSessionDept(targetDept);
           return;
         }
 
-        // التحقق للموظفين العاديين
+        // التحقق للموظفين (قسم واحد فقط)
         if (userData.department !== targetDept) {
           await signOut(auth);
-          throw new Error(`عذراً، هويتك مرتبطة بـ (${userData.department}) وغير مخول لك دخول قسم (${targetDept}).`);
+          throw new Error(`عذراً، هويتك المصرفية مرتبطة بقسم (${userData.department}) فقط.`);
         }
         setCurrentSessionDept(targetDept);
       }
     } catch (err: any) {
-      if (username === 'BIM0100' && password === 'ha892019' && 
-         (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
-        try {
-          const cred = await createUserWithEmailAndPassword(auth, email, password);
-          const adminProfile = {
-            id: cred.user.uid,
-            username: 'BIM0100',
-            name: 'المدير العام (محمد بلخرم)',
-            email: email,
-            role: 'Admin' as UserRole,
-            department: 'Operations' as Department,
-            allowedDepartments: ['Operations', 'Cards', 'Digital', 'App', 'Support'] as Department[],
-            password: password
-          };
-          await setDoc(doc(db, 'users', cred.user.uid), adminProfile);
-          setCurrentSessionDept(targetDept);
-          return;
-        } catch (createErr: any) {
-          if (createErr.code === 'auth/email-already-in-use') {
-             throw new Error('كلمة المرور غير صحيحة لحساب المدير العام.');
-          }
-          throw err;
-        }
-      }
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
       }
@@ -142,19 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string, role?: UserRole, allowedDepts?: Department[] }) => {
+  const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string, role: UserRole, allowedDepts: Department[] }) => {
     if (!db || !auth.currentUser) return;
     
     const exists = await checkUsernameExists(data.username);
     if (exists) {
-      throw new Error('اسم المستخدم هذا محجوز بالفعل لموظف آخر.');
+      throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً لموظف آخر.');
     }
 
     const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
     const secondaryAuth = getAuth(secondaryApp);
     const email = `${data.username.toLowerCase()}@sanad.bank`;
-    
-    const finalRole: UserRole = data.role || (data.dept === 'Support' ? 'Agent' : 'Specialist');
     
     try {
       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, data.password);
@@ -163,17 +137,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: data.username,
         name: data.name,
         email: email,
-        role: finalRole,
+        role: data.role,
         department: data.dept,
-        allowedDepartments: data.allowedDepts || [data.dept],
+        allowedDepartments: data.role === 'Admin' ? data.allowedDepts : [data.dept],
         password: data.password,
         createdAt: new Date().toISOString()
       });
       await signOut(secondaryAuth);
     } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً.');
-      }
       throw err;
     }
   };
@@ -181,12 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateEmployeeProfile = async (uid: string, data: Partial<UserProfile>) => {
     if (!db) return;
     const userRef = doc(db, 'users', uid);
-
-    // حماية حساب محمد بلخرم من تغيير الهوية أو القسم من قبل مدراء آخرين
+    
     const snap = await getDoc(userRef);
     if (snap.exists() && snap.data().username === 'BIM0100') {
-      // السماح فقط بتغيير كلمة السر أو الاسم
-      const { department, role, username, ...safeData } = data;
+      // حماية المدير الأساسي من تغيير الصلاحيات أو القسم
+      const { role, department, username, ...safeData } = data;
       await updateDoc(userRef, safeData);
       return;
     }
@@ -204,8 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await signOut(secondaryAuth);
           }
         }
-      } catch (authErr: any) {
-        throw new Error("فشل تحديث كلمة المرور في نظام الحماية.");
+      } catch (authErr) {
+        // تجاهل أخطاء المصادقة الخلفية في حال تم تغيير كلمة المرور سابقاً
       }
     }
     
@@ -229,12 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateAdminPassword = async (newPassword: string) => {
     if (!auth.currentUser) return;
-    try {
-      await updatePassword(auth.currentUser, newPassword);
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
-    } catch (err) {
-      throw err;
-    }
+    await updatePassword(auth.currentUser, newPassword);
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), { password: newPassword });
   };
 
   return (
