@@ -109,7 +109,9 @@ export function AdminView() {
     };
   }, [tickets, rawUsers]);
 
-  const handleCheckUsername = async (username: string) => {
+  const handleCheckUsername = async (rawUsername: string) => {
+    // تحويل اسم المستخدم دائماً إلى حروف كبيرة (Uppercase)
+    const username = rawUsername.toUpperCase();
     setNewUser({ ...newUser, username });
     if (username.length > 3) {
       const exists = await checkUsernameExists(username);
@@ -151,7 +153,6 @@ export function AdminView() {
     if (!isDeveloper || !rawUsers) return;
     setIsPurgingUsers(true);
     try {
-      // المطور والمدير العام مستثنون
       const usersToPurge = rawUsers.filter(u => u.username !== 'BIM0100' && u.username !== 'BIM775258830');
       
       for (const u of usersToPurge) {
@@ -334,14 +335,23 @@ export function AdminView() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialogs... */}
       <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
          <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-primary/5 border-b"><DialogTitle className="text-2xl font-black text-primary flex items-center gap-2 justify-end"><UserPlus className="w-6 h-6" /> إضافة كادر جديد</DialogTitle></DialogHeader>
             <form onSubmit={handleCreateUser} className="p-8 space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-2 space-y-2"><Label className="font-black text-xs mr-1">اسم الموظف</Label><Input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="banking-input h-12 text-right" /></div>
-                  <div className="space-y-2"><Label className="font-black text-xs mr-1">BIM ID</Label><Input required value={newUser.username} onChange={e => handleCheckUsername(e.target.value)} className={cn("banking-input h-12 font-mono text-right", usernameError && "border-red-500")} />{usernameError && <p className="text-[10px] text-red-600 font-black mr-2">BIM ID محجوز!</p>}</div>
+                  <div className="space-y-2">
+                    <Label className="font-black text-xs mr-1">BIM ID</Label>
+                    <Input 
+                      required 
+                      value={newUser.username} 
+                      onChange={e => handleCheckUsername(e.target.value)} 
+                      className={cn("banking-input h-12 font-mono text-right", usernameError && "border-red-500")}
+                      placeholder="BIMXXXX" 
+                    />
+                    {usernameError && <p className="text-[10px] text-red-600 font-black mr-2">BIM ID محجوز!</p>}
+                  </div>
                   <div className="space-y-2"><Label className="font-black text-xs mr-1">كلمة المرور</Label><Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" /></div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">الرتبة الوظيفية</Label>
