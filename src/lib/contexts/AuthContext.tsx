@@ -111,6 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
       }
+      if (err.code === 'auth/network-request-failed') {
+        throw new Error('فشل الاتصال بخادم الحماية، يرجى التحقق من الشبكة.');
+      }
       throw err;
     }
   };
@@ -123,7 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً لموظف آخر.');
     }
 
-    const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
+    const appName = `CreateApp_${Date.now()}`;
+    const secondaryApp = initializeApp(firebaseConfig, appName);
     const secondaryAuth = getAuth(secondaryApp);
     const email = `${data.username.toLowerCase()}@sanad.bank`;
     
@@ -141,7 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString()
       });
       await signOut(secondaryAuth);
+      await deleteApp(secondaryApp);
     } catch (err: any) {
+      await deleteApp(secondaryApp);
       throw err;
     }
   };
@@ -151,53 +157,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userRef = doc(db, 'users', uid);
     const isSelfUpdate = auth.currentUser && uid === auth.currentUser.uid;
     
-    // جلب البيانات القديمة للتحقق
     const oldDoc = await getDoc(userRef);
     if (!oldDoc.exists()) throw new Error("المستخدم غير موجود");
-    const oldData = oldDoc.data();
+    const oldData = oldDoc.data() as UserProfile;
 
-    // تحديث كلمة المرور في نظام الهوية أولاً
     if (data.password && data.password !== oldData.password) {
-      try {
-        if (isSelfUpdate && auth.currentUser) {
-          // محاولة تحديث كلمة السر للمدير نفسه
-          // في حال طلب إعادة المصادقة (خطأ أمني شائع في فيربيس)
-          try {
+      if (isSelfUpdate && auth.currentUser) {
+        try {
+          await updatePassword(auth.currentUser, data.password);
+        } catch (e: any) {
+          if (e.code === 'auth/requires-recent-login') {
+            const credential = EmailAuthProvider.credential(oldData.email, oldData.password!);
+            await reauthenticateWithCredential(auth.currentUser, credential);
             await updatePassword(auth.currentUser, data.password);
-          } catch (e: any) {
-            if (e.code === 'auth/requires-recent-login') {
-              // إذا انتهت مدة الجلسة الأمنية، نقوم بإعادة المصادقة بكلمة السر القديمة لإتمام العملية
-              const credential = EmailAuthProvider.credential(oldData.email, oldData.password);
-              await reauthenticateWithCredential(auth.currentUser, credential);
-              await updatePassword(auth.currentUser, data.password);
-            } else {
-              throw e;
-            }
-          }
-        } else {
-          // إذا كان المدير يغير كلمة سر موظف آخر
-          const secondaryApp = getApps().find(app => app.name === 'UpdateApp') || initializeApp(firebaseConfig, 'UpdateApp');
-          const secondaryAuth = getAuth(secondaryApp);
-          
-          try {
-            const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password);
-            await updatePassword(userCred.user, data.password);
-            await signOut(secondaryAuth);
-          } catch (secondaryErr) {
-            // تنظيف الجلسة في حال الفشل
-            await signOut(secondaryAuth);
-            throw secondaryErr;
+          } else {
+            throw e;
           }
         }
-      } catch (authErr: any) {
-        console.error("Auth Update Failed:", authErr);
-        throw new Error(`فشل تحديث كلمة المرور في نظام الحماية: ${authErr.message}`);
+      } else {
+        const appName = `UpdateApp_${Date.now()}`;
+        const secondaryApp = initializeApp(firebaseConfig, appName);
+        const secondaryAuth = getAuth(secondaryApp);
+        
+        try {
+          const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password!);
+          await updatePassword(userCred.user, data.password);
+          await signOut(secondaryAuth);
+          await deleteApp(secondaryApp);
+        } catch (authErr: any) {
+          await deleteApp(secondaryApp);
+          throw new Error(`فشل تحديث كلمة المرور في نظام الحماية: ${authErr.message}`);
+        }
       }
     }
     
-    // تحديث البيانات في Firestore
     if (oldData.username === 'BIM0100') {
-      // حماية المدير الأساسي من تغيير الصلاحيات أو القسم أو اسم المستخدم
       const { role, department, username, allowedDepartments, ...safeData } = data;
       await updateDoc(userRef, safeData);
       return;
