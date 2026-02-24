@@ -72,7 +72,8 @@ export function AdminView() {
   const allTicketsQuery = useMemoFirebase(() => db ? query(collection(db, 'tickets'), orderBy('createdAt', 'desc')) : null, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
-  const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users'), orderBy('createdAt', 'desc')) : null, [db]);
+  // إزالة orderBy لضمان ظهور كافة الحسابات حتى لو نقص تاريخ الإنشاء (مثل حساب BIM0100)
+  const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users')) : null, [db]);
   const { data: appUsers } = useCollection<UserProfile>(usersQuery);
 
   const staffStats = useMemo(() => {
@@ -354,12 +355,13 @@ export function AdminView() {
                     <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات المدراء والمشرفين <Shield className="w-5 h-5 text-amber-500" /></h3>
                     <UserTable 
                       users={appUsers?.filter(u => u.role === 'Admin') || []} 
-                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin) { setEditingUser(u); setShowEditUserDialog(true); } }}
+                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin || currentAdmin?.id === u.id) { setEditingUser(u); setShowEditUserDialog(true); } }}
                       onDelete={(u: UserProfile) => handleDeleteUser(u, isPrimaryAdmin, toast)}
                       visiblePasswords={visiblePasswords}
                       setVisiblePasswords={setVisiblePasswords}
                       isPrimaryAdmin={isPrimaryAdmin}
                       isAdminTable={true}
+                      currentAdminId={currentAdmin?.id}
                     />
                  </div>
 
@@ -373,6 +375,7 @@ export function AdminView() {
                       setVisiblePasswords={setVisiblePasswords}
                       isPrimaryAdmin={isPrimaryAdmin}
                       isAdminTable={false}
+                      currentAdminId={currentAdmin?.id}
                     />
                  </div>
               </CardContent>
@@ -557,7 +560,7 @@ export function AdminView() {
   );
 }
 
-function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswords, isPrimaryAdmin, isAdminTable }: any) {
+function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswords, isPrimaryAdmin, isAdminTable, currentAdminId }: any) {
   return (
     <div className="border rounded-[24px] overflow-hidden bg-white shadow-sm">
       <Table>
@@ -571,55 +574,59 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((u: UserProfile) => (
-            <TableRow key={u.id} className="hover:bg-slate-50 transition-colors">
-              <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
-              <TableCell className="text-right font-mono font-bold text-primary">{u.username}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center gap-2 justify-end">
-                  <span className="font-mono text-sm font-bold">
-                    {(visiblePasswords[u.id] && isPrimaryAdmin) ? u.password : '••••••••'}
-                  </span>
-                  {isPrimaryAdmin && (
-                    <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords((p: any) => ({...p, [u.id]: !p[u.id]}))}>
-                      {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {users.map((u: UserProfile) => {
+            const isMe = currentAdminId === u.id;
+            const canEdit = isPrimaryAdmin || isMe;
+            return (
+              <TableRow key={u.id} className="hover:bg-slate-50 transition-colors">
+                <TableCell className="font-bold text-right pr-8">{u.name} {isMe && "(أنت)"}</TableCell>
+                <TableCell className="text-right font-mono font-bold text-primary">{u.username}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center gap-2 justify-end">
+                    <span className="font-mono text-sm font-bold">
+                      {(visiblePasswords[u.id] && isPrimaryAdmin) ? u.password : '••••••••'}
+                    </span>
+                    {isPrimaryAdmin && (
+                      <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords((p: any) => ({...p, [u.id]: !p[u.id]}))}>
+                        {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                   {u.role === 'Admin' ? (
+                     <div className="flex flex-wrap gap-1 justify-end">
+                        {u.allowedDepartments?.map(d => <Badge key={d} variant="secondary" className="text-[9px] px-1.5">{d}</Badge>)}
+                     </div>
+                   ) : (
+                     <span className="font-bold text-slate-500">{u.department}</span>
+                   )}
+                </TableCell>
+                <TableCell className="text-center pl-8">
+                  <div className="flex items-center justify-center gap-2">
+                     <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      disabled={!canEdit} 
+                      onClick={() => onEdit(u)} 
+                      className={canEdit ? "text-blue-500" : "text-slate-200"}
+                    >
+                      <Edit2 className="w-5 h-5" />
                     </Button>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="text-right">
-                 {u.role === 'Admin' ? (
-                   <div className="flex flex-wrap gap-1 justify-end">
-                      {u.allowedDepartments?.map(d => <Badge key={d} variant="secondary" className="text-[9px] px-1.5">{d}</Badge>)}
-                   </div>
-                 ) : (
-                   <span className="font-bold text-slate-500">{u.department}</span>
-                 )}
-              </TableCell>
-              <TableCell className="text-center pl-8">
-                <div className="flex items-center justify-center gap-2">
-                   <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled={!isPrimaryAdmin} 
-                    onClick={() => onEdit(u)} 
-                    className={isPrimaryAdmin ? "text-blue-500" : "text-slate-200"}
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </Button>
-                   <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    disabled={u.username === 'BIM0100' || !isPrimaryAdmin} 
-                    onClick={() => onDelete(u)} 
-                    className={(u.username === 'BIM0100' || !isPrimaryAdmin) ? "text-slate-200" : "text-red-400"}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                   </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                     <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      disabled={u.username === 'BIM0100' || !isPrimaryAdmin} 
+                      onClick={() => onDelete(u)} 
+                      className={(u.username === 'BIM0100' || !isPrimaryAdmin) ? "text-slate-200" : "text-red-400"}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                     </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
           {users.length === 0 && (
             <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 font-bold">لا توجد حسابات مسجلة في هذه الفئة</TableCell></TableRow>
           )}
@@ -761,3 +768,4 @@ function handleDeleteUser(user: UserProfile, isPrimaryAdmin: boolean, toast: any
   }
   toast({ title: "تم الحذف بنجاح" });
 }
+
