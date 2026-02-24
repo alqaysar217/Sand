@@ -72,7 +72,6 @@ export function AdminView() {
   const allTicketsQuery = useMemoFirebase(() => db ? query(collection(db, 'tickets'), orderBy('createdAt', 'desc')) : null, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
 
-  // إزالة orderBy لضمان ظهور كافة الحسابات حتى لو نقص تاريخ الإنشاء (مثل حساب BIM0100)
   const usersQuery = useMemoFirebase(() => db ? query(collection(db, 'users')) : null, [db]);
   const { data: appUsers } = useCollection<UserProfile>(usersQuery);
 
@@ -152,14 +151,19 @@ export function AdminView() {
     e.preventDefault();
     if (usernameError) return;
     
-    if (!isPrimaryAdmin && newUser.role === 'Admin') {
+    // تحديد الدور التقني بناءً على القسم إذا لم يكن مديراً
+    const technicalRole = newUser.role === 'Admin' 
+      ? 'Admin' 
+      : (newUser.dept === 'Support' ? 'Agent' : 'Specialist');
+
+    if (!isPrimaryAdmin && technicalRole === 'Admin') {
       toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
       return;
     }
 
     setIsCreatingUser(true);
     try {
-      await createEmployeeAccount(newUser);
+      await createEmployeeAccount({ ...newUser, role: technicalRole });
       toast({ title: "تم إنشاء الحساب بنجاح" });
       setShowAddUserDialog(false);
       setNewUser({ name: '', username: '', dept: 'Support', role: 'Agent', password: '', allowedDepts: [] });
@@ -385,7 +389,7 @@ export function AdminView() {
         <TabsContent value="options" className="animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <ConfigListManager title="وسائل استلام الطلبات" items={config?.intakeMethods || []} value={newItemValues.intakeMethods || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, intakeMethods: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { intakeMethods: arrayUnion(newItemValues.intakeMethods) }); setNewItemValues({...newItemValues, intakeMethods: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { intakeMethods: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.intakeMethods || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { intakeMethods: list }); }} />
-              <ConfigListManager title="أنواع المشكلات الفنية" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { issueTypes: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { issueTypes: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { issueTypes: list }); }} />
+              <ConfigListManager title="أنواع المشكلات الفنية" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { intakeMethods: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { intakeMethods: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { intakeMethods: list }); }} />
            </div>
         </TabsContent>
       </Tabs>
@@ -415,12 +419,14 @@ export function AdminView() {
                   </div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">الرتبة الوظيفية</Label>
-                     <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
+                     <Select 
+                        value={newUser.role === 'Admin' ? 'Admin' : 'Employee'} 
+                        onValueChange={(v: any) => setNewUser({...newUser, role: v === 'Admin' ? 'Admin' : 'Agent'})}
+                      >
                         <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
                         <SelectContent dir="rtl">
-                           {isPrimaryAdmin && <SelectItem value="Admin">مدير (Admin)</SelectItem>}
-                           <SelectItem value="Specialist">أخصائي (Specialist)</SelectItem>
-                           <SelectItem value="Agent">موظف رفع (Agent)</SelectItem>
+                           {isPrimaryAdmin && <SelectItem value="Admin">مدير</SelectItem>}
+                           <SelectItem value="Employee">موظف</SelectItem>
                         </SelectContent>
                      </Select>
                   </div>
@@ -480,7 +486,12 @@ export function AdminView() {
                 e.preventDefault(); 
                 setIsUpdatingUser(true); 
                 try {
-                  await updateEmployeeProfile(editingUser.id, editingUser); 
+                  // تحديث الدور الفني بناءً على القسم عند التعديل إذا لم يكن مديراً
+                  const finalData = { ...editingUser };
+                  if (finalData.role !== 'Admin') {
+                    finalData.role = finalData.department === 'Support' ? 'Agent' : 'Specialist';
+                  }
+                  await updateEmployeeProfile(editingUser.id, finalData); 
                   toast({title: "تم تحديث البيانات بنجاح"}); 
                   setShowEditUserDialog(false); 
                 } catch (err: any) {
@@ -503,12 +514,14 @@ export function AdminView() {
                       <>
                         <div className="space-y-2">
                           <Label className="font-black text-xs">الرتبة</Label>
-                          <Select value={editingUser.role} onValueChange={(v: any) => setEditingUser({...editingUser, role: v})}>
+                          <Select 
+                            value={editingUser.role === 'Admin' ? 'Admin' : 'Employee'} 
+                            onValueChange={(v: any) => setEditingUser({...editingUser, role: v === 'Admin' ? 'Admin' : 'Agent'})}
+                          >
                               <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
                               <SelectContent dir="rtl">
                                 <SelectItem value="Admin">مدير</SelectItem>
-                                <SelectItem value="Specialist">أخصائي</SelectItem>
-                                <SelectItem value="Agent">موظف رفع</SelectItem>
+                                <SelectItem value="Employee">موظف</SelectItem>
                               </SelectContent>
                           </Select>
                         </div>
@@ -768,4 +781,3 @@ function handleDeleteUser(user: UserProfile, isPrimaryAdmin: boolean, toast: any
   }
   toast({ title: "تم الحذف بنجاح" });
 }
-
