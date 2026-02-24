@@ -40,6 +40,8 @@ export function AdminView() {
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
 
+  const isPrimaryAdmin = currentAdmin?.username === 'BIM0100';
+
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
@@ -124,6 +126,13 @@ export function AdminView() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usernameError) return;
+    
+    // منع المدراء المساعدين من إضافة حسابات "مدير"
+    if (!isPrimaryAdmin && newUser.role === 'Admin') {
+      toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد إضافة حسابات مدراء." });
+      return;
+    }
+
     setIsCreatingUser(true);
     try {
       await createEmployeeAccount(newUser);
@@ -253,10 +262,12 @@ export function AdminView() {
                     <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات المدراء والمشرفين <Shield className="w-5 h-5 text-amber-500" /></h3>
                     <UserTable 
                       users={appUsers?.filter(u => u.role === 'Admin') || []} 
-                      onEdit={(u) => { setEditingUser(u); setShowEditUserDialog(true); }}
-                      onDelete={(u) => handleDeleteUser(u)}
+                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin) { setEditingUser(u); setShowEditUserDialog(true); } }}
+                      onDelete={(u: UserProfile) => handleDeleteUser(u, isPrimaryAdmin, toast)}
                       visiblePasswords={visiblePasswords}
                       setVisiblePasswords={setVisiblePasswords}
+                      isPrimaryAdmin={isPrimaryAdmin}
+                      isAdminTable={true}
                     />
                  </div>
 
@@ -264,10 +275,12 @@ export function AdminView() {
                     <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 justify-end">حسابات الموظفين (الأقسام الفنية والكول سنتر) <Users className="w-5 h-5 text-primary" /></h3>
                     <UserTable 
                       users={appUsers?.filter(u => u.role !== 'Admin') || []} 
-                      onEdit={(u) => { setEditingUser(u); setShowEditUserDialog(true); }}
-                      onDelete={(u) => handleDeleteUser(u)}
+                      onEdit={(u: UserProfile) => { if (isPrimaryAdmin) { setEditingUser(u); setShowEditUserDialog(true); } }}
+                      onDelete={(u: UserProfile) => handleDeleteUser(u, isPrimaryAdmin, toast)}
                       visiblePasswords={visiblePasswords}
                       setVisiblePasswords={setVisiblePasswords}
+                      isPrimaryAdmin={isPrimaryAdmin}
+                      isAdminTable={false}
                     />
                  </div>
               </CardContent>
@@ -310,7 +323,7 @@ export function AdminView() {
                      <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
                         <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
                         <SelectContent dir="rtl">
-                           <SelectItem value="Admin">مدير (Admin)</SelectItem>
+                           {isPrimaryAdmin && <SelectItem value="Admin">مدير (Admin)</SelectItem>}
                            <SelectItem value="Specialist">أخصائي (Specialist)</SelectItem>
                            <SelectItem value="Agent">موظف رفع (Agent)</SelectItem>
                         </SelectContent>
@@ -440,7 +453,7 @@ export function AdminView() {
   );
 }
 
-function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswords }: any) {
+function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswords, isPrimaryAdmin, isAdminTable }: any) {
   return (
     <div className="border rounded-[24px] overflow-hidden bg-white shadow-sm">
       <Table>
@@ -460,10 +473,15 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
               <TableCell className="text-right font-mono font-bold text-primary">{u.username}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center gap-2 justify-end">
-                  <span className="font-mono text-sm font-bold">{visiblePasswords[u.id] ? u.password : '••••••••'}</span>
-                  <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords((p: any) => ({...p, [u.id]: !p[u.id]}))}>
-                    {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
+                  <span className="font-mono text-sm font-bold">
+                    {(visiblePasswords[u.id] && (isPrimaryAdmin || !isAdminTable)) ? u.password : '••••••••'}
+                  </span>
+                  {/* إخفاء زر رؤية كلمة السر للمدراء المساعدين في جدول المدراء */}
+                  {(isPrimaryAdmin || !isAdminTable) && (
+                    <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords((p: any) => ({...p, [u.id]: !p[u.id]}))}>
+                      {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  )}
                 </div>
               </TableCell>
               <TableCell className="text-right">
@@ -477,9 +495,24 @@ function UserTable({ users, onEdit, onDelete, visiblePasswords, setVisiblePasswo
               </TableCell>
               <TableCell className="text-center pl-8">
                 <div className="flex items-center justify-center gap-2">
-                   <Button variant="ghost" size="icon" onClick={() => onEdit(u)} className="text-blue-500"><Edit2 className="w-5 h-5" /></Button>
-                   <Button variant="ghost" size="icon" disabled={u.username === 'BIM0100'} onClick={() => onDelete(u)} className={u.username === 'BIM0100' ? "text-slate-200" : "text-red-400"}>
-                      <Trash2 className="w-5 h-5" />
+                   {/* تعطيل التعديل والحذف للمدراء المساعدين */}
+                   <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    disabled={!isPrimaryAdmin} 
+                    onClick={() => onEdit(u)} 
+                    className={isPrimaryAdmin ? "text-blue-500" : "text-slate-200"}
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </Button>
+                   <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    disabled={u.username === 'BIM0100' || !isPrimaryAdmin} 
+                    onClick={() => onDelete(u)} 
+                    className={(u.username === 'BIM0100' || !isPrimaryAdmin) ? "text-slate-200" : "text-red-400"}
+                  >
+                    <Trash2 className="w-5 h-5" />
                    </Button>
                 </div>
               </TableCell>
@@ -615,6 +648,14 @@ function ConfigListManager({ title, items, value, onValueChange, onAdd, onRemove
   );
 }
 
-function handleDeleteUser(user: UserProfile) {
-  // تم تعريفها في الأعلى ولكن نحتاج لاستخدام deleteDocumentNonBlocking
+function handleDeleteUser(user: UserProfile, isPrimaryAdmin: boolean, toast: any) {
+  if (!isPrimaryAdmin) {
+    toast({ variant: "destructive", title: "صلاحيات غير كافية", description: "لا يمكن للمدير المساعد حذف الحسابات." });
+    return;
+  }
+  if (user.username === 'BIM0100') {
+    toast({ variant: "destructive", title: "إجراء محظور", description: "لا يمكن حذف المدير العام الأساسي للنظام." });
+    return;
+  }
+  // تنفيذ الحذف...
 }
