@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc } from 'firebase/firestore';
@@ -22,48 +23,37 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Department, UserProfile } from '@/lib/types';
+import { Department, UserProfile, UserRole } from '@/lib/types';
 
 const COLORS = ['#1414B8', '#2A3BFF', '#6C63FF', '#10B981', '#F59E0B', '#EF4444'];
 
 export function AdminView() {
   const db = useFirestore();
   const { toast } = useToast();
-  const { createEmployeeAccount, updateAdminPassword, updateEmployeeProfile } = useAuth();
+  const { user: currentAdmin, createEmployeeAccount, updateAdminPassword, updateEmployeeProfile } = useAuth();
   const [activeAdminTab, setActiveAdminTab] = useState('stats');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
-  const [usernameError, setUsernameError] = useState('');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showChangePassDialog, setShowChangePassDialog] = useState(false);
   const [newPass, setNewPass] = useState('');
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
-  
   const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
 
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
     dept: 'Cards' as Department,
-    password: ''
+    role: 'Specialist' as UserRole,
+    password: '',
+    allowedDepts: [] as Department[]
   });
 
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
   const configRef = useMemoFirebase(() => db ? doc(db, 'settings', 'system-config') : null, [db]);
   const { data: config } = useDoc(configRef);
-
-  useEffect(() => {
-    const handleSidebarNav = (e: any) => {
-      const action = e.detail;
-      if (['stats', 'staff', 'options', 'users'].includes(action)) {
-        setActiveAdminTab(action);
-      }
-    };
-    window.addEventListener('sidebar-nav', handleSidebarNav);
-    return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
-  }, []);
 
   const allTicketsQuery = useMemoFirebase(() => db ? query(collection(db, 'tickets'), orderBy('createdAt', 'desc')) : null, [db]);
   const { data: tickets } = useCollection(allTicketsQuery);
@@ -140,30 +130,16 @@ export function AdminView() {
   }, [tickets]);
 
   const exportToCSV = () => {
-    if (!tickets || tickets.length === 0) {
-      toast({ variant: "destructive", title: "لا توجد بيانات", description: "لا توجد بلاغات لتصديرها حالياً." });
-      return;
-    }
-
-    const headers = ["رقم البلاغ", "تاريخ وتوقيت البلاغ", "اسم العميل", "رقم CIF / الحساب", "رقم هاتف العميل", "نوع المشكلة الفنية", "الجهة الموجه إليها", "وسيلة استلام الطلب", "وصف المشكلة التفصيلي", "موظف الرفع (Agent)", "الأخصائي المستلم (Specialist)", "حالة البلاغ الحالية", "الرد الفني النهائي / الملاحظات"];
-
-    const rows = tickets.map(t => {
-      const clean = (text: string) => text ? text.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/"/g, '""').trim() : "";
-      const statusMap: Record<string, string> = { 'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل بنجاح', 'Escalated': 'محال للقسم المختص', 'Rejected': 'مرفوض' };
-      return [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), clean(t.customerName), t.cif || '', t.phoneNumber || '', clean(t.subIssue), clean(t.serviceType), clean(t.intakeMethod), clean(t.description), clean(t.createdByAgentName), clean(t.assignedToSpecialistName || 'لم يتم الاستلام بعد'), statusMap[t.status] || t.status, clean(t.specialistResponse || t.rejectionReason || 'لا يوجد رد بعد')];
-    });
-
-    const csvContent = [headers.map(h => `"${h}"`).join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-    const BOM = "\ufeff";
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    if (!tickets || tickets.length === 0) return;
+    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة", "الوسيلة", "الوصف", "موظف الرفع", "المستلم", "الحالة", "الرد النهائي"];
+    const rows = tickets.map(t => [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), t.customerName, t.cif || '', t.phoneNumber || '', t.subIssue, t.serviceType, t.intakeMethod, (t.description || '').replace(/\n/g, ' '), t.createdByAgentName, t.assignedToSpecialistName || '', t.status, (t.specialistResponse || '').replace(/\n/g, ' ')]);
+    const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${x}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `تقرير_بلاغات_سند_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
+    link.href = url;
+    link.download = `سند_بلاغات_${new Date().toLocaleDateString()}.csv`;
     link.click();
-    document.body.removeChild(link);
-    toast({ title: "تم التصدير بنجاح" });
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -173,7 +149,7 @@ export function AdminView() {
       await createEmployeeAccount(newUser);
       toast({ title: "تم إنشاء الحساب بنجاح" });
       setShowAddUserDialog(false);
-      setNewUser({ name: '', username: '', dept: 'Cards', password: '' });
+      setNewUser({ name: '', username: '', dept: 'Cards', role: 'Specialist', password: '', allowedDepts: [] });
     } catch (err: any) {
       toast({ variant: "destructive", title: "فشل الإنشاء", description: err.message });
     } finally {
@@ -186,11 +162,7 @@ export function AdminView() {
     if (!editingUser) return;
     setIsUpdatingUser(true);
     try {
-      await updateEmployeeProfile(editingUser.id, {
-        name: editingUser.name,
-        department: editingUser.department,
-        password: editingUser.password // تحديث كلمة المرور في قاعدة البيانات
-      });
+      await updateEmployeeProfile(editingUser.id, editingUser);
       toast({ title: "تم التحديث بنجاح" });
       setShowEditUserDialog(false);
       setEditingUser(null);
@@ -201,47 +173,28 @@ export function AdminView() {
     }
   };
 
-  const handleDeleteUser = async (uid: string) => {
+  const handleDeleteUser = async (user: UserProfile) => {
     if (!db) return;
+    if (user.username === 'BIM0100') {
+      toast({ variant: "destructive", title: "إجراء محظور", description: "لا يمكن حذف حساب المدير العام الأساسي." });
+      return;
+    }
     if (confirm('هل أنت متأكد من رغبتك في حذف هذا الحساب؟')) {
-      deleteDocumentNonBlocking(doc(db, 'users', uid));
+      deleteDocumentNonBlocking(doc(db, 'users', user.id));
       toast({ title: "تم الحذف" });
     }
   };
 
-  const handleChangeAdminPass = async () => {
-    if (newPass.length < 6) return;
-    try {
-      await updateAdminPassword(newPass);
-      toast({ title: "تم تحديث كلمة السر" });
-      setShowChangePassDialog(false);
-      setNewPass('');
-    } catch (err) {
-      toast({ variant: "destructive", title: "خطأ" });
+  const toggleDept = (dept: Department, isEditing: boolean) => {
+    if (isEditing && editingUser) {
+      const depts = editingUser.allowedDepartments || [];
+      const newDepts = depts.includes(dept) ? depts.filter(d => d !== dept) : [...depts, dept];
+      setEditingUser({ ...editingUser, allowedDepartments: newDepts });
+    } else {
+      const depts = newUser.allowedDepts;
+      const newDepts = depts.includes(dept) ? depts.filter(d => d !== dept) : [...depts, dept];
+      setNewUser({ ...newUser, allowedDepts: newDepts });
     }
-  };
-
-  const togglePasswordVisibility = (userId: string) => {
-    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
-  };
-
-  const handleAddConfigItem = (field: string) => {
-    const val = newItemValues[field];
-    if (!val || !db || !configRef) return;
-    updateDocumentNonBlocking(configRef, { [field]: arrayUnion(val) });
-    setNewItemValues({ ...newItemValues, [field]: '' });
-  };
-
-  const handleRemoveConfigItem = (field: string, val: string) => {
-    if (!db || !configRef) return;
-    updateDocumentNonBlocking(configRef, { [field]: arrayRemove(val) });
-  };
-
-  const handleEditConfigItem = async (field: string, oldVal: string, newVal: string) => {
-    if (!db || !configRef || !newVal.trim() || oldVal === newVal) return;
-    const currentList = config?.[field] || [];
-    const newList = currentList.map((item: string) => item === oldVal ? newVal : item);
-    await updateDoc(configRef, { [field]: newList });
   };
 
   return (
@@ -256,22 +209,18 @@ export function AdminView() {
           </div>
           <div className="flex items-center gap-3">
              <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50">
-                <Download className="w-4 h-4 ml-2" /> تصدير البلاغات (Excel)
+                <Download className="w-4 h-4 ml-2" /> تصدير البلاغات
              </Button>
-             <Button onClick={() => setShowChangePassDialog(true)} variant="outline" className="rounded-full font-black border-primary text-primary">
-                <Key className="w-4 h-4 ml-2" /> كلمة سر الإدارة
-             </Button>
-             <TabsList className="bg-slate-100 p-1 rounded-full h-auto no-scrollbar overflow-x-auto">
-               <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">الإحصائيات</TabsTrigger>
-               <TabsTrigger value="staff" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">إدارة الكادر</TabsTrigger>
-               <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">حسابات النظام</TabsTrigger>
-               <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black data-[state=active]:bg-primary data-[state=active]:text-white transition-all">خيارات النظام</TabsTrigger>
+             <TabsList className="bg-slate-100 p-1 rounded-full h-auto">
+               <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">الإحصائيات</TabsTrigger>
+               <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">إدارة الحسابات</TabsTrigger>
+               <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">خيارات النظام</TabsTrigger>
              </TabsList>
           </div>
         </div>
 
-        <TabsContent value="stats" className="space-y-8 animate-in fade-in duration-500 mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <TabsContent value="stats" className="space-y-8 animate-in fade-in duration-500">
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard icon={FileSpreadsheet} title="إجمالي البلاغات" value={stats.total} color="bg-primary" />
             <StatCard icon={Clock} title="قيد المعالجة" value={stats.pending} valueColor="text-amber-500" />
             <StatCard icon={CheckCircle2} title="تم حلها" value={stats.resolved} valueColor="text-green-600" />
@@ -279,139 +228,96 @@ export function AdminView() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <Card className="banking-card border-none shadow-xl overflow-hidden">
-                <CardHeader className="text-right border-b bg-slate-50/50 p-6">
-                   <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
-                      توزيع حالات البلاغات <PieChartIcon className="w-5 h-5 text-primary" />
-                   </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 h-[350px]">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                         <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value">
-                            {stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                         </Pie>
-                         <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
-                         <Legend verticalAlign="bottom" height={36} />
-                      </PieChart>
-                   </ResponsiveContainer>
-                </CardContent>
-             </Card>
-
-             <Card className="banking-card border-none shadow-xl overflow-hidden">
-                <CardHeader className="text-right border-b bg-slate-50/50 p-6">
-                   <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
-                      حجم العمل لكل قسم فني <BarChart3 className="w-5 h-5 text-primary" />
-                   </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 h-[350px]">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.deptData}>
-                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                         <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
-                         <YAxis orientation="right" fontSize={12} fontWeight="bold" />
-                         <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
-                         <Bar dataKey="tickets" name="عدد البلاغات الموجهة" fill="#2A3BFF" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                   </ResponsiveContainer>
-                </CardContent>
-             </Card>
+             <ChartWrapper title="توزيع حالات البلاغات" icon={PieChartIcon}>
+                <ResponsiveContainer width="100%" height="100%">
+                   <PieChart>
+                      <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value">
+                         {stats.statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                   </PieChart>
+                </ResponsiveContainer>
+             </ChartWrapper>
+             <ChartWrapper title="حجم العمل لكل قسم" icon={BarChart3}>
+                <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={stats.deptData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" fontSize={12} fontWeight="bold" />
+                      <YAxis orientation="right" fontSize={12} fontWeight="bold" />
+                      <Tooltip />
+                      <Bar dataKey="tickets" name="بلاغات موجهة" fill="#2A3BFF" radius={[8, 8, 0, 0]} />
+                   </BarChart>
+                </ResponsiveContainer>
+             </ChartWrapper>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-8">
              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3 justify-end">
                 <TrendingUp className="w-6 h-6 text-green-600" /> تقييم أداء الكوادر المصرفية
              </h2>
              <div className="space-y-8">
-                <Card className="banking-card border-none shadow-xl overflow-hidden">
-                   <CardHeader className="text-right border-b bg-primary/5 p-6">
-                      <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
-                         موظفي الكول سنتر (إنتاجية الرفع) <Headset className="w-5 h-5 text-primary" />
-                      </CardTitle>
-                   </CardHeader>
-                   <CardContent className="p-6 h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={stats.agentPerf} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                            <XAxis type="number" hide />
-                            <YAxis dataKey="name" type="category" fontSize={12} fontWeight="bold" width={120} orientation="right" />
-                            <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
-                            <Bar dataKey="count" name="بلاغات مرفوعة" fill="#6C63FF" radius={[0, 8, 8, 0]} />
-                         </BarChart>
-                      </ResponsiveContainer>
-                   </CardContent>
-                </Card>
+                <PerformanceSection title="موظفي الكول سنتر (الرفع)" icon={Headset} data={stats.agentPerf} color="#6C63FF" isVertical />
                 <div className="grid grid-cols-1 gap-8">
-                   <PerformanceSection title="أداء أخصائيي قسم البطائق (Cards)" icon={CreditCard} data={stats.cardsSpec} color="#1414B8" />
-                   <PerformanceSection title="أداء أخصائيي خدمة العملاء (Digital)" icon={MonitorSmartphone} data={stats.digitalSpec} color="#10B981" />
-                   <PerformanceSection title="أداء أخصائيي مشاكل التطبيق (App)" icon={Smartphone} data={stats.appSpec} color="#EF4444" />
+                   <PerformanceSection title="أداء أخصائيي البطائق" icon={CreditCard} data={stats.cardsSpec} color="#1414B8" />
+                   <PerformanceSection title="أداء أخصائيي خدمة العملاء" icon={MonitorSmartphone} data={stats.digitalSpec} color="#10B981" />
+                   <PerformanceSection title="أداء أخصائيي مشاكل التطبيق" icon={Smartphone} data={stats.appSpec} color="#EF4444" />
                 </div>
              </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="staff" className="space-y-6 animate-in fade-in duration-500 mt-0">
-           <div className="flex justify-between items-center flex-row-reverse">
-              <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-14 px-8 shadow-xl">
-                 <UserPlus className="w-5 h-5 ml-2" /> إضافة موظف جديد
-              </Button>
-              <div className="flex items-center gap-2 text-slate-400 font-bold bg-white px-6 py-3 rounded-full border">
-                 <Info className="w-4 h-4 text-primary" />
-                 <span>يتم التعرف على هوية الموظف تلقائياً عند الدخول</span>
-              </div>
-           </div>
-           
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StaffCategoryCard icon={CreditCard} title="قسم البطائق" desc="أخصائيي معالجة البطائق" count={appUsers?.filter(u => u.department === 'Cards').length || 0} />
-              <StaffCategoryCard icon={MonitorSmartphone} title="خدمة العملاء" desc="أخصائيي القنوات الرقمية" count={appUsers?.filter(u => u.department === 'Digital').length || 0} />
-              <StaffCategoryCard icon={Smartphone} title="مشاكل التطبيق" desc="الدعم الفني المباشر للتطبيق" count={appUsers?.filter(u => u.department === 'App').length || 0} />
-              <StaffCategoryCard icon={Headset} title="الكول سنتر" desc="موظفي استلام ورفع البلاغات" count={appUsers?.filter(u => u.department === 'Support').length || 0} />
-           </div>
-        </TabsContent>
-
-        <TabsContent value="users" className="animate-in fade-in duration-500 mt-0">
-           <Card className="banking-card border-none shadow-xl overflow-hidden">
-              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between bg-white">
-                 <CardTitle className="text-2xl font-black text-primary">حسابات الهوية المصرفية المسجلة</CardTitle>
-                 <Badge variant="outline" className="font-black h-8 px-4 border-primary text-primary">{appUsers?.length} مستخدم نشط</Badge>
+        <TabsContent value="users" className="animate-in fade-in duration-500">
+           <Card className="banking-card overflow-hidden">
+              <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between">
+                 <CardTitle className="text-2xl font-black text-primary">إدارة حسابات الهوية المصرفية</CardTitle>
+                 <Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6">
+                    <UserPlus className="w-5 h-5 ml-2" /> إضافة حساب جديد
+                 </Button>
               </CardHeader>
               <CardContent className="p-0">
                  <Table>
                     <TableHeader className="bg-primary">
                        <TableRow className="hover:bg-primary border-none">
-                          <TableHead className="text-right font-black text-white h-14 pr-8">الاسم الكامل</TableHead>
+                          <TableHead className="text-right font-black text-white h-14 pr-8">الموظف</TableHead>
                           <TableHead className="text-right font-black text-white h-14">BIM ID</TableHead>
                           <TableHead className="text-right font-black text-white h-14">كلمة المرور</TableHead>
+                          <TableHead className="text-right font-black text-white h-14">الرتبة</TableHead>
                           <TableHead className="text-right font-black text-white h-14">القسم</TableHead>
                           <TableHead className="text-center font-black text-white h-14 pl-8">الإجراءات</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
                        {appUsers?.map((u, idx) => (
-                          <TableRow key={u.id} className={`border-b transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                          <TableRow key={u.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
                              <TableCell className="font-bold text-right pr-8">{u.name}</TableCell>
-                             <TableCell className="text-right font-mono font-bold text-primary">{u.username || 'N/A'}</TableCell>
+                             <TableCell className="text-right font-mono font-bold text-primary">{u.username}</TableCell>
                              <TableCell className="text-right">
-                                <div className="flex items-center gap-2 justify-end min-w-[120px]">
-                                   <span className="font-mono text-sm font-bold min-w-[80px] text-right">
-                                      {visiblePasswords[u.id] ? (u.password || 'غير متوفر') : '••••••••'}
+                                <div className="flex items-center gap-2 justify-end">
+                                   <span className="font-mono text-sm font-bold">
+                                      {visiblePasswords[u.id] ? u.password : '••••••••'}
                                    </span>
-                                   <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-200 rounded-full shrink-0" onClick={() => togglePasswordVisibility(u.id)}>
-                                      {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4 text-slate-500" /> : <Eye className="w-4 h-4 text-primary" />}
+                                   <Button variant="ghost" size="icon" onClick={() => setVisiblePasswords(p => ({...p, [u.id]: !p[u.id]}))}>
+                                      {visiblePasswords[u.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                    </Button>
                                 </div>
                              </TableCell>
                              <TableCell className="text-right">
-                                <Badge className={`rounded-full px-4 font-black ${u.role === 'Admin' ? 'bg-red-500' : 'bg-slate-100 text-slate-600'}`}>
-                                   {u.department}
+                                <Badge className={u.role === 'Admin' ? 'bg-red-500' : 'bg-slate-200 text-slate-700'}>
+                                   {u.role === 'Admin' ? 'مدير' : u.role === 'Agent' ? 'موظف رفع' : 'أخصائي'}
                                 </Badge>
                              </TableCell>
+                             <TableCell className="text-right font-bold text-slate-500">{u.department}</TableCell>
                              <TableCell className="text-center pl-8">
                                 <div className="flex items-center justify-center gap-2">
-                                   <Button variant="ghost" size="icon" onClick={() => { setEditingUser(u); setShowEditUserDialog(true); }} className="text-blue-500 hover:text-blue-700 rounded-full h-10 w-10">
-                                      <Edit2 className="w-5 h-5" />
-                                   </Button>
-                                   <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(u.id)} className="text-red-400 hover:text-red-600 rounded-full h-10 w-10">
+                                   <Button variant="ghost" size="icon" onClick={() => { setEditingUser(u); setShowEditUserDialog(true); }} className="text-blue-500"><Edit2 className="w-5 h-5" /></Button>
+                                   <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      disabled={u.username === 'BIM0100'} 
+                                      onClick={() => handleDeleteUser(u)} 
+                                      className={u.username === 'BIM0100' ? "text-slate-200" : "text-red-400"}
+                                   >
                                       <Trash2 className="w-5 h-5" />
                                    </Button>
                                 </div>
@@ -424,59 +330,80 @@ export function AdminView() {
            </Card>
         </TabsContent>
 
-        <TabsContent value="options" className="animate-in fade-in duration-500 mt-0 space-y-8">
-          <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
-            <Card className="banking-card border-none shadow-xl">
-              <CardHeader className="bg-accent/5 p-6 border-b text-right">
-                <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
-                  إدارة تصنيفات النظام <ListTodo className="w-5 h-5 text-accent" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-8">
-                <ConfigListManager title="وسائل استلام الطلبات" field="intakeMethods" items={config?.intakeMethods || []} value={newItemValues.intakeMethods || ''} onValueChange={(v) => setNewItemValues({...newItemValues, intakeMethods: v})} onAdd={() => handleAddConfigItem('intakeMethods')} onRemove={(val) => handleRemoveConfigItem('intakeMethods', val)} onEdit={(oldVal, newVal) => handleEditConfigItem('intakeMethods', oldVal, newVal)} />
-                <ConfigListManager title="أنواع المشكلات الفنية" field="issueTypes" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => handleAddConfigItem('issueTypes')} onRemove={(val) => handleRemoveConfigItem('issueTypes', val)} onEdit={(oldVal, newVal) => handleEditConfigItem('issueTypes', oldVal, newVal)} />
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="options" className="animate-in fade-in duration-500">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+              <ConfigListManager title="وسائل استلام الطلبات" items={config?.intakeMethods || []} value={newItemValues.intakeMethods || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, intakeMethods: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { intakeMethods: arrayUnion(newItemValues.intakeMethods) }); setNewItemValues({...newItemValues, intakeMethods: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { intakeMethods: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.intakeMethods || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { intakeMethods: list }); }} />
+              <ConfigListManager title="أنواع المشكلات الفنية" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { issueTypes: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { issueTypes: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { issueTypes: list }); }} />
+           </div>
         </TabsContent>
       </Tabs>
 
+      {/* نافذة إضافة حساب */}
       <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
          <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-primary/5 border-b">
                <DialogTitle className="text-2xl font-black text-primary flex items-center gap-2 justify-end">
-                  <UserPlus className="w-6 h-6" /> إضافة موظف جديد
+                  <UserPlus className="w-6 h-6" /> إضافة كادر جديد للنظام
                </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateUser} className="p-8 space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 col-span-2">
-                     <Label className="font-black text-xs mr-1">الاسم الكامل للموظف</Label>
-                     <Input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="banking-input h-12 text-right" placeholder="الاسم الثلاثي المعتمد" />
+                  <div className="col-span-2 space-y-2">
+                     <Label className="font-black text-xs mr-1">اسم الموظف</Label>
+                     <Input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="banking-input h-12 text-right" />
                   </div>
                   <div className="space-y-2">
-                     <Label className="font-black text-xs mr-1">اسم المستخدم (BIM ID)</Label>
-                     <Input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="banking-input h-12 font-mono text-right" placeholder="BIM0101" />
+                     <Label className="font-black text-xs mr-1">BIM ID</Label>
+                     <Input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="banking-input h-12 font-mono text-right" />
                   </div>
                   <div className="space-y-2">
-                     <Label className="font-black text-xs mr-1">تعيين القسم</Label>
-                     <Select value={newUser.dept} onValueChange={(v: any) => setNewUser({...newUser, dept: v})}>
-                        <SelectTrigger className="banking-input h-12 text-right"><SelectValue /></SelectTrigger>
+                     <Label className="font-black text-xs mr-1">كلمة المرور</Label>
+                     <Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" />
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="font-black text-xs mr-1">الرتبة الوظيفية</Label>
+                     <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
+                        <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
                         <SelectContent dir="rtl">
-                           <SelectItem value="Support">الكول سنتر (Support)</SelectItem>
-                           <SelectItem value="Cards">إدارة البطائق (Cards)</SelectItem>
-                           <SelectItem value="Digital">خدمة العملاء (Digital)</SelectItem>
-                           <SelectItem value="App">مشاكل التطبيق (App)</SelectItem>
+                           <SelectItem value="Admin">مدير (Admin)</SelectItem>
+                           <SelectItem value="Specialist">أخصائي (Specialist)</SelectItem>
+                           <SelectItem value="Agent">كول سنتر (Agent)</SelectItem>
                         </SelectContent>
                      </Select>
                   </div>
-                  <div className="col-span-2 space-y-2">
-                     <Label className="font-black text-xs mr-1">كلمة المرور الافتتاحية</Label>
-                     <Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" placeholder="••••••••" />
+                  <div className="space-y-2">
+                     <Label className="font-black text-xs mr-1">القسم الرئيسي</Label>
+                     <Select value={newUser.dept} onValueChange={(v: any) => setNewUser({...newUser, dept: v})}>
+                        <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
+                        <SelectContent dir="rtl">
+                           <SelectItem value="Cards">البطائق</SelectItem>
+                           <SelectItem value="Digital">خدمة العملاء</SelectItem>
+                           <SelectItem value="App">التطبيق</SelectItem>
+                           <SelectItem value="Support">الكول سنتر</SelectItem>
+                           <SelectItem value="Operations">العمليات</SelectItem>
+                        </SelectContent>
+                     </Select>
                   </div>
+                  
+                  {newUser.role === 'Admin' && (
+                    <div className="col-span-2 space-y-3 bg-slate-50 p-4 rounded-2xl border">
+                       <Label className="font-black text-sm text-primary">تحديد صلاحيات الوصول للأقسام</Label>
+                       <div className="grid grid-cols-2 gap-3">
+                          {['Cards', 'Digital', 'App', 'Support', 'Operations'].map((d) => (
+                             <div key={d} className="flex items-center gap-2 justify-end">
+                                <Label className="text-xs font-bold">{d}</Label>
+                                <Checkbox 
+                                  checked={newUser.allowedDepts.includes(d as any)} 
+                                  onCheckedChange={() => toggleDept(d as any, false)} 
+                                />
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                  )}
                </div>
                <DialogFooter className="flex-row-reverse gap-3 pt-6">
-                  <Button type="button" variant="ghost" onClick={() => setShowAddUserDialog(false)} className="rounded-full font-black px-8 h-12">إلغاء</Button>
+                  <Button type="button" variant="ghost" onClick={() => setShowAddUserDialog(false)} className="rounded-full font-black">إلغاء</Button>
                   <Button type="submit" disabled={isCreatingUser} className="banking-button premium-gradient text-white h-12 px-10 rounded-full font-black shadow-lg">
                      {isCreatingUser ? <Loader2 className="animate-spin" /> : "إنشاء الحساب وتفعيله"}
                   </Button>
@@ -485,82 +412,122 @@ export function AdminView() {
          </DialogContent>
       </Dialog>
 
+      {/* نافذة تعديل حساب */}
       <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
          <DialogContent className="max-w-xl text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
             <DialogHeader className="p-8 bg-blue-50 border-b">
                <DialogTitle className="text-2xl font-black text-blue-700 flex items-center gap-2 justify-end">
-                  <Edit2 className="w-6 h-6" /> تعديل بيانات الموظف والتحكم بالحساب
+                  {editingUser?.username === 'BIM0100' ? <ShieldCheck className="w-6 h-6" /> : <Edit2 className="w-6 h-6" />}
+                  تعديل بيانات {editingUser?.username === 'BIM0100' ? "المدير الأساسي" : "الموظف"}
                </DialogTitle>
             </DialogHeader>
             {editingUser && (
               <form onSubmit={handleUpdateUser} className="p-8 space-y-6">
-                 <div className="grid grid-cols-1 gap-6">
-                    <div className="space-y-2">
-                       <Label className="font-black text-xs mr-1">الاسم الكامل</Label>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="col-span-2 space-y-2">
+                       <Label className="font-black text-xs">الاسم</Label>
                        <Input required value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="banking-input h-12 text-right" />
                     </div>
                     <div className="space-y-2">
-                       <Label className="font-black text-xs mr-1">تعديل القسم</Label>
-                       <Select value={editingUser.department} onValueChange={(v: any) => setEditingUser({...editingUser, department: v})}>
-                          <SelectTrigger className="banking-input h-12 text-right"><SelectValue /></SelectTrigger>
-                          <SelectContent dir="rtl">
-                             <SelectItem value="Support">الكول سنتر (Support)</SelectItem>
-                             <SelectItem value="Cards">إدارة البطائق (Cards)</SelectItem>
-                             <SelectItem value="Digital">خدمة العملاء (Digital)</SelectItem>
-                             <SelectItem value="App">مشاكل التطبيق (App)</SelectItem>
-                          </SelectContent>
-                       </Select>
+                       <Label className="font-black text-xs">كلمة المرور</Label>
+                       <Input required value={editingUser.password || ''} onChange={e => setEditingUser({...editingUser, password: e.target.value})} className="banking-input h-12 text-right font-mono" />
                     </div>
-                    <div className="space-y-2">
-                       <Label className="font-black text-xs mr-1">تعيين كلمة مرور جديدة (اختياري)</Label>
-                       <Input 
-                        type="text" 
-                        value={editingUser.password || ''} 
-                        onChange={e => setEditingUser({...editingUser, password: e.target.value})} 
-                        className="banking-input h-12 text-right font-mono" 
-                        placeholder="اتركه كما هو لعدم التغيير" 
-                       />
-                       <p className="text-[10px] text-slate-400 font-bold mr-1">سيتم تحديث كلمة المرور في قاعدة البيانات ليتمكن الموظف من الدخول بها</p>
-                    </div>
+                    
+                    {editingUser.username !== 'BIM0100' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="font-black text-xs">الرتبة</Label>
+                          <Select value={editingUser.role} onValueChange={(v: any) => setEditingUser({...editingUser, role: v})}>
+                              <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
+                              <SelectContent dir="rtl">
+                                <SelectItem value="Admin">مدير</SelectItem>
+                                <SelectItem value="Specialist">أخصائي</SelectItem>
+                                <SelectItem value="Agent">كول سنتر</SelectItem>
+                              </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="font-black text-xs">القسم الرئيسي</Label>
+                          <Select value={editingUser.department} onValueChange={(v: any) => setEditingUser({...editingUser, department: v})}>
+                              <SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger>
+                              <SelectContent dir="rtl">
+                                <SelectItem value="Cards">البطائق</SelectItem>
+                                <SelectItem value="Digital">خدمة العملاء</SelectItem>
+                                <SelectItem value="App">التطبيق</SelectItem>
+                                <SelectItem value="Support">الكول سنتر</SelectItem>
+                                <SelectItem value="Operations">العمليات</SelectItem>
+                              </SelectContent>
+                          </Select>
+                        </div>
+
+                        {editingUser.role === 'Admin' && (
+                          <div className="col-span-2 space-y-3 bg-blue-50/50 p-4 rounded-2xl border">
+                            <Label className="font-black text-sm text-blue-700">الأقسام المسموحة للمدير</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {['Cards', 'Digital', 'App', 'Support', 'Operations'].map((d) => (
+                                  <div key={d} className="flex items-center gap-2 justify-end">
+                                      <Label className="text-xs font-bold">{d}</Label>
+                                      <Checkbox 
+                                        checked={editingUser.allowedDepartments?.includes(d as any)} 
+                                        onCheckedChange={() => toggleDept(d as any, true)} 
+                                      />
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                  </div>
                  <DialogFooter className="flex-row-reverse gap-3 pt-6">
-                    <Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black px-8 h-12">إلغاء</Button>
-                    <Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 hover:bg-blue-700 text-white h-12 px-10 rounded-full font-black shadow-lg">
-                       {isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ كافة التغييرات"}
+                    <Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black">إلغاء</Button>
+                    <Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 text-white h-12 px-10 rounded-full font-black">
+                       {isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}
                     </Button>
                  </DialogFooter>
               </form>
             )}
          </DialogContent>
       </Dialog>
-
-      <Dialog open={showChangePassDialog} onOpenChange={setShowChangePassDialog}>
-         <DialogContent className="max-md text-right rounded-[32px] p-0 overflow-hidden shadow-2xl" dir="rtl">
-            <DialogHeader className="p-8 bg-primary/5 border-b">
-               <DialogTitle className="text-2xl font-black text-primary flex items-center gap-2 justify-end">
-                  <Key className="w-6 h-6" /> تحديث كلمة سر الإدارة
-               </DialogTitle>
-            </DialogHeader>
-            <div className="p-8 space-y-6">
-               <div className="space-y-3">
-                  <Label className="font-black text-sm mr-1">كلمة السر الجديدة</Label>
-                  <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="banking-input h-14 text-right" placeholder="••••••••" />
-               </div>
-               <div className="pt-4 flex flex-col gap-3">
-                  <Button onClick={handleChangeAdminPass} className="banking-button premium-gradient text-white h-14 rounded-full font-black shadow-xl">
-                     تحديث كلمة السر الآن
-                  </Button>
-               </div>
-            </div>
-         </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-function PerformanceSection({ title, icon: Icon, data, color }: any) {
+function StatCard({ icon: Icon, title, value, color, valueColor }: any) {
+  const isBgColor = color?.startsWith('bg-');
   return (
-    <Card className="banking-card border-none shadow-xl overflow-hidden">
+    <div className={cn("relative rounded-[24px] p-6 shadow-xl", isBgColor ? `${color} text-white` : "bg-white text-slate-900 border")}>
+      <div className="flex justify-between items-center relative z-20">
+        <div className="text-right">
+          <p className={cn("text-xs font-black mb-1", isBgColor ? "text-white/80" : "text-slate-500")}>{title}</p>
+          <h3 className={cn("text-3xl font-black tabular-nums", valueColor)}>{value}</h3>
+        </div>
+        <div className={cn("p-4 rounded-2xl", isBgColor ? "bg-white/20" : "bg-slate-50")}>
+          <Icon className={cn("w-6 h-6", isBgColor ? "text-white" : "text-primary")} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChartWrapper({ title, icon: Icon, children }: any) {
+  return (
+    <Card className="banking-card overflow-hidden">
+       <CardHeader className="text-right border-b bg-slate-50/50 p-6">
+          <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
+             {title} <Icon className="w-5 h-5 text-primary" />
+          </CardTitle>
+       </CardHeader>
+       <CardContent className="p-6 h-[350px]">
+          {children}
+       </CardContent>
+    </Card>
+  );
+}
+
+function PerformanceSection({ title, icon: Icon, data, color, isVertical }: any) {
+  return (
+    <Card className="banking-card overflow-hidden">
        <CardHeader className="text-right border-b bg-slate-50/50 p-6">
           <CardTitle className="text-xl font-black flex items-center gap-2 justify-end">
              {title} <Icon className="w-5 h-5" style={{ color }} />
@@ -569,16 +536,26 @@ function PerformanceSection({ title, icon: Icon, data, color }: any) {
        <CardContent className="p-6 h-[300px]">
           {data.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" fontSize={11} fontWeight="bold" />
-                  <YAxis orientation="right" fontSize={11} fontWeight="bold" />
-                  <Tooltip contentStyle={{ borderRadius: '16px', textAlign: 'right' }} />
-                  <Legend verticalAlign="top" align="right" height={36} />
-                  <Bar dataKey="حل" fill="#10B981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="رفض" fill="#64748b" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="إحالة" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-               </BarChart>
+               {isVertical ? (
+                 <BarChart data={data} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" fontSize={12} fontWeight="bold" width={100} orientation="right" />
+                    <Tooltip />
+                    <Bar dataKey="count" name="بلاغات مرفوعة" fill={color} radius={[0, 8, 8, 0]} />
+                 </BarChart>
+               ) : (
+                 <BarChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" fontSize={11} fontWeight="bold" />
+                    <YAxis orientation="right" fontSize={11} fontWeight="bold" />
+                    <Tooltip />
+                    <Legend verticalAlign="top" align="right" />
+                    <Bar dataKey="حل" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="رفض" fill="#64748b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="إحالة" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                 </BarChart>
+               )}
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
@@ -591,80 +568,32 @@ function PerformanceSection({ title, icon: Icon, data, color }: any) {
   );
 }
 
-function StatCard({ icon: Icon, title, value, color, valueColor }: any) {
-  const isBgColor = color?.startsWith('bg-');
-  return (
-    <div className={cn("relative rounded-[24px] p-6 shadow-xl overflow-hidden", isBgColor ? `${color} text-white` : "bg-white text-slate-900 border border-slate-100")}>
-      <div className="flex justify-between items-center relative z-20">
-        <div className="text-right">
-          <p className={cn("text-xs font-black mb-1", isBgColor ? "text-white/80" : "text-slate-500")}>{title}</p>
-          <h3 className={cn("text-3xl font-black tabular-nums", valueColor)}>{value}</h3>
-        </div>
-        <div className={cn("p-4 rounded-2xl flex items-center justify-center", isBgColor ? "bg-white/20" : "bg-slate-50")}>
-          <Icon className={cn("w-6 h-6", isBgColor ? "text-white" : "text-primary")} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StaffCategoryCard({ icon: Icon, title, desc, count }: any) {
-  return (
-    <Card className="banking-card p-6 border-none shadow-md text-center space-y-4 hover:scale-105 transition-all">
-       <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-          <Icon className="w-8 h-8 text-primary" />
-       </div>
-       <div>
-          <h3 className="font-black text-slate-800">{title}</h3>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">{desc}</p>
-       </div>
-       <div className="pt-2">
-          <Badge variant="secondary" className="font-black px-4 py-1">{count} موظفين</Badge>
-       </div>
-    </Card>
-  );
-}
-
 function ConfigListManager({ title, items, value, onValueChange, onAdd, onRemove, onEdit }: any) {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const startEdit = (item: string) => { setEditingItem(item); setEditValue(item); };
-  const cancelEdit = () => { setEditingItem(null); setEditValue(""); };
-  const confirmEdit = () => {
-    if (editingItem && editValue.trim()) {
-      onEdit(editingItem, editValue.trim());
-      setEditingItem(null);
-      setEditValue("");
-    }
-  };
-
   return (
-    <div className="space-y-4 bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm">
+    <div className="space-y-4 bg-white p-6 rounded-[24px] border shadow-sm">
       <div className="flex justify-between items-center flex-row-reverse mb-2">
         <h5 className="font-black text-slate-700 text-base">{title}</h5>
-        <Badge variant="secondary" className="text-[10px] font-black px-3">{items.length} خيارات</Badge>
+        <Badge variant="secondary" className="text-[10px] font-black px-3">{items.length}</Badge>
       </div>
       <div className="flex gap-3">
-        <Button onClick={onAdd} size="icon" className="shrink-0 h-12 w-12 rounded-full bg-primary hover:bg-primary/90 text-white shadow-md">
-          <Plus className="w-6 h-6" />
-        </Button>
-        <Input value={value} onChange={(e) => onValueChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onAdd()} placeholder={`أضف خياراً جديداً...`} className="banking-input h-12 text-right text-sm border-slate-200" />
+        <Button onClick={onAdd} size="icon" className="shrink-0 h-12 w-12 rounded-full bg-primary text-white"><Plus className="w-6 h-6" /></Button>
+        <Input value={value} onChange={(e) => onValueChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onAdd()} placeholder="أضف خياراً..." className="h-12 text-right" />
       </div>
-      <div className="flex flex-wrap gap-3 justify-end max-h-[250px] overflow-y-auto p-2 no-scrollbar">
+      <div className="flex flex-wrap gap-2 justify-end">
         {items.map((item: string) => (
-          <div key={item} className="flex items-center gap-2">
+          <div key={item}>
             {editingItem === item ? (
-              <div className="flex items-center gap-2 bg-slate-50 border rounded-full p-1 pl-3 transition-all animate-in zoom-in-95">
-                <Button variant="ghost" size="icon" onClick={confirmEdit} className="h-8 w-8 rounded-full text-green-600 hover:bg-green-50"><Check className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
-                <Input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmEdit()} className="h-8 w-32 border-none bg-transparent text-right font-bold text-sm focus-visible:ring-0 p-0" />
+              <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 pr-3">
+                <Button variant="ghost" size="icon" onClick={() => { onEdit(item, editValue); setEditingItem(null); }} className="h-7 w-7 text-green-600"><Check className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setEditingItem(null)} className="h-7 w-7 text-red-500"><X className="w-4 h-4" /></Button>
+                <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} className="h-7 w-24 border-none bg-transparent text-right text-xs" />
               </div>
             ) : (
-              <Badge variant="outline" className="h-10 pl-2 pr-4 rounded-full flex items-center gap-2 bg-slate-50 border-slate-200 text-slate-700 font-bold hover:shadow-sm group transition-all">
-                <div className="flex items-center gap-1">
-                  <button onClick={() => onRemove(item)} className="p-1 rounded-full opacity-40 group-hover:opacity-100 hover:bg-red-100 hover:text-red-500 transition-all"><X className="w-3 h-3" /></button>
-                  <button onClick={() => startEdit(item)} className="p-1 rounded-full opacity-40 group-hover:opacity-100 hover:bg-blue-100 hover:text-blue-500 transition-all"><Edit2 className="w-3 h-3" /></button>
-                </div>
+              <Badge variant="outline" className="h-9 px-3 rounded-full flex items-center gap-2 font-bold">
+                <button onClick={() => onRemove(item)}><X className="w-3 h-3 text-red-500" /></button>
+                <button onClick={() => { setEditingItem(item); setEditValue(item); }}><Edit2 className="w-3 h-3 text-blue-500" /></button>
                 <span>{item}</span>
               </Badge>
             )}

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-  const { user, loading, firebaseUser } = useAuth();
+  const { user, loading, firebaseUser, currentSessionDept } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -41,14 +41,19 @@ export default function DashboardPage() {
     );
   }
 
-  // التوجيه بناءً على الدور والقسم
-  // الكول سنتر يذهب لـ AgentView (للرفع)
-  // البطائق، خدمة العملاء، ومشاكل التطبيق يذهبون لـ SpecialistView (للمعالجة)
+  // استخدام currentSessionDept لتحديد الواجهة التي سيراها المستخدم (خصوصاً للمدراء)
+  const activeDept = currentSessionDept || user.department;
+
   return (
     <div className="animate-in fade-in duration-700">
-      {user.role === 'Admin' && <AdminView />}
-      {user.role === 'Agent' && user.department === 'Support' && <AgentView />}
-      {user.role === 'Specialist' && (user.department === 'Cards' || user.department === 'Digital' || user.department === 'App') && <SpecialistView />}
+      {/* إذا دخل من بوابة العمليات أو كان مديراً في قسم العمليات */}
+      {activeDept === 'Operations' && user.role === 'Admin' && <AdminView />}
+      
+      {/* الكول سنتر */}
+      {activeDept === 'Support' && <AgentView />}
+      
+      {/* الأقسام الفنية (تعمل لكل من الأخصائي والمدير المخول) */}
+      {(activeDept === 'Cards' || activeDept === 'Digital' || activeDept === 'App') && <SpecialistView />}
     </div>
   );
 }

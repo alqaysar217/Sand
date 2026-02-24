@@ -14,12 +14,13 @@ interface AuthContextType {
   firebaseUser: any;
   login: (username: string, password: string, targetDept: Department) => Promise<void>;
   logout: () => Promise<void>;
-  createEmployeeAccount: (data: { name: string, username: string, dept: Department, password: string }) => Promise<void>;
+  createEmployeeAccount: (data: { name: string, username: string, dept: Department, password: string, role?: UserRole, allowedDepts?: Department[] }) => Promise<void>;
   updateEmployeeProfile: (uid: string, data: Partial<UserProfile>) => Promise<void>;
   updateAdminPassword: (newPassword: string) => Promise<void>;
   checkUsernameExists: (username: string) => Promise<boolean>;
   loading: boolean;
   error: string | null;
+  currentSessionDept: Department | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentSessionDept, setCurrentSessionDept] = useState<Department | null>(null);
   const snapshotUnsubscribe = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -50,7 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         doc(db, 'users', firebaseUser.uid),
         (docSnap) => {
           if (docSnap.exists()) {
-            setProfile({ ...docSnap.data() as UserProfile, id: firebaseUser.uid });
+            const data = docSnap.data() as UserProfile;
+            setProfile({ ...data, id: firebaseUser.uid });
             setError(null);
           } else {
             setProfile(null);
@@ -79,28 +82,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
-        if (userData.department !== targetDept && userData.role !== 'Admin') {
+        
+        // التحقق من صلاحيات المدير الأساسي BIM0100
+        if (userData.username === 'BIM0100') {
+          setCurrentSessionDept(targetDept);
+          return;
+        }
+
+        // التحقق من صلاحيات المدراء المساعدين
+        if (userData.role === 'Admin') {
+          const isAllowed = userData.allowedDepartments?.includes(targetDept) || targetDept === 'Operations';
+          if (!isAllowed) {
+            await signOut(auth);
+            throw new Error(`عذراً، غير مخول لك دخول قسم (${targetDept}).`);
+          }
+          setCurrentSessionDept(targetDept);
+          return;
+        }
+
+        // التحقق للموظفين العاديين
+        if (userData.department !== targetDept) {
           await signOut(auth);
           throw new Error(`عذراً، هويتك مرتبطة بـ (${userData.department}) وغير مخول لك دخول قسم (${targetDept}).`);
         }
+        setCurrentSessionDept(targetDept);
       }
     } catch (err: any) {
-      // معالجة حالة المدير العام الافتراضي
       if (username === 'BIM0100' && password === 'ha892019' && 
-         (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password')) {
+         (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, password);
-          await setDoc(doc(db, 'users', cred.user.uid), {
+          const adminProfile = {
             id: cred.user.uid,
             username: 'BIM0100',
-            name: 'المدير العام',
+            name: 'المدير العام (محمد بلخرم)',
             email: email,
-            role: 'Admin',
-            department: 'Operations',
+            role: 'Admin' as UserRole,
+            department: 'Operations' as Department,
+            allowedDepartments: ['Operations', 'Cards', 'Digital', 'App', 'Support'] as Department[],
             password: password
-          });
+          };
+          await setDoc(doc(db, 'users', cred.user.uid), adminProfile);
+          setCurrentSessionDept(targetDept);
           return;
         } catch (createErr: any) {
           if (createErr.code === 'auth/email-already-in-use') {
@@ -109,7 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw err;
         }
       }
-      // تحويل أخطاء فيربيس إلى رسائل واضحة
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة.');
       }
@@ -117,14 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const checkUsernameExists = async (username: string) => {
-    if (!db) return false;
-    const q = query(collection(db, 'users'), where('username', '==', username));
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
-  };
-
-  const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string }) => {
+  const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string, role?: UserRole, allowedDepts?: Department[] }) => {
     if (!db || !auth.currentUser) return;
     
     const exists = await checkUsernameExists(data.username);
@@ -135,7 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
     const secondaryAuth = getAuth(secondaryApp);
     const email = `${data.username.toLowerCase()}@sanad.bank`;
-    const role: UserRole = data.dept === 'Support' ? 'Agent' : 'Specialist';
+    
+    const finalRole: UserRole = data.role || (data.dept === 'Support' ? 'Agent' : 'Specialist');
     
     try {
       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, data.password);
@@ -144,15 +163,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: data.username,
         name: data.name,
         email: email,
-        role: role,
+        role: finalRole,
         department: data.dept,
+        allowedDepartments: data.allowedDepts || [data.dept],
         password: data.password,
         createdAt: new Date().toISOString()
       });
       await signOut(secondaryAuth);
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
-        throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً في نظام فيربيس.');
+        throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً.');
       }
       throw err;
     }
@@ -162,43 +182,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const userRef = doc(db, 'users', uid);
 
+    // حماية حساب محمد بلخرم من تغيير الهوية أو القسم من قبل مدراء آخرين
+    const snap = await getDoc(userRef);
+    if (snap.exists() && snap.data().username === 'BIM0100') {
+      // السماح فقط بتغيير كلمة السر أو الاسم
+      const { department, role, username, ...safeData } = data;
+      await updateDoc(userRef, safeData);
+      return;
+    }
+
     if (data.password) {
       try {
         const oldDoc = await getDoc(userRef);
         if (oldDoc.exists()) {
           const oldData = oldDoc.data();
-          const email = oldData.email;
-          const oldPassword = oldData.password;
-
-          // تحديث كلمة المرور فقط إذا كانت مختلفة عن المخزنة
-          if (data.password !== oldPassword) {
+          if (data.password !== oldData.password) {
             const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
             const secondaryAuth = getAuth(secondaryApp);
-            
-            // محاولة تسجيل الدخول بالبيانات الحالية لتحديثها
-            const userCred = await signInWithEmailAndPassword(secondaryAuth, email, oldPassword);
+            const userCred = await signInWithEmailAndPassword(secondaryAuth, oldData.email, oldData.password);
             await updatePassword(userCred.user, data.password);
             await signOut(secondaryAuth);
           }
         }
       } catch (authErr: any) {
-        let msg = "فشل تحديث كلمة المرور في نظام الهوية";
-        if (authErr.code === 'auth/invalid-credential' || authErr.code === 'auth/wrong-password') {
-           msg = "فشل التحقق: كلمة السر الحالية في قاعدة البيانات غير متزامنة مع نظام الحماية.";
-        }
-        throw new Error(msg);
+        throw new Error("فشل تحديث كلمة المرور في نظام الحماية.");
       }
     }
     
-    if (data.department) {
-      data.role = data.department === 'Support' ? 'Agent' : 'Specialist';
-    }
+    await updateDoc(userRef, data);
+  };
 
-    try {
-      await updateDoc(userRef, data);
-    } catch (err) {
-      throw err;
-    }
+  const checkUsernameExists = async (username: string) => {
+    if (!db) return false;
+    const q = query(collection(db, 'users'), where('username', '==', username));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  };
+
+  const logout = async () => {
+    setLoading(true);
+    await signOut(auth);
+    setProfile(null);
+    setCurrentSessionDept(null);
+    setLoading(false);
   };
 
   const updateAdminPassword = async (newPassword: string) => {
@@ -209,13 +235,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       throw err;
     }
-  };
-
-  const logout = async () => {
-    setLoading(true);
-    await signOut(auth);
-    setProfile(null);
-    setLoading(false);
   };
 
   return (
@@ -229,7 +248,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateAdminPassword,
       checkUsernameExists,
       loading,
-      error 
+      error,
+      currentSessionDept
     }}>
       {children}
     </AuthContext.Provider>

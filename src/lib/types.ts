@@ -12,7 +12,8 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   department: Department;
-  password?: string; // أضفنا كلمة المرور ليتمكن المدير من رؤيتها
+  allowedDepartments?: Department[]; // الأقسام التي يمكن للمدير دخولها
+  password?: string;
   createdAt?: string;
 }
 
@@ -26,6 +27,7 @@ export interface TicketLog {
   timestamp: string;
   userName: string;
   note?: string;
+  type?: 'agent' | 'specialist';
 }
 
 export interface Ticket {
