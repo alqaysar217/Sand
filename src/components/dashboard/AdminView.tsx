@@ -44,6 +44,20 @@ export function AdminView() {
 
   const isPrimaryAdmin = currentAdmin?.username === 'BIM0100';
 
+  // الاستماع لأحداث القائمة الجانبية لتغيير التبويب النشط
+  useEffect(() => {
+    const handleSidebarNav = (e: any) => {
+      const action = e.detail;
+      // مزامنة الأكشن مع التبويبات الموجودة
+      if (['stats', 'users', 'options', 'staff'].includes(action)) {
+        // إذا كان الأكشن 'staff' نوجهه لتبويب 'users'
+        setActiveAdminTab(action === 'staff' ? 'users' : action);
+      }
+    };
+    window.addEventListener('sidebar-nav', handleSidebarNav);
+    return () => window.removeEventListener('sidebar-nav', handleSidebarNav);
+  }, []);
+
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
