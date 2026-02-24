@@ -159,6 +159,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateEmployeeProfile = async (uid: string, data: Partial<UserProfile>) => {
     if (!db) return;
     const userRef = doc(db, 'users', uid);
+
+    // إذا كان هناك تحديث لكلمة المرور، نحتاج لتحديثها في Auth أيضاً
+    if (data.password) {
+      try {
+        const oldDoc = await getDoc(userRef);
+        if (oldDoc.exists()) {
+          const oldData = oldDoc.data();
+          const email = oldData.email;
+          const oldPassword = oldData.password;
+
+          // استخدام تطبيق ثانوي لتحديث كلمة المرور دون التأثير على جلسة المدير الحالية
+          const secondaryApp = getApps().find(app => app.name === 'SecondaryApp') || initializeApp(firebaseConfig, 'SecondaryApp');
+          const secondaryAuth = getAuth(secondaryApp);
+          
+          // 1. تسجيل الدخول بالبيانات القديمة
+          const userCred = await signInWithEmailAndPassword(secondaryAuth, email, oldPassword);
+          // 2. تحديث كلمة المرور
+          await updatePassword(userCred.user, data.password);
+          // 3. تسجيل الخروج من التطبيق الثانوي
+          await signOut(secondaryAuth);
+        }
+      } catch (authErr: any) {
+        console.error("Auth update failed:", authErr);
+        throw new Error("فشل تحديث كلمة المرور في نظام الهوية: " + (authErr.message || "خطأ غير معروف"));
+      }
+    }
     
     if (data.department) {
       data.role = data.department === 'Support' ? 'Agent' : 'Specialist';
