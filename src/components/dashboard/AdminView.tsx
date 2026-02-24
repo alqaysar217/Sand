@@ -146,54 +146,72 @@ export function AdminView() {
       return;
     }
 
+    // رؤوس الجدول باللغة العربية
     const headers = [
       "رقم البلاغ",
-      "تاريخ الإنشاء",
+      "تاريخ وتوقيت البلاغ",
       "اسم العميل",
-      "رقم CIF",
-      "رقم الهاتف",
-      "نوع المشكلة",
-      "القسم المعني",
-      "وسيلة الاستلام",
-      "وصف المشكلة",
-      "موظف الرفع",
-      "الأخصائي المستلم",
-      "حالة البلاغ",
-      "الرد الفني النهائي"
+      "رقم CIF / الحساب",
+      "رقم هاتف العميل",
+      "نوع المشكلة الفنية",
+      "الجهة الموجه إليها",
+      "وسيلة استلام الطلب",
+      "وصف المشكلة التفصيلي",
+      "موظف الرفع (Agent)",
+      "الأخصائي المستلم (Specialist)",
+      "حالة البلاغ الحالية",
+      "الرد الفني النهائي / الملاحظات"
     ];
 
-    const rows = tickets.map(t => [
-      t.ticketID || '',
-      new Date(t.createdAt).toLocaleString('ar-SA'),
-      t.customerName || '',
-      t.cif || '',
-      t.phoneNumber || '',
-      t.subIssue || '',
-      t.serviceType || '',
-      t.intakeMethod || '',
-      (t.description || '').replace(/\n/g, ' ').replace(/,/g, '-'),
-      t.createdByAgentName || '',
-      t.assignedToSpecialistName || 'لم يتم التحديد',
-      t.status === 'Resolved' ? 'تم الحل' : t.status === 'Rejected' ? 'مرفوض' : t.status === 'Pending' ? 'قيد المعالجة' : t.status === 'Escalated' ? 'محال' : 'جديد',
-      (t.specialistResponse || '').replace(/\n/g, ' ').replace(/,/g, '-')
-    ]);
+    // معالجة البيانات لضمان التنسيق داخل Excel
+    const rows = tickets.map(t => {
+      // تنظيف النصوص من الفواصل والأسطر الجديدة التي تكسر تنسيق CSV
+      const clean = (text: string) => {
+        if (!text) return "";
+        return text.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/"/g, '""').trim();
+      };
 
+      const statusMap: Record<string, string> = {
+        'New': 'جديد', 'Pending': 'قيد المعالجة', 'Resolved': 'تم الحل بنجاح', 
+        'Escalated': 'محال للقسم المختص', 'Rejected': 'مرفوض'
+      };
+
+      return [
+        t.ticketID || '',
+        new Date(t.createdAt).toLocaleString('ar-SA'),
+        clean(t.customerName),
+        t.cif || '',
+        t.phoneNumber || '',
+        clean(t.subIssue),
+        clean(t.serviceType),
+        clean(t.intakeMethod),
+        clean(t.description),
+        clean(t.createdByAgentName),
+        clean(t.assignedToSpecialistName || 'لم يتم الاستلام بعد'),
+        statusMap[t.status] || t.status,
+        clean(t.specialistResponse || t.rejectionReason || 'لا يوجد رد بعد')
+      ];
+    });
+
+    // تجميع المحتوى مع استخدام علامات التنصيص لكل خلية لضمان التنسيق
     const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
 
-    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    // إضافة UTF-8 BOM لضمان فتح الملف باللغة العربية بشكل صحيح في Excel
+    const BOM = "\ufeff";
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `sanad_tickets_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `تقرير_بلاغات_سند_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast({ title: "تم التصدير بنجاح", description: "تم تحميل ملف كافة البلاغات بنجاح." });
+    toast({ title: "تم التصدير بنجاح", description: "تم تحميل تقرير البلاغات المنسق بنجاح." });
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -299,7 +317,7 @@ export function AdminView() {
           </div>
           <div className="flex items-center gap-3">
              <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50">
-                <Download className="w-4 h-4 ml-2" /> تصدير البلاغات (CSV)
+                <Download className="w-4 h-4 ml-2" /> تصدير البلاغات (Excel)
              </Button>
              <Button onClick={() => setShowChangePassDialog(true)} variant="outline" className="rounded-full font-black border-primary text-primary">
                 <Key className="w-4 h-4 ml-2" /> كلمة سر الإدارة
