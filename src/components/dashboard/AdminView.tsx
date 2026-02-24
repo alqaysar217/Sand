@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity, Send
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
@@ -448,8 +448,7 @@ export function AdminView() {
                       </div>
                     )}
                  </div>
-                 <DialogFooter className="flex-row-reverse gap-3 pt-6"><Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black">إلغاء</Button><Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 text-white h-12 px-10 rounded-full font-black">{isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}</Button></DialogFooter>
-              </form>
+                 <DialogFooter className="flex-row-reverse gap-3 pt-6"><Button type="button" variant="ghost" onClick={() => setShowEditUserDialog(false)} className="rounded-full font-black">إلغاء</Button><Button type="submit" disabled={isUpdatingUser} className="banking-button bg-blue-600 text-white h-12 px-10 rounded-full font-black">{isUpdatingUser ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}</Button></form>
             )}
          </DialogContent>
       </Dialog>
