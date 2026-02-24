@@ -3,7 +3,7 @@
 
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -38,7 +38,7 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function AppSidebar() {
-  const { user } = useAuth();
+  const { user, currentSessionDept } = useAuth();
   const db = useFirestore();
   const [activeAction, setActiveAction] = useState('all');
 
@@ -81,8 +81,12 @@ export function AppSidebar() {
     window.dispatchEvent(new CustomEvent('sidebar-nav', { detail: action }));
   };
 
+  // تحديد نوع القائمة الجانبية بناءً على القسم الحالي الذي يتواجد فيه المستخدم
+  const activeDept = currentSessionDept || user.department;
+
   const getNavItems = () => {
-    if (user.role === 'Agent') {
+    // إذا كان القسم الحالي هو الدعم (الكول سنتر)
+    if (activeDept === 'Support') {
       return [
         { title: 'كل البلاغات', icon: LayoutDashboard, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
         { title: 'بلاغ جديد', icon: PlusSquare, action: 'new-ticket' },
@@ -93,7 +97,9 @@ export function AppSidebar() {
         { title: 'مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
         { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
       ];
-    } else if (user.role === 'Specialist') {
+    } 
+    // إذا كان القسم الحالي هو أحد الأقسام الفنية (بطائق، رقمي، تطبيق)
+    else if (activeDept === 'Cards' || activeDept === 'Digital' || activeDept === 'App') {
       return [
         { title: 'كل المهام', icon: Inbox, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
         { title: 'عملياتي', icon: UserCheck, action: 'my-tasks', count: counts.myTasks, badgeColor: 'bg-indigo-600' },
@@ -102,7 +108,9 @@ export function AppSidebar() {
         { title: 'بلاغات مرفوضة', icon: XCircle, action: 'Rejected', count: counts.Rejected, badgeColor: 'bg-slate-700' },
         { title: 'بلاغات تم حلها', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
       ];
-    } else {
+    } 
+    // إذا كان القسم الحالي هو العمليات (للمدراء فقط)
+    else {
       return [
         { title: 'الإحصائيات', icon: BarChart3, action: 'stats' },
         { title: 'إدارة الكادر', icon: Users, action: 'staff' },
@@ -132,7 +140,7 @@ export function AppSidebar() {
       <SidebarContent className="bg-white px-3 py-6 no-scrollbar">
         <SidebarGroup>
           <SidebarGroupLabel className="text-slate-400 font-bold px-4 py-4 mb-4 text-right text-[10px] uppercase tracking-[2px]">
-            لوحة التحكم
+            لوحة تحكم {activeDept}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">

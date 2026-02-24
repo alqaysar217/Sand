@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, currentSessionDept } = useAuth();
   const { toggleSidebar } = useSidebar();
 
   if (!user) return null;
@@ -30,6 +30,9 @@ export function Navbar() {
     'Support': 'الكول سنتر',
     'Operations': 'غرفة القيادة والرقابة'
   };
+
+  // عرض اسم القسم النشط حالياً في الجلسة
+  const activeDeptName = deptMap[currentSessionDept || user.department] || (currentSessionDept || user.department);
 
   return (
     <header className="h-20 bg-white/80 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-50 shadow-[0_2px_15px_rgba(0,0,0,0.02)] border-b">
@@ -56,7 +59,7 @@ export function Navbar() {
       <div className="flex items-center gap-4">
         <div className="text-right hidden sm:block">
           <p className="text-sm font-bold text-slate-900 leading-none">{user.name}</p>
-          <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">{deptMap[user.department] || user.department}</p>
+          <p className="text-[10px] text-primary font-black mt-1 uppercase tracking-wider">{activeDeptName}</p>
         </div>
         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/10 rounded-full px-4 py-1 font-bold hidden md:inline-flex">
           {roleMap[user.role] || user.role}
