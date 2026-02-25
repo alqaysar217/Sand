@@ -39,7 +39,7 @@ function translateAuthError(error: any): string {
     case 'auth/invalid-credential':
       return 'بيانات الدخول (BIM ID أو كلمة المرور) غير صحيحة.';
     case 'auth/email-already-in-use':
-      return 'اسم المستخدم (BIM ID) هذا مرتبط بحساب نشط بالفعل.';
+      return 'هذا الـ BIM ID مرتبط بحساب نشط في نظام الحماية. يرجى التأكد من حذفه نهائياً من سجلات الإدارة قبل إعادة استخدامه.';
     default:
       return error.message || 'حدث خطأ غير متوقع في نظام المصادقة.';
   }
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const createEmployeeAccount = async (data: { name: string, username: string, dept: Department, password: string, role: UserRole, allowedDepts: Department[] }) => {
     if (!db || !auth.currentUser) return;
     const exists = await checkUsernameExists(data.username);
-    if (exists) throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً لموظف آخر.');
+    if (exists) throw new Error('اسم المستخدم (BIM ID) مسجل مسبقاً لموظف آخر في قاعدة البيانات.');
 
     const appName = `CreateApp_${Date.now()}`;
     const secondaryApp = initializeApp(firebaseConfig, appName);
@@ -190,7 +190,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!userDoc.exists()) return;
     const userData = userDoc.data() as UserProfile;
 
-    // حذف من نظام الحماية باستخدام جلسة ثانوية
     const appName = `DeleteApp_${Date.now()}`;
     const secondaryApp = initializeApp(firebaseConfig, appName);
     const secondaryAuth = getAuth(secondaryApp);
@@ -202,7 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await deleteApp(secondaryApp);
     } catch (err: any) {
       if (secondaryApp) { try { await deleteApp(secondaryApp); } catch (e) {} }
-      // إذا فشل حذف نظام الحماية، نحاول حذف قاعدة البيانات فقط
       await deleteDoc(doc(db, 'users', uid));
     }
   };

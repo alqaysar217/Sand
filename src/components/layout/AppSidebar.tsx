@@ -81,11 +81,9 @@ export function AppSidebar() {
     window.dispatchEvent(new CustomEvent('sidebar-nav', { detail: action }));
   };
 
-  // تحديد نوع القائمة الجانبية بناءً على القسم الحالي الذي يتواجد فيه المستخدم
   const activeDept = currentSessionDept || user.department;
 
   const getNavItems = () => {
-    // إذا كان القسم الحالي هو الدعم (الكول سنتر)
     if (activeDept === 'Support') {
       return [
         { title: 'كل البلاغات', icon: LayoutDashboard, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
@@ -98,7 +96,6 @@ export function AppSidebar() {
         { title: 'الأرشيف (تم الحل)', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
       ];
     } 
-    // إذا كان القسم الحالي هو أحد الأقسام الفنية (بطائق، رقمي، تطبيق)
     else if (activeDept === 'Cards' || activeDept === 'Digital' || activeDept === 'App') {
       return [
         { title: 'كل المهام', icon: Inbox, action: 'all', count: counts.all, badgeColor: 'bg-primary' },
@@ -109,7 +106,6 @@ export function AppSidebar() {
         { title: 'بلاغات تم حلها', icon: Archive, action: 'Resolved', count: counts.Resolved, badgeColor: 'bg-green-600' },
       ];
     } 
-    // إذا كان القسم الحالي هو العمليات (للمدراء فقط)
     else {
       return [
         { title: 'الإحصائيات', icon: BarChart3, action: 'stats' },
@@ -176,8 +172,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-8 border-t bg-slate-50/50 text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider">
         <div className="flex flex-col gap-1 items-center">
            <ShieldCheck className="w-4 h-4 text-primary/30" />
-           <span>سند المصرفي v2.5</span>
-           <span>تم التطوير من قبل م/محمود حساني</span>
+           <span>سند المصرفي v2.5 - تم التطوير من قبل م/محمود حساني</span>
         </div>
       </SidebarFooter>
     </Sidebar>
