@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox, MessageCircle, User, Phone, Share2, Wand2
+  CheckCircle2, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox, MessageCircle, User, Phone, Share2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -19,7 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, doc, orderBy, arrayUnion } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
-import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
 
 export function SpecialistView() {
   const { user } = useAuth();
@@ -28,7 +27,6 @@ export function SpecialistView() {
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [response, setResponse] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [activeDeptFilter, setActiveDeptFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'all-tickets' | 'my-tasks'>('all-tickets');
@@ -96,22 +94,6 @@ export function SpecialistView() {
     toast({ title: "تم الاستلام", description: "تم بدء معالجة البلاغ بنجاح" });
     setClaimDialogOpen(false);
     setTicketToClaim(null);
-  };
-
-  const generateAiResponse = async () => {
-    if (!selectedTicket) return;
-    setIsGeneratingAi(true);
-    try {
-      const result = await smartResponseAssistant({
-        complaintDetails: selectedTicket.description,
-      });
-      setResponse(result.suggestedResponse);
-      toast({ title: "تم توليد الرد الذكي", description: "يمكنك الآن تعديل الرد قبل اعتماده." });
-    } catch (error) {
-      toast({ variant: "destructive", title: "فشل توليد الرد", description: "عذراً، تعذر الاتصال بمساعد الذكاء الاصطناعي حالياً." });
-    } finally {
-      setIsGeneratingAi(false);
-    }
   };
 
   const handleAction = async (actionType: 'Resolved' | 'Rejected' | 'Escalated') => {
@@ -223,21 +205,13 @@ export function SpecialistView() {
                    <div className="space-y-6 pt-8 border-t">
                       <div className="flex justify-between items-center flex-row-reverse">
                          <h4 className="font-black text-slate-800 flex items-center gap-2">
-                            إضافة رد فني جديد <Sparkles className="w-4 h-4 text-accent" />
+                            إضافة رد فني جديد
                          </h4>
-                         <Button 
-                            onClick={generateAiResponse} 
-                            disabled={isGeneratingAi}
-                            variant="outline" 
-                            className="rounded-full font-black border-accent text-accent hover:bg-accent hover:text-white flex items-center gap-2"
-                          >
-                           {isGeneratingAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Wand2 className="w-4 h-4" /> صياغة رد ذكي</>}
-                         </Button>
                       </div>
                       <Textarea 
                         value={response} 
                         onChange={e => setResponse(e.target.value)} 
-                        placeholder="اكتب هنا الرد الفني التفصيلي أو استخدم المساعد الذكي..." 
+                        placeholder="اكتب هنا الرد الفني التفصيلي للمعالجة..." 
                         className="banking-input min-h-[150px] text-right text-base leading-relaxed bg-white" 
                       />
                       
@@ -413,7 +387,7 @@ export function SpecialistView() {
                   {filteredTickets.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-28 flex flex-col items-center gap-4">
-                         {viewMode === 'my-tasks' ? <UserCheck className="w-12 h-12 text-indigo-200" /> : <Inbox className="w-12 h-12 text-slate-200" />}
+                         <Inbox className="w-12 h-12 text-slate-200" />
                          <span className="font-black text-slate-400 text-lg">
                             {viewMode === 'my-tasks' 
                                ? "لم تقم باستلام أي بلاغات بعد" 
