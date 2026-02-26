@@ -489,14 +489,18 @@ export function AgentView() {
                          <h4 className="font-black text-primary flex items-center gap-2 justify-end">
                             بيانات العميل <User className="w-4 h-4" />
                          </h4>
-                         <div className="grid grid-cols-2 gap-4 text-right">
+                         <div className="grid grid-cols-3 gap-4 text-right">
                             <div>
                                <span className="text-[10px] text-slate-400 font-black block">الاسم الكامل</span>
-                               <p className="font-bold">{selectedTicket.customerName}</p>
+                               <p className="font-bold text-sm">{selectedTicket.customerName}</p>
                             </div>
                             <div>
                                <span className="text-[10px] text-slate-400 font-black block">رقم CIF</span>
-                               <p className="font-mono font-bold">{selectedTicket.cif}</p>
+                               <p className="font-mono font-bold text-sm">{selectedTicket.cif}</p>
+                            </div>
+                            <div>
+                               <span className="text-[10px] text-slate-400 font-black block">رقم الهاتف</span>
+                               <p className="font-mono font-bold text-sm text-primary">{selectedTicket.phoneNumber}</p>
                             </div>
                          </div>
                       </Card>
@@ -505,14 +509,18 @@ export function AgentView() {
                          <h4 className="font-black text-primary flex items-center gap-2 justify-end">
                             تفاصيل التوجيه <Share2 className="w-4 h-4" />
                          </h4>
-                         <div className="grid grid-cols-2 gap-4 text-right">
+                         <div className="grid grid-cols-3 gap-4 text-right">
                             <div>
                                <span className="text-[10px] text-slate-400 font-black block">الجهة المعنية</span>
-                               <p className="font-bold text-accent">{selectedTicket.serviceType}</p>
+                               <p className="font-bold text-accent text-sm">{selectedTicket.serviceType}</p>
                             </div>
                             <div>
                                <span className="text-[10px] text-slate-400 font-black block">نوع المشكلة</span>
-                               <p className="font-bold">{selectedTicket.subIssue}</p>
+                               <p className="font-bold text-sm">{selectedTicket.subIssue}</p>
+                            </div>
+                            <div>
+                               <span className="text-[10px] text-slate-400 font-black block">وسيلة الاستلام</span>
+                               <p className="font-bold text-sm">{selectedTicket.intakeMethod}</p>
                             </div>
                          </div>
                       </Card>
@@ -608,7 +616,7 @@ export function AgentView() {
                 </div>
 
                 <div className="p-8 border-t bg-white flex justify-end shrink-0">
-                   <Button onClick={() => { setSelectedTicket(null); setIsFollowUpMode(false); }} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إغلاق التفاصيل</Button>
+                   <Button onClick={() => { setSelectedTicket(null); setIsFollowUpMode(false); }} className="banking-button premium-gradient text-white h-12 px-12 rounded-full font-black">إلغاء وإغلاق</Button>
                 </div>
              </>
            )}

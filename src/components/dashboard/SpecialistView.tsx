@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox, MessageCircle, User
+  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox, MessageCircle, User, Phone, Share2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -247,7 +247,7 @@ export function SpecialistView() {
 
            <Card className="banking-card border-none shadow-xl h-fit sticky top-24">
               <CardHeader className="p-6 border-b bg-slate-50/50">
-                <CardTitle className="text-lg font-black text-right">بيانات البلاغ</CardTitle>
+                <CardTitle className="text-lg font-black text-right">بيانات البلاغ الكاملة</CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                  <div className="space-y-4">
@@ -256,8 +256,16 @@ export function SpecialistView() {
                       <p className="font-black text-slate-800">{selectedTicket.customerName}</p>
                     </div>
                     <div className="space-y-1 text-right">
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">رقم CIF</p>
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1 justify-end">رقم CIF <User className="w-3 h-3" /></p>
                       <p className="font-mono font-bold text-slate-700">{selectedTicket.cif}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1 justify-end">رقم الهاتف <Phone className="w-3 h-3" /></p>
+                      <p className="font-mono font-bold text-primary">{selectedTicket.phoneNumber}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1 justify-end">وسيلة الاستلام <Share2 className="w-3 h-3" /></p>
+                      <p className="font-bold text-slate-700">{selectedTicket.intakeMethod}</p>
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">نوع المشكلة</p>
@@ -270,7 +278,7 @@ export function SpecialistView() {
                       <h4 className="text-[10px] font-black mb-4 text-slate-400 uppercase tracking-widest text-right">المرفقات</h4>
                       <div className="grid grid-cols-2 gap-2">
                          {selectedTicket.attachments.map((at: any, i: number) => (
-                           <img key={i} src={at.url} alt="at" className="w-full aspect-video object-cover rounded-lg border cursor-pointer" onClick={() => window.open(at.url)} />
+                           <img key={i} src={at.url} alt="at" className="w-full aspect-video object-cover rounded-lg border cursor-pointer shadow-sm hover:scale-105 transition-transform" onClick={() => window.open(at.url)} />
                          ))}
                       </div>
                    </div>
