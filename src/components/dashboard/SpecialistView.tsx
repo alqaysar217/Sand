@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox, MessageCircle, User, Phone, Share2
+  CheckCircle2, Sparkles, ArrowRight, Loader2, ImageIcon, AlertCircle, Send, XCircle, Clock, Filter, Layers, UserCheck, ShieldCheck, Inbox, MessageCircle, User, Phone, Share2, Wand2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, doc, orderBy, arrayUnion } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { smartResponseAssistant } from '@/ai/flows/smart-response-assistant';
 
 export function SpecialistView() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export function SpecialistView() {
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [response, setResponse] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [activeDeptFilter, setActiveDeptFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'all-tickets' | 'my-tasks'>('all-tickets');
@@ -84,7 +86,7 @@ export function SpecialistView() {
       assignedToSpecialistName: user.name,
       status: 'Pending',
       logs: arrayUnion({ 
-        action: `تم استلام البلاغ للمباشرة بالمعالجة`, 
+        action: `تم استلام البلاغ للمباشرة بالمعالجة الفنية`, 
         timestamp: new Date().toISOString(), 
         userName: user.name,
         type: 'specialist'
@@ -94,6 +96,22 @@ export function SpecialistView() {
     toast({ title: "تم الاستلام", description: "تم بدء معالجة البلاغ بنجاح" });
     setClaimDialogOpen(false);
     setTicketToClaim(null);
+  };
+
+  const generateAiResponse = async () => {
+    if (!selectedTicket) return;
+    setIsGeneratingAi(true);
+    try {
+      const result = await smartResponseAssistant({
+        complaintDetails: selectedTicket.description,
+      });
+      setResponse(result.suggestedResponse);
+      toast({ title: "تم توليد الرد الذكي", description: "يمكنك الآن تعديل الرد قبل اعتماده." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "فشل توليد الرد", description: "عذراً، تعذر الاتصال بمساعد الذكاء الاصطناعي حالياً." });
+    } finally {
+      setIsGeneratingAi(false);
+    }
   };
 
   const handleAction = async (actionType: 'Resolved' | 'Rejected' | 'Escalated') => {
@@ -137,11 +155,11 @@ export function SpecialistView() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending': return <Badge className="bg-amber-500 rounded-full font-black">قيد المعالجة</Badge>;
-      case 'Resolved': return <Badge className="bg-green-600 rounded-full font-black">تم الحل</Badge>;
-      case 'Rejected': return <Badge className="bg-slate-700 rounded-full font-black">مرفوض</Badge>;
-      case 'Escalated': return <Badge className="bg-red-600 rounded-full font-black">محال</Badge>;
-      default: return <Badge className="bg-blue-600 rounded-full font-black">جديد</Badge>;
+      case 'Pending': return <Badge className="bg-amber-500 rounded-full font-black px-4 py-1">قيد المعالجة</Badge>;
+      case 'Resolved': return <Badge className="bg-green-600 rounded-full font-black px-4 py-1">تم الحل</Badge>;
+      case 'Rejected': return <Badge className="bg-slate-700 rounded-full font-black px-4 py-1">مرفوض</Badge>;
+      case 'Escalated': return <Badge className="bg-red-600 rounded-full font-black px-4 py-1">محال</Badge>;
+      default: return <Badge className="bg-blue-600 rounded-full font-black px-4 py-1">جديد</Badge>;
     }
   };
 
@@ -207,11 +225,19 @@ export function SpecialistView() {
                          <h4 className="font-black text-slate-800 flex items-center gap-2">
                             إضافة رد فني جديد <Sparkles className="w-4 h-4 text-accent" />
                          </h4>
+                         <Button 
+                            onClick={generateAiResponse} 
+                            disabled={isGeneratingAi}
+                            variant="outline" 
+                            className="rounded-full font-black border-accent text-accent hover:bg-accent hover:text-white flex items-center gap-2"
+                          >
+                           {isGeneratingAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Wand2 className="w-4 h-4" /> صياغة رد ذكي</>}
+                         </Button>
                       </div>
                       <Textarea 
                         value={response} 
                         onChange={e => setResponse(e.target.value)} 
-                        placeholder="اكتب هنا الرد الفني التفصيلي أو سبب الرفض/الإحالة..." 
+                        placeholder="اكتب هنا الرد الفني التفصيلي أو استخدم المساعد الذكي..." 
                         className="banking-input min-h-[150px] text-right text-base leading-relaxed bg-white" 
                       />
                       
