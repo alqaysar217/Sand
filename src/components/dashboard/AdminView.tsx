@@ -80,7 +80,6 @@ export function AdminView() {
 
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
-    // استبعاد المطور من الجداول تماماً لخصوصية تامة، إلا إذا كان المطور هو من يشاهد
     return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
   }, [rawUsers, isDeveloper]);
 
@@ -92,34 +91,41 @@ export function AdminView() {
     };
     if (!tickets || !rawUsers) return defaultStats;
     
-    // استبعاد المطور من إجمالي الأعداد
     const activeUsers = rawUsers.filter(u => u.username !== 'BIM775258830');
     
     const deptMap: Record<string, number> = {};
     const statusMap: Record<string, number> = { 'New': 0, 'Pending': 0, 'Resolved': 0, 'Escalated': 0, 'Rejected': 0 };
     
     const agentPerfMap: Record<string, number> = {};
-    const cardsPerfMap: Record<string, number> = {};
-    const digitalPerfMap: Record<string, number> = {};
-    const appPerfMap: Record<string, number> = {};
+    const cardsPerfMap: Record<string, any> = {};
+    const digitalPerfMap: Record<string, any> = {};
+    const appPerfMap: Record<string, any> = {};
+
+    const updateSpecialistStats = (map: Record<string, any>, name: string, status: string) => {
+      if (!map[name]) {
+        map[name] = { name, resolved: 0, rejected: 0, escalated: 0, pending: 0 };
+      }
+      if (status === 'Resolved') map[name].resolved++;
+      if (status === 'Rejected') map[name].rejected++;
+      if (status === 'Escalated') map[name].escalated++;
+      if (status === 'Pending') map[name].pending++;
+    };
 
     tickets.forEach(t => {
       deptMap[t.serviceType] = (deptMap[t.serviceType] || 0) + 1;
       statusMap[t.status] = (statusMap[t.status] || 0) + 1;
       
-      // إنتاجية موظفي الرفع (Support)
       if (t.createdByAgentName) {
         agentPerfMap[t.createdByAgentName] = (agentPerfMap[t.createdByAgentName] || 0) + 1;
       }
       
-      // إنتاجية الأخصائيين (حسب القسم)
-      if (t.assignedToSpecialistName && (t.status === 'Resolved' || t.status === 'Rejected' || t.status === 'Escalated')) {
+      if (t.assignedToSpecialistName) {
         if (t.serviceType === 'إدارة البطائق') {
-          cardsPerfMap[t.assignedToSpecialistName] = (cardsPerfMap[t.assignedToSpecialistName] || 0) + 1;
+          updateSpecialistStats(cardsPerfMap, t.assignedToSpecialistName, t.status);
         } else if (t.serviceType === 'خدمة العملاء') {
-          digitalPerfMap[t.assignedToSpecialistName] = (digitalPerfMap[t.assignedToSpecialistName] || 0) + 1;
+          updateSpecialistStats(digitalPerfMap, t.assignedToSpecialistName, t.status);
         } else if (t.serviceType === 'مشاكل التطبيق') {
-          appPerfMap[t.assignedToSpecialistName] = (appPerfMap[t.assignedToSpecialistName] || 0) + 1;
+          updateSpecialistStats(appPerfMap, t.assignedToSpecialistName, t.status);
         }
       }
     });
@@ -143,9 +149,9 @@ export function AdminView() {
         name: arabicLabels[name] || name, value 
       })).filter(s => s.value > 0),
       agentPerformance: Object.entries(agentPerfMap).map(([name, count]) => ({ name, count })),
-      cardsPerformance: Object.entries(cardsPerfMap).map(([name, count]) => ({ name, count })),
-      digitalPerformance: Object.entries(digitalPerfMap).map(([name, count]) => ({ name, count })),
-      appPerformance: Object.entries(appPerfMap).map(([name, count]) => ({ name, count })),
+      cardsPerformance: Object.values(cardsPerfMap),
+      digitalPerformance: Object.values(digitalPerfMap),
+      appPerformance: Object.values(appPerfMap),
     };
   }, [tickets, rawUsers]);
 
@@ -336,28 +342,64 @@ export function AdminView() {
                 )}
              </ChartWrapper>
 
-             {/* قسم البطائق */}
-             <ChartWrapper title="أداء أخصائيي قسم البطائق" icon={CreditCard}>
+             {/* قسم البطائق - Stacked Chart */}
+             <ChartWrapper title="أداء أخصائيي قسم البطائق (تفصيلي)" icon={CreditCard}>
                 {stats.cardsPerformance.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.cardsPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات معالجة" fill="#10B981" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart data={stats.cardsPerformance} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" />
+                      <Tooltip formatter={(value, name) => [value, getLabel(name)]} />
+                      <Legend verticalAlign="top" align="center" iconType="circle" />
+                      <Bar dataKey="resolved" name="تم الحل" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="pending" name="قيد المعالجة" stackId="a" fill="#F59E0B" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="escalated" name="محال" stackId="a" fill="#EF4444" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="rejected" name="مرفوض" stackId="a" fill="#334155" radius={[0, 8, 8, 0]} />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><CreditCard className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
                 )}
              </ChartWrapper>
 
-             {/* خدمة العملاء الرقمية */}
-             <ChartWrapper title="أداء أخصائيي خدمة العملاء" icon={MonitorSmartphone}>
+             {/* خدمة العملاء الرقمية - Stacked Chart */}
+             <ChartWrapper title="أداء أخصائيي خدمة العملاء (تفصيلي)" icon={MonitorSmartphone}>
                 {stats.digitalPerformance.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.digitalPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات معالجة" fill="#F59E0B" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart data={stats.digitalPerformance} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" />
+                      <Tooltip formatter={(value, name) => [value, getLabel(name)]} />
+                      <Legend verticalAlign="top" align="center" iconType="circle" />
+                      <Bar dataKey="resolved" name="تم الحل" stackId="a" fill="#10B981" />
+                      <Bar dataKey="pending" name="قيد المعالجة" stackId="a" fill="#F59E0B" />
+                      <Bar dataKey="escalated" name="محال" stackId="a" fill="#EF4444" />
+                      <Bar dataKey="rejected" name="مرفوض" stackId="a" fill="#334155" radius={[0, 8, 8, 0]} />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><MonitorSmartphone className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
                 )}
              </ChartWrapper>
 
-             {/* التطبيق الإلكتروني */}
-             <ChartWrapper title="أداء أخصائيي التطبيق" icon={Smartphone}>
+             {/* التطبيق الإلكتروني - Stacked Chart */}
+             <ChartWrapper title="أداء أخصائيي التطبيق (تفصيلي)" icon={Smartphone}>
                 {stats.appPerformance.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.appPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات معالجة" fill="#1414B8" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart data={stats.appPerformance} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" />
+                      <Tooltip formatter={(value, name) => [value, getLabel(name)]} />
+                      <Legend verticalAlign="top" align="center" iconType="circle" />
+                      <Bar dataKey="resolved" name="تم الحل" stackId="a" fill="#10B981" />
+                      <Bar dataKey="pending" name="قيد المعالجة" stackId="a" fill="#F59E0B" />
+                      <Bar dataKey="escalated" name="محال" stackId="a" fill="#EF4444" />
+                      <Bar dataKey="rejected" name="مرفوض" stackId="a" fill="#334155" radius={[0, 8, 8, 0]} />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2"><Smartphone className="w-12 h-12" /><p className="font-black">لا توجد بيانات حالياً</p></div>
                 )}
@@ -404,7 +446,7 @@ export function AdminView() {
         <TabsContent value="options" className="animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <ConfigListManager title="وسائل استلام الطلبات" items={config?.intakeMethods || []} value={newItemValues.intakeMethods || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, intakeMethods: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { intakeMethods: arrayUnion(newItemValues.intakeMethods) }); setNewItemValues({...newItemValues, intakeMethods: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { intakeMethods: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.intakeMethods || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { intakeMethods: list }); }} />
-              <ConfigListManager title="تصنيفات المشكلات" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { issueTypes: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { issueTypes: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { issueTypes: list }); }} />
+              <ConfigListManager title="تصنيفات المشكلات" items={config?.issueTypes || []} value={newItemValues.issueTypes || ''} onValueChange={(v: string) => setNewItemValues({...newItemValues, issueTypes: v})} onAdd={() => { updateDocumentNonBlocking(configRef!, { issueTypes: arrayUnion(newItemValues.issueTypes) }); setNewItemValues({...newItemValues, issueTypes: ''}); }} onRemove={(v: string) => updateDocumentNonBlocking(configRef!, { issueTypes: arrayRemove(v) })} onEdit={(old: string, val: string) => { const list = (config?.issueTypes || []).map((i: string) => i === old ? val : i); updateDoc(configRef!, { intakeMethods: list }); }} />
            </div>
         </TabsContent>
       </Tabs>
@@ -544,4 +586,14 @@ function ConfigListManager({ title, items, value, onValueChange, onAdd, onRemove
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   return (<div className="space-y-4 bg-white p-6 rounded-[24px] border shadow-sm"><div className="flex justify-between items-center flex-row-reverse mb-2"><h5 className="font-black text-slate-700 text-base">{title}</h5><Badge variant="secondary" className="text-[10px] font-black px-3">{items.length}</Badge></div><div className="flex gap-3"><Button onClick={onAdd} size="icon" className="shrink-0 h-12 w-12 rounded-full bg-primary text-white"><Plus className="w-6 h-6" /></Button><Input value={value} onChange={(e) => onValueChange(e.target.value)} placeholder="أضف خياراً..." className="h-12 text-right" /></div><div className="flex flex-wrap gap-2 justify-end">{items.map((item: string) => (<div key={item}>{editingItem === item ? (<div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 pr-3"><Button variant="ghost" size="icon" onClick={() => { onEdit(item, editValue); setEditingItem(null); }} className="h-7 w-7 text-green-600"><Check className="w-4 h-4" /></Button><Button variant="ghost" size="icon" onClick={() => setEditingItem(null)} className="h-7 w-7 text-red-500"><X className="w-4 h-4" /></Button><Input value={editValue} onChange={(e) => setEditValue(e.target.value)} className="h-7 w-24 border-none bg-transparent text-right text-xs" /></div>) : (<Badge variant="outline" className="h-9 px-3 rounded-full flex items-center gap-2 font-bold"><button onClick={() => onRemove(item)}><X className="w-3 h-3 text-red-500" /></button><button onClick={() => { setEditingItem(item); setEditValue(item); }}><Edit2 className="w-3 h-3 text-blue-500" /></button><span>{item}</span></Badge>)}</div>))}</div></div>);
+}
+
+function getLabel(key: string) {
+  const map: Record<string, string> = {
+    resolved: 'تم الحل',
+    pending: 'قيد المعالجة',
+    escalated: 'محال',
+    rejected: 'مرفوض'
+  };
+  return map[key] || key;
 }
