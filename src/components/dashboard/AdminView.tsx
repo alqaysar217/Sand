@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity, Send
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity, Send, Circle
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
