@@ -409,12 +409,14 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-8 animate-in fade-in duration-500">
-           {/* كروت إحصائيات الكوادر الذكية */}
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+           {/* كروت إحصائيات الكوادر الذكية والفئات التفصيلية */}
+           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <StatCard icon={Users} title="إجمالي الكادر" value={appUsers.length} color="bg-primary" />
               <StatCard icon={ShieldCheck} title="المدراء والمشرفين" value={appUsers.filter(u => u.role === 'Admin').length} valueColor="text-indigo-600" />
-              <StatCard icon={Headset} title="موظفي الكول سنتر" value={appUsers.filter(u => u.role === 'Agent').length} valueColor="text-blue-600" />
-              <StatCard icon={UserCheck} title="أخصائيي الأقسام" value={appUsers.filter(u => u.role === 'Specialist').length} valueColor="text-green-600" />
+              <StatCard icon={Headset} title="الكول سنتر (Support)" value={appUsers.filter(u => u.department === 'Support' && u.role !== 'Admin').length} valueColor="text-blue-600" />
+              <StatCard icon={CreditCard} title="قسم البطائق (Cards)" value={appUsers.filter(u => u.department === 'Cards' && u.role !== 'Admin').length} valueColor="text-green-600" />
+              <StatCard icon={MonitorSmartphone} title="خدمة العملاء (Digital)" value={appUsers.filter(u => u.department === 'Digital' && u.role !== 'Admin').length} valueColor="text-accent" />
+              <StatCard icon={Smartphone} title="قسم التطبيق (App)" value={appUsers.filter(u => u.department === 'App' && u.role !== 'Admin').length} valueColor="text-orange-600" />
            </div>
 
            <Card className="banking-card overflow-hidden">
