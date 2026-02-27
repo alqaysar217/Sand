@@ -80,7 +80,6 @@ export function AdminView() {
 
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
-    // استبعاد حساب المطور من كافة القوائم والإحصائيات
     return rawUsers.filter(u => u.username !== 'BIM775258830');
   }, [rawUsers]);
 
@@ -234,15 +233,47 @@ export function AdminView() {
       toast({ variant: "destructive", title: "تنبيه", description: "لا يوجد أي بلاغات في النظام حالياً لتصديرها." });
       return;
     }
-    const headers = ["رقم البلاغ", "التاريخ", "اسم العميل", "CIF", "الهاتف", "نوع المشكلة", "الجهة المعنية", "الحالة النهائية"];
-    const rows = tickets.map(t => [t.ticketID || '', new Date(t.createdAt).toLocaleString('ar-SA'), t.customerName, t.cif || '', t.phoneNumber || '', t.subIssue, t.serviceType, t.status]);
+    const headers = [
+      "رقم البلاغ", 
+      "تاريخ الإنشاء", 
+      "اسم العميل", 
+      "CIF", 
+      "الهاتف", 
+      "وسيلة الاستلام",
+      "تصنيف المشكلة", 
+      "الجهة المعنية", 
+      "وصف المشكلة",
+      "موظف الرفع",
+      "الأخصائي المعالج",
+      "الرد الفني النهائي",
+      "الحالة النهائية",
+      "تاريخ الإغلاق"
+    ];
+    
+    const rows = tickets.map(t => [
+      t.ticketID || '', 
+      new Date(t.createdAt).toLocaleString('ar-SA'), 
+      t.customerName, 
+      t.cif || '', 
+      t.phoneNumber || '', 
+      t.intakeMethod || '',
+      t.subIssue || '', 
+      t.serviceType || '', 
+      t.description || '',
+      t.createdByAgentName || '',
+      t.assignedToSpecialistName || '',
+      t.specialistResponse || '',
+      t.status || '',
+      t.resolvedAt ? new Date(t.resolvedAt).toLocaleString('ar-SA') : (t.rejectedAt ? new Date(t.rejectedAt).toLocaleString('ar-SA') : '')
+    ]);
+
     const csvContent = "\ufeff" + [headers.join(','), ...rows.map(e => e.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `سند_بلاغات_${new Date().toLocaleDateString('ar-SA')}.csv`;
+    link.download = `سند_سجل_البلاغات_${new Date().toLocaleDateString('ar-SA')}.csv`;
     link.click();
-    toast({ title: "تم استخراج البيانات" });
+    toast({ title: "تم استخراج البيانات الكاملة بنجاح" });
   };
 
   return (
@@ -299,7 +330,7 @@ export function AdminView() {
                  </AlertDialog>
                </div>
              )}
-             <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50"><Download className="w-4 h-4 ml-2" /> تصدير CSV</Button>
+             <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50"><Download className="w-4 h-4 ml-2" /> تصدير السجل الكامل (CSV)</Button>
              <TabsList className="bg-slate-100 p-1 rounded-full"><TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">إحصائيات</TabsTrigger><TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">حسابات</TabsTrigger><TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">إعدادات</TabsTrigger></TabsList>
           </div>
         </div>
@@ -334,7 +365,6 @@ export function AdminView() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* الكول سنتر */}
              <ChartWrapper title="إنتاجية موظفي الرفع (الكول سنتر)" icon={Headset}>
                 {stats.agentPerformance.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={stats.agentPerformance} layout="vertical"><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" hide /><YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" /><Tooltip /><Bar dataKey="count" name="بلاغات مرفوعة" fill="#6C63FF" radius={[0, 8, 8, 0]} /></RechartsBarChart></ResponsiveContainer>
@@ -343,7 +373,6 @@ export function AdminView() {
                 )}
              </ChartWrapper>
 
-             {/* قسم البطائق - Stacked Chart */}
              <ChartWrapper title="أداء أخصائيي قسم البطائق (تفصيلي)" icon={CreditCard}>
                 {stats.cardsPerformance.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -364,7 +393,6 @@ export function AdminView() {
                 )}
              </ChartWrapper>
 
-             {/* خدمة العملاء الرقمية - Stacked Chart */}
              <ChartWrapper title="أداء أخصائيي خدمة العملاء (تفصيلي)" icon={MonitorSmartphone}>
                 {stats.digitalPerformance.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -385,7 +413,6 @@ export function AdminView() {
                 )}
              </ChartWrapper>
 
-             {/* التطبيق الإلكتروني - Stacked Chart */}
              <ChartWrapper title="أداء أخصائيي التطبيق (تفصيلي)" icon={Smartphone}>
                 {stats.appPerformance.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -409,7 +436,6 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-8 animate-in fade-in duration-500">
-           {/* كروت إحصائيات الكوادر الذكية والفئات التفصيلية */}
            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <StatCard icon={Users} title="إجمالي الكادر" value={appUsers.length} color="bg-primary" />
               <StatCard icon={ShieldCheck} title="المدراء والمشرفين" value={appUsers.filter(u => u.role === 'Admin').length} valueColor="text-indigo-600" />
@@ -482,6 +508,7 @@ export function AdminView() {
                   <div className="space-y-2"><Label className="font-black text-xs mr-1">كلمة المرور</Label><Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" /></div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">الرتبة الوظيفية</Label>
+                     <Circle className="w-4 h-4" />
                      <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}><SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger><SelectContent dir="rtl">{isPrimaryAdmin && <SelectItem value="Admin">مدير</SelectItem>}<SelectItem value="Employee">موظف</SelectItem></SelectContent></Select>
                   </div>
                   {newUser.role === 'Employee' ? (
