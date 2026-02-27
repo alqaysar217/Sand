@@ -80,8 +80,9 @@ export function AdminView() {
 
   const appUsers = useMemo(() => {
     if (!rawUsers) return [];
-    return rawUsers.filter(u => u.username !== 'BIM775258830' || isDeveloper);
-  }, [rawUsers, isDeveloper]);
+    // استبعاد حساب المطور من كافة القوائم والإحصائيات
+    return rawUsers.filter(u => u.username !== 'BIM775258830');
+  }, [rawUsers]);
 
   const stats = useMemo(() => {
     const defaultStats = { 
@@ -408,6 +409,14 @@ export function AdminView() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-8 animate-in fade-in duration-500">
+           {/* كروت إحصائيات الكوادر الذكية */}
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard icon={Users} title="إجمالي الكادر" value={appUsers.length} color="bg-primary" />
+              <StatCard icon={ShieldCheck} title="المدراء والمشرفين" value={appUsers.filter(u => u.role === 'Admin').length} valueColor="text-indigo-600" />
+              <StatCard icon={Headset} title="موظفي الكول سنتر" value={appUsers.filter(u => u.role === 'Agent').length} valueColor="text-blue-600" />
+              <StatCard icon={UserCheck} title="أخصائيي الأقسام" value={appUsers.filter(u => u.role === 'Specialist').length} valueColor="text-green-600" />
+           </div>
+
            <Card className="banking-card overflow-hidden">
               <CardHeader className="p-8 border-b flex flex-row-reverse items-center justify-between bg-white"><CardTitle className="text-2xl font-black text-primary">إدارة الكوادر المصرفية</CardTitle><Button onClick={() => setShowAddUserDialog(true)} className="banking-button premium-gradient text-white h-12 px-6"><UserPlus className="w-5 h-5 ml-2" /> إضافة كادر جديد</Button></CardHeader>
               <CardContent className="p-8 space-y-12">
