@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Users, AlertTriangle, Clock, FileSpreadsheet, ShieldCheck, Trash2, CheckCircle2, 
   Edit2, BarChart3, PieChart as PieChartIcon, MonitorSmartphone, CreditCard, Headset,
-  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity, Send, Circle
+  Share2, X, Smartphone, UserPlus, Key, Loader2, Info, AlertCircle, Eye, EyeOff, Plus, ListTodo, Check, Save, TrendingUp, Download, ShieldAlert, Shield, Eraser, UserCog, UserCheck, BarChart, Activity, Send, Circle, Calendar
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, arrayUnion, arrayRemove, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
@@ -25,6 +26,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Department, UserProfile, UserRole } from '@/lib/types';
+import { format } from 'date-fns';
 
 const COLORS = ['#1414B8', '#F59E0B', '#10B981', '#EF4444', '#64748b', '#6C63FF', '#00C49F', '#FF8042'];
 
@@ -42,6 +44,9 @@ export function AdminView() {
   const [usernameError, setUsernameError] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
+  
+  // حالات تصدير البيانات حسب التاريخ
+  const [exportDateRange, setExportDateRange] = useState({ from: '', to: '' });
 
   const isDeveloper = currentAdmin?.username === 'BIM775258830';
   const isGM = currentAdmin?.username === 'BIM0100';
@@ -233,6 +238,26 @@ export function AdminView() {
       toast({ variant: "destructive", title: "تنبيه", description: "لا يوجد أي بلاغات في النظام حالياً لتصديرها." });
       return;
     }
+
+    let dataToExport = [...tickets];
+
+    // تصفية حسب التاريخ إذا تم التحديد
+    if (exportDateRange.from) {
+      const fromDate = new Date(exportDateRange.from);
+      fromDate.setHours(0,0,0,0);
+      dataToExport = dataToExport.filter(t => new Date(t.createdAt) >= fromDate);
+    }
+    if (exportDateRange.to) {
+      const toDate = new Date(exportDateRange.to);
+      toDate.setHours(23,59,59,999);
+      dataToExport = dataToExport.filter(t => new Date(t.createdAt) <= toDate);
+    }
+
+    if (dataToExport.length === 0) {
+      toast({ variant: "destructive", title: "تنبيه", description: "لا توجد بلاغات مسجلة في الفترة الزمنية المختارة." });
+      return;
+    }
+
     const headers = [
       "رقم البلاغ", 
       "تاريخ الإنشاء", 
@@ -250,7 +275,7 @@ export function AdminView() {
       "تاريخ الإغلاق"
     ];
     
-    const rows = tickets.map(t => [
+    const rows = dataToExport.map(t => [
       t.ticketID || '', 
       new Date(t.createdAt).toLocaleString('ar-SA'), 
       t.customerName, 
@@ -271,9 +296,12 @@ export function AdminView() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `سند_سجل_البلاغات_${new Date().toLocaleDateString('ar-SA')}.csv`;
+    const fileName = exportDateRange.from && exportDateRange.to 
+      ? `سند_سجل_البلاغات_${exportDateRange.from}_إلى_${exportDateRange.to}.csv`
+      : `سند_سجل_البلاغات_الكامل_${new Date().toLocaleDateString('ar-SA')}.csv`;
+    link.download = fileName;
     link.click();
-    toast({ title: "تم استخراج البيانات الكاملة بنجاح" });
+    toast({ title: "تم استخراج البيانات بنجاح", description: `تم تصدير ${dataToExport.length} بلاغ.` });
   };
 
   return (
@@ -285,7 +313,7 @@ export function AdminView() {
                <ShieldCheck className="w-8 h-8" /> غرفة الرقابة والتحكم
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 justify-center md:justify-end">
              {isPrimaryAdmin && (
                <div className="flex gap-2">
                  {isDeveloper && (
@@ -330,8 +358,42 @@ export function AdminView() {
                  </AlertDialog>
                </div>
              )}
-             <Button onClick={exportToCSV} variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50"><Download className="w-4 h-4 ml-2" /> تصدير السجل الكامل (CSV)</Button>
-             <TabsList className="bg-slate-100 p-1 rounded-full"><TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">إحصائيات</TabsTrigger><TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">حسابات</TabsTrigger><TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">إعدادات</TabsTrigger></TabsList>
+             
+             {/* ميزة التصدير حسب التاريخ */}
+             <Popover>
+               <PopoverTrigger asChild>
+                 <Button variant="outline" className="rounded-full font-black border-green-600 text-green-600 hover:bg-green-50">
+                    <Download className="w-4 h-4 ml-2" /> تصدير السجل (CSV)
+                 </Button>
+               </PopoverTrigger>
+               <PopoverContent className="w-80 rounded-[24px] p-6 shadow-2xl" dir="rtl">
+                  <div className="space-y-4">
+                    <h4 className="font-black text-primary text-sm flex items-center gap-2">تحديد فترة التقرير <Calendar className="w-4 h-4" /></h4>
+                    <div className="space-y-3">
+                       <div className="space-y-1">
+                          <Label className="text-[10px] font-black text-slate-500 mr-1">من تاريخ</Label>
+                          <Input type="date" value={exportDateRange.from} onChange={e => setExportDateRange({...exportDateRange, from: e.target.value})} className="h-10 text-right text-xs" />
+                       </div>
+                       <div className="space-y-1">
+                          <Label className="text-[10px] font-black text-slate-500 mr-1">إلى تاريخ</Label>
+                          <Input type="date" value={exportDateRange.to} onChange={e => setExportDateRange({...exportDateRange, to: e.target.value})} className="h-10 text-right text-xs" />
+                       </div>
+                    </div>
+                    <div className="pt-2">
+                       <Button onClick={exportToCSV} className="w-full h-11 rounded-full font-black bg-green-600 hover:bg-green-700 text-white">
+                          بدء التصدير الآن
+                       </Button>
+                       <p className="text-[9px] text-slate-400 font-bold mt-2 text-center">في حال ترك التواريخ فارغة سيتم تصدير السجل كاملاً.</p>
+                    </div>
+                  </div>
+               </PopoverContent>
+             </Popover>
+
+             <TabsList className="bg-slate-100 p-1 rounded-full">
+               <TabsTrigger value="stats" className="rounded-full px-6 py-2 font-black">إحصائيات</TabsTrigger>
+               <TabsTrigger value="users" className="rounded-full px-6 py-2 font-black">حسابات</TabsTrigger>
+               <TabsTrigger value="options" className="rounded-full px-6 py-2 font-black">إعدادات</TabsTrigger>
+             </TabsList>
           </div>
         </div>
 
@@ -382,9 +444,9 @@ export function AdminView() {
                       <YAxis dataKey="name" type="category" orientation="right" width={100} fontSize={10} fontWeight="black" />
                       <Tooltip formatter={(value, name) => [value, getLabel(name)]} />
                       <Legend verticalAlign="top" align="center" iconType="circle" />
-                      <Bar dataKey="resolved" name="تم الحل" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="pending" name="قيد المعالجة" stackId="a" fill="#F59E0B" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="escalated" name="محال" stackId="a" fill="#EF4444" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="resolved" name="تم الحل" stackId="a" fill="#10B981" />
+                      <Bar dataKey="pending" name="قيد المعالجة" stackId="a" fill="#F59E0B" />
+                      <Bar dataKey="escalated" name="محال" stackId="a" fill="#EF4444" />
                       <Bar dataKey="rejected" name="مرفوض" stackId="a" fill="#334155" radius={[0, 8, 8, 0]} />
                     </RechartsBarChart>
                   </ResponsiveContainer>
@@ -508,7 +570,6 @@ export function AdminView() {
                   <div className="space-y-2"><Label className="font-black text-xs mr-1">كلمة المرور</Label><Input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="banking-input h-12 text-right" /></div>
                   <div className="space-y-2">
                      <Label className="font-black text-xs mr-1">الرتبة الوظيفية</Label>
-                     <Circle className="w-4 h-4" />
                      <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}><SelectTrigger className="h-12 text-right"><SelectValue /></SelectTrigger><SelectContent dir="rtl">{isPrimaryAdmin && <SelectItem value="Admin">مدير</SelectItem>}<SelectItem value="Employee">موظف</SelectItem></SelectContent></Select>
                   </div>
                   {newUser.role === 'Employee' ? (
